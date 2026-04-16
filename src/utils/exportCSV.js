@@ -1,5 +1,5 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getAllArticles, artPieceCount } from '../data/mockData.js'
+import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 
 // Generates a CSV file and triggers download
 export function exportSizesCSV(order) {

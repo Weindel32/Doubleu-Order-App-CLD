@@ -1,5 +1,5 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderTotal } from '../data/mockData.js'
+import { getAllArticles, artPieceCount, orderTotal } from '../utils/helpers.js'
 
 export function generateClientPDF(order) {
   const articles = getAllArticles(order)
