@@ -9,14 +9,142 @@ import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 
 const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riepilogo']
-const emptyArticle = () => ({ sp:'',category:'Felpa',line:'Performance',description:'',color:'',price:'',sizes:{adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])),kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0]))} })
-const emptyKit = () => ({ name:'',price:'',articles:[emptyArticle()] })
+const emptyArticle = () => ({ sp:'', category:'Felpa', line:'Performance', description:'', color:'', price:'', sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])) } })
+const emptyKit = () => ({ name:'', price:'', articles:[emptyArticle()] })
+
+// ── Date picker helpers ──────────────────────────────────────────
+const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
+
+function toItalianDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d)) return dateStr
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+}
+
+function fromItalianDate(str) {
+  if (!str) return ''
+  const [d,m,y] = str.split('/')
+  if (!d||!m||!y) return ''
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+}
+
+function DatePicker({ value, onChange, label }) {
+  const [open, setOpen] = useState(false)
+  const today = new Date()
+  const parsed = value ? new Date(value) : today
+  const [viewYear, setViewYear] = useState(parsed.getFullYear())
+  const [viewMonth, setViewMonth] = useState(parsed.getMonth())
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay()
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate()
+  const startPad = firstDay === 0 ? 6 : firstDay - 1
+
+  const selectedStr = value || ''
+  const selectedDate = selectedStr ? new Date(selectedStr) : null
+
+  const selectDay = (day) => {
+    const d = new Date(viewYear, viewMonth, day)
+    onChange(`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`)
+    setOpen(false)
+  }
+
+  const displayValue = value ? toItalianDate(value) : ''
+
+  return (
+    <div style={{ position:'relative' }}>
+      {label && <label style={s.label}>{label}</label>}
+      <div
+        onClick={() => setOpen(!open)}
+        style={{ ...s.input, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', userSelect:'none' }}
+      >
+        <span style={{ color: displayValue ? CREAM : MUTED }}>{displayValue || 'Seleziona data...'}</span>
+        <span style={{ color: GOLD, fontSize: 14 }}>📅</span>
+      </div>
+
+      {open && (
+        <div style={{
+          position:'absolute', top:'100%', left:0, zIndex:1000, marginTop:4,
+          background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:10,
+          padding:16, width:280, boxShadow:'0 8px 32px rgba(0,0,0,0.4)',
+        }}>
+          {/* Month navigation */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <button onClick={()=>{ if(viewMonth===0){setViewMonth(11);setViewYear(y=>y-1)}else setViewMonth(m=>m-1) }}
+              style={{ background:'none', border:'none', color:GOLD, fontSize:18, cursor:'pointer', padding:'0 8px' }}>‹</button>
+            <div style={{ fontSize:12, color:CREAM, letterSpacing:2, fontWeight:600 }}>
+              {MONTHS[viewMonth]} {viewYear}
+            </div>
+            <button onClick={()=>{ if(viewMonth===11){setViewMonth(0);setViewYear(y=>y+1)}else setViewMonth(m=>m+1) }}
+              style={{ background:'none', border:'none', color:GOLD, fontSize:18, cursor:'pointer', padding:'0 8px' }}>›</button>
+          </div>
+
+          {/* Year quick select */}
+          <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+            {[2024,2025,2026].map(y => (
+              <button key={y} onClick={()=>setViewYear(y)} style={{
+                padding:'3px 10px', borderRadius:3, border:`1px solid ${y===viewYear?GOLD:BORDER}`,
+                background:y===viewYear?'rgba(184,150,90,0.2)':'transparent',
+                color:y===viewYear?GOLD:MUTED, cursor:'pointer', fontSize:10, letterSpacing:1,
+              }}>{y}</button>
+            ))}
+          </div>
+
+          {/* Day headers */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:4 }}>
+            {['Lu','Ma','Me','Gi','Ve','Sa','Do'].map(d => (
+              <div key={d} style={{ textAlign:'center', fontSize:9, color:MUTED, letterSpacing:1, padding:'2px 0' }}>{d}</div>
+            ))}
+          </div>
+
+          {/* Days grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
+            {Array(startPad).fill(null).map((_,i) => <div key={`e${i}`}/>)}
+            {Array(daysInMonth).fill(null).map((_,i) => {
+              const day = i+1
+              const isSelected = selectedDate &&
+                selectedDate.getDate()===day &&
+                selectedDate.getMonth()===viewMonth &&
+                selectedDate.getFullYear()===viewYear
+              const isToday = today.getDate()===day && today.getMonth()===viewMonth && today.getFullYear()===viewYear
+              return (
+                <button key={day} onClick={()=>selectDay(day)} style={{
+                  padding:'6px 2px', borderRadius:4, border:'none', cursor:'pointer', textAlign:'center',
+                  fontSize:12, fontWeight: isSelected?700:400,
+                  background: isSelected ? GOLD : isToday ? 'rgba(184,150,90,0.15)' : 'transparent',
+                  color: isSelected ? '#1a2744' : isToday ? GOLD : CREAM,
+                  transition:'all 0.15s',
+                }}>{day}</button>
+              )
+            })}
+          </div>
+
+          <div style={{ marginTop:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <button onClick={()=>{onChange('');setOpen(false)}} style={{ background:'none', border:'none', color:MUTED, fontSize:10, cursor:'pointer', letterSpacing:1 }}>
+              Cancella
+            </button>
+            <button onClick={()=>{ const t=new Date(); selectDay(t.getDate()); setViewMonth(t.getMonth()); setViewYear(t.getFullYear()) }}
+              style={{ background:'none', border:`1px solid ${GOLD}`, color:GOLD, fontSize:10, cursor:'pointer', padding:'4px 10px', borderRadius:3, letterSpacing:1 }}>
+              Oggi
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function NewOrder({ editOrder, setView, onSaved }) {
   const [step,setStep]             = useState(1)
   const [club,setClub]             = useState(editOrder?.client||'')
-  const [date]                     = useState(editOrder?.date||new Date().toLocaleDateString('it-IT'))
-  const [deliveryDate,setDelivery] = useState(editOrder?.deliveryDate||'')
+  const [clientEmail,setEmail]     = useState(editOrder?.clientEmail||'')
+  const [clientPhone,setPhone]     = useState(editOrder?.clientPhone||'')
+  const [clientAddress,setAddress] = useState(editOrder?.clientAddress||'')
+  const [clientCity,setCity]       = useState(editOrder?.clientCity||'')
+  const [clientCountry,setCountry] = useState(editOrder?.clientCountry||'Italia')
+  const [clientContact,setContact] = useState(editOrder?.clientContact||'')
+  const [orderDate,setOrderDate]   = useState(editOrder ? fromItalianDate(editOrder.date) : new Date().toISOString().split('T')[0])
+  const [deliveryDate,setDelivery] = useState(editOrder ? fromItalianDate(editOrder.deliveryDate)||'' : '')
   const [alertDays,setAlertDays]   = useState(editOrder?.alertDays??7)
   const [status,setStatus]         = useState(editOrder?.status||'PREVENTIVO')
   const [clientNotes,setCN]        = useState(editOrder?.notes||'')
@@ -30,46 +158,45 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
 
   const allArticles = kits.flatMap(k=>k.articles)
   const totalPieces = allArticles.reduce((s,a)=>s+artPieceCount(a),0)
-  const orderObj    = ()=>({ id:editOrder?.id||'DU-NEW', client:club||'—', date, deliveryDate, alertDays, status, pieces:totalPieces, notes:clientNotes, productionNotes, pricingMode, kits, payments, showTotalInClientPDF:showTotal })
-  const total       = calcOrderTotal(orderObj())
-  const totalPaid   = payments.filter(p=>p.paid).reduce((s,p)=>s+(parseFloat(p.amount)||0),0)
-  const totalPend   = payments.filter(p=>!p.paid).reduce((s,p)=>s+(parseFloat(p.amount)||0),0)
-  const residual    = Math.max(0,total-totalPaid-totalPend)
 
-  const updateKit   =(ki,f,v)=> setKits(kits.map((k,i)=>i===ki?{...k,[f]:v}:k))
-  const addKit      =()=>       setKits([...kits,emptyKit()])
-  const removeKit   =(ki)=>     setKits(kits.filter((_,i)=>i!==ki))
-  const addArt      =(ki)=>     setKits(kits.map((k,i)=>i===ki?{...k,articles:[...k.articles,emptyArticle()]}:k))
-  const removeArt   =(ki,ai)=>  setKits(kits.map((k,i)=>i===ki?{...k,articles:k.articles.filter((_,j)=>j!==ai)}:k))
-  const updateArt   =(ki,ai,f,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,[f]:v})}))
-  const updateSz    =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
-  const openPDF     =(gen)=>{ const h=gen(orderObj()); const w=window.open('','_blank'); w.document.write(h); w.document.close() }
-  const canGo2      = allArticles.some(a=>a.sp&&a.description)
-  const inp         = {...s.input}
+  const orderObj = () => ({
+    id: editOrder?.id||'DU-NEW',
+    client: club||'—',
+    clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
+    deliveryDate: toItalianDate(deliveryDate),
+    alertDays, status, pieces: totalPieces,
+    notes: clientNotes, productionNotes,
+    pricingMode, kits, payments,
+    showTotalInClientPDF: showTotal,
+  })
 
-  const handleSave = async (confirmOrder = false) => {
+  const total     = calcOrderTotal(orderObj())
+  const totalPaid = payments.filter(p=>p.paid).reduce((s,p)=>s+(parseFloat(p.amount)||0),0)
+  const totalPend = payments.filter(p=>!p.paid).reduce((s,p)=>s+(parseFloat(p.amount)||0),0)
+  const residual  = Math.max(0,total-totalPaid-totalPend)
+
+  const updateKit  =(ki,f,v)=> setKits(kits.map((k,i)=>i===ki?{...k,[f]:v}:k))
+  const addKit     =()=>       setKits([...kits,emptyKit()])
+  const removeKit  =(ki)=>     setKits(kits.filter((_,i)=>i!==ki))
+  const addArt     =(ki)=>     setKits(kits.map((k,i)=>i===ki?{...k,articles:[...k.articles,emptyArticle()]}:k))
+  const removeArt  =(ki,ai)=>  setKits(kits.map((k,i)=>i===ki?{...k,articles:k.articles.filter((_,j)=>j!==ai)}:k))
+  const updateArt  =(ki,ai,f,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,[f]:v})}))
+  const updateSz   =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
+  const openPDF    =(gen)=>{ const h=gen(orderObj()); const w=window.open('','_blank'); w.document.write(h); w.document.close() }
+  const canGo2     = allArticles.some(a=>a.sp&&a.description)
+  const inp        = {...s.input}
+
+  const handleSave = async (confirmOrder=false) => {
     if (!club.trim()) { alert('Inserisci il nome del club'); return }
     setSaving(true); setSaveError(null)
     try {
       const id = editOrder?.id || await generateOrderId()
       const finalStatus = confirmOrder ? 'CONFERMATO' : status
       const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces }
-
-      let ok
-      if (editOrder) {
-        ok = await updateOrder(order)
-      } else {
-        ok = await createOrder(order)
-      }
-
-      if (ok) {
-        onSaved()
-      } else {
-        setSaveError('Errore nel salvataggio. Riprova.')
-      }
-    } catch (e) {
-      setSaveError('Errore: ' + e.message)
-    }
+      const ok = editOrder ? await updateOrder(order) : await createOrder(order)
+      if (ok) { onSaved() } else { setSaveError('Errore nel salvataggio. Riprova.') }
+    } catch (e) { setSaveError('Errore: ' + e.message) }
     setSaving(false)
   }
 
@@ -81,11 +208,11 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
   )
 
   return (
-    <div style={{maxWidth:940}}>
+    <div style={{maxWidth:960}}>
       <div style={s.topBar}>
         <div>
           <div style={s.pageTitle}>{editOrder?'Modifica Ordine':'Nuovo Ordine'}</div>
-          <div style={s.pageSub}>{editOrder?.id||'Nuovo'} · {date}</div>
+          <div style={s.pageSub}>{editOrder?.id||'Nuovo'} · {toItalianDate(orderDate)}</div>
         </div>
         <div style={{textAlign:'right'}}>
           <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:4}}>PEZZI TOTALI</div>
@@ -93,6 +220,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
         </div>
       </div>
 
+      {/* Step bar */}
       <div style={{display:'flex',marginBottom:36}}>
         {STEPS.map((label,i)=>(
           <div key={label} style={{flex:1,cursor:'pointer'}} onClick={()=>setStep(i+1)}>
@@ -102,30 +230,85 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
         ))}
       </div>
 
-      {/* STEP 1 */}
-      {step===1&&<div>
+      {/* ── STEP 1: Club ─────────────────────────────────────────── */}
+      {step===1 && <div>
         <div style={s.card}>
-          <div style={s.cardTitle}>Dati Club</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:16}}>
-            <div><label style={s.label}>Club / Cliente *</label><input style={inp} value={club} onChange={e=>setClub(e.target.value)} placeholder="Es. Tennis Club Milano"/></div>
-            <div><label style={s.label}>Data Ordine</label><input style={{...inp,opacity:0.5}} value={date} readOnly/></div>
-            <div><label style={s.label}>Stato</label><select style={inp} value={status} onChange={e=>setStatus(e.target.value)}>{ORDER_STATUSES.map(st=><option key={st}>{st}</option>)}</select></div>
+          <div style={s.cardTitle}>Dati Club / Cliente</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+            <div>
+              <label style={s.label}>Nome Club *</label>
+              <input style={inp} value={club} onChange={e=>setClub(e.target.value)} placeholder="Es. Tennis Club Milano"/>
+            </div>
+            <div>
+              <label style={s.label}>Referente (nome contatto)</label>
+              <input style={inp} value={clientContact} onChange={e=>setContact(e.target.value)} placeholder="Es. Mario Rossi"/>
+            </div>
+            <div>
+              <label style={s.label}>Email</label>
+              <input style={inp} type="email" value={clientEmail} onChange={e=>setEmail(e.target.value)} placeholder="club@email.com"/>
+            </div>
+            <div>
+              <label style={s.label}>Telefono</label>
+              <input style={inp} value={clientPhone} onChange={e=>setPhone(e.target.value)} placeholder="+39 333 000 0000"/>
+            </div>
+            <div>
+              <label style={s.label}>Indirizzo</label>
+              <input style={inp} value={clientAddress} onChange={e=>setAddress(e.target.value)} placeholder="Via Roma 1"/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div>
+                <label style={s.label}>Città</label>
+                <input style={inp} value={clientCity} onChange={e=>setCity(e.target.value)} placeholder="Milano"/>
+              </div>
+              <div>
+                <label style={s.label}>Nazione</label>
+                <input style={inp} value={clientCountry} onChange={e=>setCountry(e.target.value)} placeholder="Italia"/>
+              </div>
+            </div>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-            <div><label style={s.label}>Data Consegna Prevista (GG/MM/AAAA)</label><input style={inp} value={deliveryDate} onChange={e=>setDelivery(e.target.value)} placeholder="30/05/2026"/></div>
-            <div><label style={s.label}>Alert preavviso</label><select style={inp} value={alertDays} onChange={e=>setAlertDays(+e.target.value)}>{[3,5,7,10,14,21,30].map(d=><option key={d} value={d}>{d} giorni prima</option>)}</select></div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardTitle}>Date Ordine</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
+            <DatePicker label="Data Ordine *" value={orderDate} onChange={setOrderDate}/>
+            <DatePicker label="Data Consegna Prevista" value={deliveryDate} onChange={setDelivery}/>
+            <div>
+              <label style={s.label}>Alert preavviso</label>
+              <select style={inp} value={alertDays} onChange={e=>setAlertDays(+e.target.value)}>
+                {[3,5,7,10,14,21,30].map(d=><option key={d} value={d}>{d} giorni prima</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardTitle}>Stato Ordine</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {ORDER_STATUSES.map(st=>(
+              <button key={st} onClick={()=>setStatus(st)} style={{
+                padding:'8px 16px', borderRadius:3, border:'none', cursor:'pointer',
+                fontFamily:"'Josefin Sans',sans-serif", fontSize:9, letterSpacing:2, textTransform:'uppercase',
+                background: status===st ? 'rgba(184,150,90,0.2)' : 'rgba(255,255,255,0.05)',
+                color: status===st ? GOLD : MUTED,
+                outline: status===st ? `1px solid ${GOLD}` : 'none',
+              }}>{st}</button>
+            ))}
           </div>
           <div style={{marginTop:12}}><span style={badgeStyle(status)}>{status}</span></div>
         </div>
+
         <div style={s.card}>
           <div style={s.cardTitle}>Note per il Cliente</div>
           <textarea rows={3} style={{...inp,resize:'vertical'}} value={clientNotes} onChange={e=>setCN(e.target.value)} placeholder="Es. Consegna stimata 35 gg lavorativi..."/>
         </div>
+
         <div style={s.card}>
           <div style={s.cardTitle}>⚠ Note Produzione (uso interno)</div>
           <textarea rows={3} style={{...inp,resize:'vertical',borderColor:'rgba(196,98,58,0.35)'}} value={productionNotes} onChange={e=>setPN(e.target.value)} placeholder="Es. Piping bianco manica raglan. Pantone 356C..."/>
           <div style={{fontSize:9,color:CLAY,letterSpacing:1,marginTop:8}}>Solo nel PDF Produzione</div>
         </div>
+
         <div style={s.card}>
           <div style={s.cardTitle}>Opzioni PDF Cliente</div>
           <label style={{display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}>
@@ -136,14 +319,15 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
             <span style={{fontSize:10,color:MUTED}}>{showTotal?'Sì':'No'}</span>
           </label>
         </div>
+
         <div style={{display:'flex',justifyContent:'flex-end',gap:12,marginTop:8}}>
           <button style={btnStyle(false)} onClick={()=>setView('orders')}>Annulla</button>
           <button style={btnStyle(true)} onClick={()=>setStep(2)}>Continua →</button>
         </div>
       </div>}
 
-      {/* STEP 2 */}
-      {step===2&&<div>
+      {/* ── STEP 2 ── */}
+      {step===2 && <div>
         <div style={s.card}>
           <div style={s.cardTitle}>Modalità Pricing</div>
           <div style={{display:'flex',gap:10}}>
@@ -152,10 +336,11 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
                 onClick={()=>setPM(mode)}>{mode==='singolo'?'Articolo singolo':'Prezzo per Kit'}</button>
             ))}
           </div>
+          <div style={{fontSize:11,color:MUTED,marginTop:10}}>{pricingMode==='kit'?'Prezzo per kit completo (es. felpa+short = €90/giocatore)':'Ogni articolo ha il proprio prezzo unitario'}</div>
         </div>
         {kits.map((kit,ki)=>(
           <div key={ki} style={{...s.card,border:`1px solid rgba(184,150,90,0.25)`}}>
-            {pricingMode==='kit'&&<div style={{display:'grid',gridTemplateColumns:'1fr 140px',gap:16,marginBottom:20}}>
+            {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 140px',gap:16,marginBottom:20}}>
               <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e=>updateKit(ki,'name',e.target.value)} placeholder="Es. Kit Completo Padel"/></div>
               <div><label style={s.label}>Prezzo Kit €</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="90"/></div>
             </div>}
@@ -169,22 +354,22 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
                   <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e=>updateArt(ki,ai,'category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
                   <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e=>updateArt(ki,ai,'line',e.target.value)}>{LINES.map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
-                {pricingMode==='singolo'&&<div style={{width:140}}><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e=>updateArt(ki,ai,'price',e.target.value)} placeholder="28"/></div>}
-                {kit.articles.length>1&&<button style={{...btnStyle(false),padding:'4px 10px',fontSize:9,color:CLAY,marginTop:8}} onClick={()=>removeArt(ki,ai)}>Rimuovi</button>}
+                {pricingMode==='singolo' && <div style={{width:140}}><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e=>updateArt(ki,ai,'price',e.target.value)} placeholder="28"/></div>}
+                {kit.articles.length>1 && <button style={{...btnStyle(false),padding:'4px 10px',fontSize:9,color:CLAY,marginTop:8}} onClick={()=>removeArt(ki,ai)}>Rimuovi</button>}
               </div>
             ))}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6}}>
               <button style={{...btnGoldStyle,padding:'7px 16px',fontSize:9}} onClick={()=>addArt(ki)}>+ Articolo</button>
-              {kits.length>1&&<button style={{...btnStyle(false),padding:'7px 14px',fontSize:9,color:CLAY}} onClick={()=>removeKit(ki)}>Rimuovi kit</button>}
+              {kits.length>1 && <button style={{...btnStyle(false),padding:'7px 14px',fontSize:9,color:CLAY}} onClick={()=>removeKit(ki)}>Rimuovi kit</button>}
             </div>
           </div>
         ))}
-        {pricingMode==='kit'&&<button style={{...btnGoldStyle,marginBottom:16}} onClick={addKit}>+ Aggiungi Kit</button>}
+        {pricingMode==='kit' && <button style={{...btnGoldStyle,marginBottom:16}} onClick={addKit}>+ Aggiungi Kit</button>}
         <NavBtns prev={()=>setStep(1)} next={()=>setStep(3)} nextDisabled={!canGo2}/>
       </div>}
 
-      {/* STEP 3 */}
-      {step===3&&<div>
+      {/* ── STEP 3 ── */}
+      {step===3 && <div>
         {kits.map((kit,ki)=>kit.articles.map((art,ai)=>{
           const adT=ADULT_SIZES.reduce((s,sz)=>s+(art.sizes.adult?.[sz]||0),0)
           const kiT=KIDS_SIZES.reduce((s,sz)=>s+(art.sizes.kids?.[sz]||0),0)
@@ -235,38 +420,67 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
         <NavBtns prev={()=>setStep(2)} next={()=>setStep(4)} nextLabel="Pagamenti →"/>
       </div>}
 
-      {/* STEP 4 */}
-      {step===4&&<div>
+      {/* ── STEP 4 ── */}
+      {step===4 && <div>
         <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total}/>
         <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →"/>
       </div>}
 
-      {/* STEP 5 */}
-      {step===5&&<div>
+      {/* ── STEP 5 ── */}
+      {step===5 && <div>
         <div style={s.card}>
           <div style={s.cardTitle}>Riepilogo Ordine</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:20}}>
-            {[{l:'CLUB',v:club||'—',serif:true},{l:'PEZZI',v:totalPieces,serif:true,color:GOLD},{l:'TOTALE',v:`€ ${total.toFixed(2)}`,serif:true,color:GOLD},{l:'STATO',badge:status}].map(item=>(
+            {[
+              {l:'CLUB',v:club||'—',serif:true},
+              {l:'PEZZI',v:totalPieces,serif:true,color:GOLD},
+              {l:'TOTALE',v:`€ ${total.toFixed(2)}`,serif:true,color:GOLD},
+              {l:'STATO',badge:status},
+            ].map(item=>(
               <div key={item.l}>
                 <div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:6}}>{item.l}</div>
-                {item.badge?<span style={badgeStyle(item.badge)}>{item.badge}</span>:<div style={{fontFamily:item.serif?"'Cormorant Garamond',serif":undefined,fontSize:item.serif?20:14,color:item.color||CREAM}}>{item.v}</div>}
+                {item.badge
+                  ? <span style={badgeStyle(item.badge)}>{item.badge}</span>
+                  : <div style={{fontFamily:item.serif?"'Cormorant Garamond',serif":undefined,fontSize:item.serif?20:14,color:item.color||CREAM}}>{item.v}</div>
+                }
               </div>
             ))}
           </div>
-          {deliveryDate&&<div style={{padding:'10px 16px',background:'rgba(184,150,90,0.07)',borderRadius:6,border:`1px solid rgba(184,150,90,0.15)`,marginBottom:16,display:'flex',gap:24}}>
-            <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>CONSEGNA</div><div style={{fontSize:14,color:GOLD}}>{deliveryDate}</div></div>
-            <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>ALERT</div><div style={{fontSize:14,color:CREAM}}>{alertDays} giorni prima</div></div>
-          </div>}
-          {payments.length>0&&<div style={{padding:'12px 16px',background:'rgba(74,158,110,0.07)',border:`1px solid rgba(74,158,110,0.18)`,borderRadius:6}}>
-            <div style={{fontSize:9,letterSpacing:2,color:GREEN,marginBottom:8}}>SITUAZIONE PAGAMENTI</div>
-            <div style={{display:'flex',gap:24}}>
-              <div><div style={{fontSize:9,color:MUTED}}>Incassato</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GREEN}}>€ {totalPaid.toFixed(2)}</div></div>
-              <div><div style={{fontSize:9,color:MUTED}}>In sospeso</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GOLD}}>€ {totalPend.toFixed(2)}</div></div>
-              <div><div style={{fontSize:9,color:MUTED}}>Residuo</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:residual>0?CLAY:MUTED}}>€ {residual.toFixed(2)}</div></div>
+
+          {/* Client details summary */}
+          {(clientContact||clientEmail||clientPhone||clientCity) && (
+            <div style={{padding:'12px 16px',background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:6,marginBottom:16}}>
+              <div style={{fontSize:9,letterSpacing:2,color:GOLD,marginBottom:8}}>DATI CLUB</div>
+              <div style={{display:'flex',gap:24,flexWrap:'wrap'}}>
+                {clientContact && <div><div style={{fontSize:9,color:MUTED}}>Referente</div><div style={{fontSize:12,color:CREAM}}>{clientContact}</div></div>}
+                {clientEmail   && <div><div style={{fontSize:9,color:MUTED}}>Email</div><div style={{fontSize:12,color:CREAM}}>{clientEmail}</div></div>}
+                {clientPhone   && <div><div style={{fontSize:9,color:MUTED}}>Tel</div><div style={{fontSize:12,color:CREAM}}>{clientPhone}</div></div>}
+                {clientCity    && <div><div style={{fontSize:9,color:MUTED}}>Città</div><div style={{fontSize:12,color:CREAM}}>{clientCity}, {clientCountry}</div></div>}
+              </div>
             </div>
-          </div>}
-          {saveError&&<div style={{marginTop:12,padding:'10px 16px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:6,color:'#ef4444',fontSize:12}}>{saveError}</div>}
+          )}
+
+          {(toItalianDate(deliveryDate)) && (
+            <div style={{padding:'10px 16px',background:'rgba(184,150,90,0.07)',borderRadius:6,border:`1px solid rgba(184,150,90,0.15)`,marginBottom:16,display:'flex',gap:24}}>
+              <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>CONSEGNA</div><div style={{fontSize:14,color:GOLD}}>{toItalianDate(deliveryDate)}</div></div>
+              <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>ALERT</div><div style={{fontSize:14,color:CREAM}}>{alertDays} giorni prima</div></div>
+            </div>
+          )}
+
+          {payments.length>0 && (
+            <div style={{padding:'12px 16px',background:'rgba(74,158,110,0.07)',border:`1px solid rgba(74,158,110,0.18)`,borderRadius:6}}>
+              <div style={{fontSize:9,letterSpacing:2,color:GREEN,marginBottom:8}}>SITUAZIONE PAGAMENTI</div>
+              <div style={{display:'flex',gap:24}}>
+                <div><div style={{fontSize:9,color:MUTED}}>Incassato</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GREEN}}>€ {totalPaid.toFixed(2)}</div></div>
+                <div><div style={{fontSize:9,color:MUTED}}>In sospeso</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GOLD}}>€ {totalPend.toFixed(2)}</div></div>
+                <div><div style={{fontSize:9,color:MUTED}}>Residuo</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:residual>0?CLAY:MUTED}}>€ {residual.toFixed(2)}</div></div>
+              </div>
+            </div>
+          )}
+
+          {saveError && <div style={{marginTop:12,padding:'10px 16px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:6,color:'#ef4444',fontSize:12}}>{saveError}</div>}
         </div>
+
         <div style={{display:'flex',gap:10,justifyContent:'space-between',marginTop:8,flexWrap:'wrap'}}>
           <button style={btnStyle(false)} onClick={()=>setStep(4)}>← Indietro</button>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
