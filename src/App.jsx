@@ -12,7 +12,7 @@ import { needsAlert } from './utils/helpers.js'
 function Sidebar({ view, setView, orders }) {
   const alertCount   = orders.filter(o => needsAlert(o)).length
   const pendingCount = orders.filter(o =>
-    o.status !== 'PREVENTIVO' && (o.payments||[]).some(p=>!p.paid)
+    o.status !== 'PREVENTIVO' && (o.payments || []).some(p => !p.paid)
   ).length
 
   const items = [
@@ -27,7 +27,7 @@ function Sidebar({ view, setView, orders }) {
     <div style={s.sidebar}>
       <div style={s.logo}>
         <div style={s.logoMark}>DOUBLEU</div>
-        <div style={s.logoSub}>Order App · v5</div>
+        <div style={s.logoSub}>Order App · v6</div>
       </div>
       <nav style={{ marginTop: 16 }}>
         {items.map(item => (
@@ -46,7 +46,7 @@ function Sidebar({ view, setView, orders }) {
       </nav>
       <div style={{ marginTop: 'auto', padding: '0 24px', borderTop: `1px solid ${BORDER}`, paddingTop: 20 }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>BUILD</div>
-        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v5 · Supabase</div>
+        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v6 · Supabase</div>
       </div>
     </div>
   )
@@ -78,6 +78,9 @@ export default function App() {
 
   const handleSaved = () => { loadOrders(); navigate('orders') }
 
+  // For optimistic local updates (status, payments)
+  const handleOrdersChange = (newOrders) => setOrders(newOrders)
+
   if (loading) {
     return (
       <div style={{ ...s.app, alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -93,8 +96,8 @@ export default function App() {
     <div style={s.app}>
       <Sidebar view={view} setView={navigate} orders={orders} />
       <main style={s.main}>
-        {view === 'dashboard' && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} />}
-        {view === 'orders'    && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} />}
+        {view === 'dashboard' && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} />}
+        {view === 'orders'    && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} />}
         {view === 'clients'   && <Clients   orders={orders} />}
         {view === 'analytics' && <Analytics orders={orders} />}
         {view === 'new'       && <NewOrder  editOrder={editOrder} setView={navigate} onSaved={handleSaved} />}

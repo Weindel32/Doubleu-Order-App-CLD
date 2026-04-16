@@ -6,7 +6,7 @@ import { generateClientPDF }     from '../utils/pdfClient.js'
 import AlertsPanel               from '../components/AlertsPanel.jsx'
 import StatCard                  from '../components/StatCard.jsx'
 
-export default function Dashboard({ orders, setView, setEditOrder, onDelete }) {
+export default function Dashboard({ orders, setView, setEditOrder, onDelete, onOrdersChange }) {
   const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
   const quote     = orders.filter(o => o.status === 'PREVENTIVO')
   const inProd    = orders.filter(o => o.status === 'IN PRODUZIONE')
