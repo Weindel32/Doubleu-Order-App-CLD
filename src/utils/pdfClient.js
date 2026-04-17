@@ -1,27 +1,29 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderTotal } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderTotal } from '../utils/helpers.js'
 
 export function generateClientPDF(order) {
   const articles = getAllArticles(order)
   const hasKids  = articles.some(a => KIDS_SIZES.some(sz => (a.sizes.kids?.[sz] || 0) > 0))
   const hasAdult = articles.some(a => ADULT_SIZES.some(sz => (a.sizes.adult?.[sz] || 0) > 0))
+  const subtotal = orderSubtotal(order)
+  const ivaAmt   = orderIVA(order)
   const total    = orderTotal(order)
 
   const pricingBlock = (() => {
     if (order.pricingMode === 'kit') {
       return order.kits.map(kit => {
-        const kitPieces = kit.articles.reduce((s, a) => s + artPieceCount(a), 0)
-        const kitTotal  = (parseFloat(kit.price) || 0) * kitPieces
+        const qty      = parseInt(order.kitQuantity) || 0
+        const kitTotal = (parseFloat(kit.price) || 0) * qty
         return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${kit.name}</div>
-              <div style="font-size:10px;color:#8a9ab5;margin-top:2px;letter-spacing:1px;">${kit.articles.map(a=>a.description).join(' + ')}</div>
+              <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${kit.articles.map(a=>a.description).join(' + ')}</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT</div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#c4623a;">€ ${(parseFloat(kit.price)||0).toFixed(2)}</div>
-              <div style="font-size:10px;color:#8a9ab5;">× ${kitPieces} pz = <strong style="color:#1a2744;">€ ${kitTotal.toFixed(2)}</strong></div>
+              <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° KIT</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(kit.price)||0).toFixed(2)} × ${qty} kit</div>
+              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${kitTotal.toFixed(2)}</div>
             </div>
           </div>`
       }).join('')
@@ -37,8 +39,8 @@ export function generateClientPDF(order) {
             </div>
             <div style="text-align:right;">
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO UNITARIO</div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#c4623a;">€ ${(parseFloat(a.price)||0).toFixed(2)}</div>
-              <div style="font-size:10px;color:#8a9ab5;">× ${pz} pz = <strong style="color:#1a2744;">€ ${tot.toFixed(2)}</strong></div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(a.price)||0).toFixed(2)} × ${pz} pz</div>
+              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${tot.toFixed(2)}</div>
             </div>
           </div>`
       }).join('')
@@ -59,7 +61,7 @@ export function generateClientPDF(order) {
       <tr>
         <td style="padding:8px 10px;border:1px solid #e0d8cc;font-size:11px;color:#8a9ab5;">pz</td>
         ${ADULT_SIZES.map(sz=>`<td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-size:13px;color:${(art.sizes.adult?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.adult?.[sz]??0}</td>`).join('')}
-        ${hasKids?KIDS_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;font-size:12px;">—</td>`).join(''):''}
+        ${hasKids?KIDS_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join(''):''}
         <td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-weight:700;font-size:15px;color:#1a2744;">${adultTotal}</td>
       </tr>` : ''
 
@@ -72,7 +74,7 @@ export function generateClientPDF(order) {
       </tr>
       <tr>
         <td style="padding:8px 10px;border:1px solid #e0d8cc;font-size:11px;color:#8a9ab5;">pz</td>
-        ${hasAdult?ADULT_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;font-size:12px;">—</td>`).join(''):''}
+        ${hasAdult?ADULT_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join(''):''}
         ${KIDS_SIZES.map(sz=>`<td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-size:13px;color:${(art.sizes.kids?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.kids?.[sz]??0}</td>`).join('')}
         <td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-weight:700;font-size:15px;color:#1a2744;">${kidsTotal}</td>
       </tr>` : ''
@@ -98,14 +100,31 @@ export function generateClientPDF(order) {
       </div>`
   }).join('')
 
-  // Client contact details block
   const clientDetailsBlock = (order.clientContact || order.clientEmail || order.clientPhone || order.clientCity) ? `
     <div style="margin-top:12px;display:flex;gap:28px;flex-wrap:wrap;">
       ${order.clientContact ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">REFERENTE</div><div style="font-size:13px;color:#1a2744;">${order.clientContact}</div></div>` : ''}
       ${order.clientEmail   ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">EMAIL</div><div style="font-size:13px;color:#1a2744;">${order.clientEmail}</div></div>` : ''}
       ${order.clientPhone   ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">TELEFONO</div><div style="font-size:13px;color:#1a2744;">${order.clientPhone}</div></div>` : ''}
       ${order.clientCity    ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">CITTÀ</div><div style="font-size:13px;color:#1a2744;">${order.clientCity}${order.clientCountry?', '+order.clientCountry:''}</div></div>` : ''}
-      ${order.clientAddress ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">INDIRIZZO</div><div style="font-size:13px;color:#1a2744;">${order.clientAddress}</div></div>` : ''}
+    </div>` : ''
+
+  const totalBlock = order.showTotalInClientPDF ? `
+    <div style="margin-top:20px;padding-top:16px;border-top:2px solid #e0d8cc;">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        <div style="display:flex;justify-content:space-between;width:280px;">
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IMPONIBILE</span>
+          <span style="font-size:15px;color:#1a2744;">€ ${subtotal.toFixed(2)}</span>
+        </div>
+        ${order.ivaEnabled ? `
+        <div style="display:flex;justify-content:space-between;width:280px;">
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IVA ${order.ivaRate || 22}%</span>
+          <span style="font-size:15px;color:#1a2744;">€ ${ivaAmt.toFixed(2)}</span>
+        </div>` : ''}
+        <div style="display:flex;justify-content:space-between;width:280px;padding-top:8px;border-top:1px solid #e0d8cc;">
+          <span style="font-size:11px;color:#1a2744;font-weight:700;letter-spacing:2px;">TOTALE ${order.ivaEnabled?'IVA INCL.':''}</span>
+          <span style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#1a2744;font-weight:600;">€ ${total.toFixed(2)}</span>
+        </div>
+      </div>
     </div>` : ''
 
   return `<!DOCTYPE html>
@@ -123,7 +142,6 @@ export function generateClientPDF(order) {
 </head>
 <body>
   <button class="print-btn" onclick="window.print()">↓ Salva / Stampa</button>
-
   <div style="background:#1a2744;padding:28px 40px;display:flex;justify-content:space-between;align-items:center;">
     <div>
       <div style="font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:#f5f0e8;letter-spacing:6px;">DOUBLEU</div>
@@ -134,48 +152,26 @@ export function generateClientPDF(order) {
       <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0e8;letter-spacing:3px;">${order.id}</div>
     </div>
   </div>
-
   <div style="background:#f8f5f0;padding:20px 40px;border-bottom:2px solid #e0d8cc;">
     <div style="display:flex;gap:40px;flex-wrap:wrap;">
-      <div>
-        <div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2744;">${order.client}</div>
-      </div>
-      <div>
-        <div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA ORDINE</div>
-        <div style="font-size:14px;font-weight:600;">${order.date}</div>
-      </div>
-      <div>
-        <div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PEZZI</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4623a;">${order.pieces}</div>
-      </div>
-      <div>
-        <div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div>
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;">${order.status}</div>
-      </div>
+      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div><div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2744;">${order.client}</div></div>
+      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA ORDINE</div><div style="font-size:14px;font-weight:600;">${order.date}</div></div>
+      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PEZZI</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4623a;">${order.pieces}</div></div>
+      ${order.pricingMode==='kit'&&order.kitQuantity?`<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">N° KIT</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#1a2744;">${order.kitQuantity}</div></div>`:''}
+      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;">${order.status}</div></div>
     </div>
     ${clientDetailsBlock}
     ${order.notes ? `<div style="margin-top:14px;padding:10px 16px;background:white;border-radius:6px;border:1px solid #e0d8cc;font-size:13px;color:#1a2744;">${order.notes}</div>` : ''}
   </div>
-
   <div style="padding:28px 40px;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:24px;padding-bottom:10px;border-bottom:2px solid #e8e0d0;">Dettaglio Articoli</div>
     ${articleRows}
   </div>
-
   <div style="margin:0 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;page-break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">${order.pricingMode==='kit'?'COMPOSIZIONE KIT E PREZZI':'PREZZI PER ARTICOLO'}</div>
     ${pricingBlock}
-    ${order.showTotalInClientPDF ? `
-    <div style="display:flex;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:2px solid #e0d8cc;">
-      <div style="text-align:right;">
-        <div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:6px;">TOTALE ORDINE</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:36px;color:#1a2744;font-weight:600;">€ ${total.toFixed(2)}</div>
-        <div style="font-size:10px;color:#8a9ab5;margin-top:4px;">IVA esclusa salvo accordi</div>
-      </div>
-    </div>` : ''}
+    ${totalBlock}
   </div>
-
   <div style="margin:0 40px 28px;padding:22px 28px;border:1px solid #e0d8cc;border-radius:10px;page-break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">CONDIZIONI GENERALI DI VENDITA</div>
     <div style="font-size:11px;color:#555;line-height:1.8;">
@@ -187,7 +183,6 @@ export function generateClientPDF(order) {
       <p style="margin-bottom:0;"><strong>6. Foro Competente</strong> — Per ogni controversia è competente il Foro di Salerno.</p>
     </div>
   </div>
-
   <div style="margin:0 40px 40px;padding:28px;border:1px solid #e0d8cc;border-radius:10px;page-break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:24px;">FIRMA PER ACCETTAZIONE</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
@@ -203,7 +198,6 @@ export function generateClientPDF(order) {
       </div>
     </div>
   </div>
-
   <div style="background:#1a2744;padding:16px 40px;display:flex;justify-content:space-between;align-items:center;">
     <div style="font-size:9px;letter-spacing:3px;color:#b8965a;">DOUBLEU · MADE IN ITALY · CAVA DE' TIRRENI</div>
     <div style="font-size:9px;color:rgba(255,255,255,0.3);">Generato il ${new Date().toLocaleDateString('it-IT')}</div>

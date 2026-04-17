@@ -22,6 +22,9 @@ export async function fetchOrders() {
       clientCountry: order.client_country || 'Italia', clientContact: order.client_contact || '',
       date: order.date, deliveryDate: order.delivery_date, alertDays: order.alert_days,
       status: order.status, pieces: order.pieces, pricingMode: order.pricing_mode,
+      kitQuantity: order.kit_quantity || null,
+      ivaEnabled: order.iva_enabled || false,
+      ivaRate: order.iva_rate || 22,
       notes: order.notes, productionNotes: order.production_notes,
       showTotalInClientPDF: order.show_total_in_client_pdf,
       kits: kitsWithArticles, payments: payments || [],
@@ -38,10 +41,14 @@ export async function createOrder(order) {
     client_country: order.clientCountry || 'Italia', client_contact: order.clientContact || null,
     date: order.date, delivery_date: order.deliveryDate || null, alert_days: order.alertDays || 7,
     status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
+    kit_quantity: order.kitQuantity || null,
+    iva_enabled: order.ivaEnabled || false,
+    iva_rate: order.ivaRate || 22,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
   })
   if (error) { console.error('createOrder:', error); return false }
+
   for (let ki = 0; ki < order.kits.length; ki++) {
     const kit = order.kits[ki]
     const { data: kitData, error: kitErr } = await supabase.from('kits')
@@ -73,6 +80,9 @@ export async function updateOrder(order) {
     client_country: order.clientCountry || 'Italia', client_contact: order.clientContact || null,
     date: order.date, delivery_date: order.deliveryDate || null, alert_days: order.alertDays || 7,
     status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
+    kit_quantity: order.kitQuantity || null,
+    iva_enabled: order.ivaEnabled || false,
+    iva_rate: order.ivaRate || 22,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
   }).eq('id', order.id)
@@ -103,8 +113,6 @@ export async function updateOrder(order) {
   }
   return true
 }
-
-// ─── QUICK UPDATES (no full reload needed) ────────────────────────
 
 export async function quickUpdateStatus(orderId, status) {
   const { error } = await supabase.from('orders').update({ status }).eq('id', orderId)
