@@ -137,7 +137,7 @@ export function generateClientPDF(order) {
     * { box-sizing: border-box; }
     body { font-family: 'Josefin Sans', sans-serif; color: #1a2744; margin: 0; background: #fff; }
     .print-btn { position:fixed;top:20px;right:20px;z-index:999;background:#1a2744;color:white;border:none;padding:12px 28px;font-family:'Josefin Sans',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; }
-    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm; } }
+    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm; margin-top:0 } }
   </style>
 </head>
 <body>
