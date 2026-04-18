@@ -2,9 +2,9 @@ import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 
 export function generateProductionPDF(order) {
-  const articles = getAllArticles(order)
-  const hasKids  = articles.some(a => KIDS_SIZES.some(sz => (a.sizes.kids?.[sz]  || 0) > 0))
-  const hasAdult = articles.some(a => ADULT_SIZES.some(sz => (a.sizes.adult?.[sz] || 0) > 0))
+  const articles    = getAllArticles(order)
+  const hasKids     = articles.some(a => KIDS_SIZES.some(sz => (a.sizes.kids?.[sz]  || 0) > 0))
+  const hasAdult    = articles.some(a => ADULT_SIZES.some(sz => (a.sizes.adult?.[sz] || 0) > 0))
   const totalPieces = articles.reduce((s, a) => s + artPieceCount(a), 0)
 
   const articleRows = articles.map(art => {
@@ -15,28 +15,28 @@ export function generateProductionPDF(order) {
     const adultSection = hasAdult ? `
       <tr style="background:#f0f4f8;">
         <td style="padding:6px 10px;font-size:9px;letter-spacing:2px;color:#8a9ab5;border:1px solid #e0d8cc;white-space:nowrap;">ADULTO</td>
-        ${ADULT_SIZES.map(sz => `<td style="padding:6px 8px;text-align:center;font-size:9px;letter-spacing:1px;color:#8a9ab5;border:1px solid #e0d8cc;background:#f0f4f8;">${sz}</td>`).join('')}
-        ${hasKids ? KIDS_SIZES.map(() => `<td style="border:1px solid #e0d8cc;background:#f0f4f8;"></td>`).join('') : ''}
+        ${ADULT_SIZES.map(sz=>`<td style="padding:6px 8px;text-align:center;font-size:9px;letter-spacing:1px;color:#8a9ab5;border:1px solid #e0d8cc;background:#f0f4f8;">${sz}</td>`).join('')}
+        ${hasKids?KIDS_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;background:#f0f4f8;"></td>`).join(''):''}
         <td style="padding:6px 8px;text-align:center;font-size:9px;color:#8a9ab5;border:1px solid #e0d8cc;background:#f0f4f8;">TOT</td>
       </tr>
       <tr>
         <td style="padding:10px 10px;border:1px solid #e0d8cc;font-size:11px;color:#8a9ab5;white-space:nowrap;">pz</td>
-        ${ADULT_SIZES.map(sz => `<td style="padding:10px 8px;text-align:center;border:1px solid #e0d8cc;font-size:14px;color:${(art.sizes.adult?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.adult?.[sz]??0}</td>`).join('')}
-        ${hasKids ? KIDS_SIZES.map(() => `<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join('') : ''}
+        ${ADULT_SIZES.map(sz=>`<td style="padding:10px 8px;text-align:center;border:1px solid #e0d8cc;font-size:14px;color:${(art.sizes.adult?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.adult?.[sz]??0}</td>`).join('')}
+        ${hasKids?KIDS_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join(''):''}
         <td style="padding:10px 8px;text-align:center;border:1px solid #e0d8cc;font-weight:700;font-size:16px;color:#1a2744;">${adultTotal}</td>
       </tr>` : ''
 
     const kidsSection = hasKids ? `
       <tr style="background:#f4f0f8;">
         <td style="padding:6px 10px;font-size:9px;letter-spacing:2px;color:#8a9ab5;border:1px solid #e0d8cc;white-space:nowrap;">BAMBINO</td>
-        ${hasAdult ? ADULT_SIZES.map(() => `<td style="border:1px solid #e0d8cc;background:#f4f0f8;"></td>`).join('') : ''}
-        ${KIDS_SIZES.map(sz => `<td style="padding:6px 8px;text-align:center;font-size:9px;letter-spacing:1px;color:#8a9ab5;border:1px solid #e0d8cc;background:#f4f0f8;">${sz}</td>`).join('')}
+        ${hasAdult?ADULT_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;background:#f4f0f8;"></td>`).join(''):''}
+        ${KIDS_SIZES.map(sz=>`<td style="padding:6px 8px;text-align:center;font-size:9px;letter-spacing:1px;color:#8a9ab5;border:1px solid #e0d8cc;background:#f4f0f8;">${sz}</td>`).join('')}
         <td style="padding:6px 8px;text-align:center;font-size:9px;color:#8a9ab5;border:1px solid #e0d8cc;background:#f4f0f8;">TOT</td>
       </tr>
       <tr>
         <td style="padding:10px 10px;border:1px solid #e0d8cc;font-size:11px;color:#8a9ab5;white-space:nowrap;">pz</td>
-        ${hasAdult ? ADULT_SIZES.map(() => `<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join('') : ''}
-        ${KIDS_SIZES.map(sz => `<td style="padding:10px 8px;text-align:center;border:1px solid #e0d8cc;font-size:14px;color:${(art.sizes.kids?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.kids?.[sz]??0}</td>`).join('')}
+        ${hasAdult?ADULT_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join(''):''}
+        ${KIDS_SIZES.map(sz=>`<td style="padding:10px 8px;text-align:center;border:1px solid #e0d8cc;font-size:14px;color:${(art.sizes.kids?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.kids?.[sz]??0}</td>`).join('')}
         <td style="padding:10px 8px;text-align:center;border:1px solid #e0d8cc;font-weight:700;font-size:16px;color:#1a2744;">${kidsTotal}</td>
       </tr>` : ''
 
@@ -89,6 +89,7 @@ export function generateProductionPDF(order) {
 </head>
 <body>
   <button class="print-btn" onclick="window.print()">↓ Stampa / Salva PDF</button>
+
   <div style="background:#1a2744;padding:28px 40px;display:flex;justify-content:space-between;align-items:center;">
     <div>
       <div style="font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:#f5f0e8;letter-spacing:6px;">DOUBLEU</div>
@@ -99,6 +100,7 @@ export function generateProductionPDF(order) {
       <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0e8;letter-spacing:3px;">${order.id}</div>
     </div>
   </div>
+
   <div style="background:#f8f5f0;padding:20px 40px;border-bottom:2px solid #e0d8cc;">
     <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:center;">
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div>
@@ -116,12 +118,14 @@ export function generateProductionPDF(order) {
       <div style="font-size:13px;line-height:1.6;">${order.productionNotes}</div>
     </div>` : ''}
   </div>
+
   <div style="padding:28px 40px;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:24px;padding-bottom:10px;border-bottom:2px solid #e8e0d0;">
       Dettaglio Articoli e Taglie
     </div>
     ${articleRows}
   </div>
+
   <div style="margin:0 40px 40px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;page-break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:18px;">RIEPILOGO FINALE</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;">
@@ -132,6 +136,8 @@ export function generateProductionPDF(order) {
       </div>
     </div>
   </div>
+
+  <!-- FOOTER - solo uso interno, niente URL -->
   <div style="background:#1a2744;padding:16px 40px;display:flex;justify-content:space-between;align-items:center;">
     <div style="font-size:9px;letter-spacing:3px;color:#b8965a;">DOUBLEU · DOCUMENTO AD USO INTERNO</div>
     <div style="font-size:9px;color:rgba(255,255,255,0.3);">Generato il ${new Date().toLocaleDateString('it-IT')}</div>

@@ -132,11 +132,25 @@ export async function deleteOrder(orderId) {
   return true
 }
 
+// ── New ID generation: DU-2026-1601, 1602, 1603...
+// Starting base is 1600, so first order = 1601
 export async function generateOrderId() {
   const year = new Date().getFullYear()
-  const { data, error } = await supabase.from('orders').select('id')
-    .like('id', `DU-${year}-%`).order('id', { ascending: false }).limit(1)
-  if (error || !data || data.length === 0) return `DU-${year}-0001`
-  const lastNum = parseInt(data[0].id.split('-')[2]) || 0
-  return `DU-${year}-${String(lastNum + 1).padStart(4, '0')}`
+  const BASE = 1600 // DU-2026-1601 will be first
+
+  const { data, error } = await supabase
+    .from('orders').select('id')
+    .like('id', `DU-${year}-%`)
+    .order('id', { ascending: false })
+    .limit(1)
+
+  if (error || !data || data.length === 0) {
+    return `DU-${year}-${BASE + 1}`
+  }
+
+  const lastPart = data[0].id.split('-')[2]
+  const lastNum  = parseInt(lastPart) || BASE
+  // If existing orders used old format (e.g. 0001), start fresh from BASE+1
+  const nextNum  = lastNum < BASE ? BASE + 1 : lastNum + 1
+  return `DU-${year}-${nextNum}`
 }

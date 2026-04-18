@@ -142,6 +142,7 @@ export function generateClientPDF(order) {
 </head>
 <body>
   <button class="print-btn" onclick="window.print()">↓ Salva / Stampa</button>
+
   <div style="background:#1a2744;padding:28px 40px;display:flex;justify-content:space-between;align-items:center;">
     <div>
       <div style="font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:#f5f0e8;letter-spacing:6px;">DOUBLEU</div>
@@ -152,6 +153,7 @@ export function generateClientPDF(order) {
       <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0e8;letter-spacing:3px;">${order.id}</div>
     </div>
   </div>
+
   <div style="background:#f8f5f0;padding:20px 40px;border-bottom:2px solid #e0d8cc;">
     <div style="display:flex;gap:40px;flex-wrap:wrap;">
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div><div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2744;">${order.client}</div></div>
@@ -163,15 +165,18 @@ export function generateClientPDF(order) {
     ${clientDetailsBlock}
     ${order.notes ? `<div style="margin-top:14px;padding:10px 16px;background:white;border-radius:6px;border:1px solid #e0d8cc;font-size:13px;color:#1a2744;">${order.notes}</div>` : ''}
   </div>
+
   <div style="padding:28px 40px;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:24px;padding-bottom:10px;border-bottom:2px solid #e8e0d0;">Dettaglio Articoli</div>
     ${articleRows}
   </div>
+
   <div style="margin:0 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;page-break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">${order.pricingMode==='kit'?'COMPOSIZIONE KIT E PREZZI':'PREZZI PER ARTICOLO'}</div>
     ${pricingBlock}
     ${totalBlock}
   </div>
+
   <div style="margin:0 40px 28px;padding:22px 28px;border:1px solid #e0d8cc;border-radius:10px;page-break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">CONDIZIONI GENERALI DI VENDITA</div>
     <div style="font-size:11px;color:#555;line-height:1.8;">
@@ -183,6 +188,7 @@ export function generateClientPDF(order) {
       <p style="margin-bottom:0;"><strong>6. Foro Competente</strong> — Per ogni controversia è competente il Foro di Salerno.</p>
     </div>
   </div>
+
   <div style="margin:0 40px 40px;padding:28px;border:1px solid #e0d8cc;border-radius:10px;page-break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:24px;">FIRMA PER ACCETTAZIONE</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
@@ -198,8 +204,10 @@ export function generateClientPDF(order) {
       </div>
     </div>
   </div>
+
+  <!-- FOOTER - solo sito web, niente indirizzo fisico -->
   <div style="background:#1a2744;padding:16px 40px;display:flex;justify-content:space-between;align-items:center;">
-    <div style="font-size:9px;letter-spacing:3px;color:#b8965a;">DOUBLEU · MADE IN ITALY · CAVA DE' TIRRENI</div>
+    <div style="font-size:9px;letter-spacing:3px;color:#b8965a;">DOUBLEU · MADE IN ITALY · www.doubleutennis.com</div>
     <div style="font-size:9px;color:rgba(255,255,255,0.3);">Generato il ${new Date().toLocaleDateString('it-IT')}</div>
   </div>
 </body>

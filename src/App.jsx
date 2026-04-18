@@ -27,7 +27,7 @@ function Sidebar({ view, setView, orders }) {
     <div style={s.sidebar}>
       <div style={s.logo}>
         <div style={s.logoMark}>DOUBLEU</div>
-        <div style={s.logoSub}>Order App · v8</div>
+        <div style={s.logoSub}>Order App · v9</div>
       </div>
       <nav style={{ marginTop: 16 }}>
         {items.map(item => (
@@ -46,7 +46,7 @@ function Sidebar({ view, setView, orders }) {
       </nav>
       <div style={{ marginTop: 'auto', padding: '0 24px', borderTop: `1px solid ${BORDER}`, paddingTop: 20 }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>BUILD</div>
-        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v8 · Supabase</div>
+        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v9 · Supabase</div>
       </div>
     </div>
   )
@@ -76,9 +76,7 @@ export default function App() {
     if (ok) setOrders(orders.filter(o => o.id !== orderId))
   }
 
-  const handleSaved = () => { loadOrders(); navigate('orders') }
-
-  // For optimistic local updates (status, payments)
+  const handleSaved        = () => { loadOrders(); navigate('orders') }
   const handleOrdersChange = (newOrders) => setOrders(newOrders)
 
   if (loading) {
@@ -98,7 +96,7 @@ export default function App() {
       <main style={s.main}>
         {view === 'dashboard' && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} />}
         {view === 'orders'    && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} />}
-        {view === 'clients'   && <Clients   orders={orders} />}
+        {view === 'clients'   && <Clients   orders={orders} setView={navigate} setEditOrder={goToOrder} />}
         {view === 'analytics' && <Analytics orders={orders} />}
         {view === 'new'       && <NewOrder  editOrder={editOrder} setView={navigate} onSaved={handleSaved} />}
       </main>
