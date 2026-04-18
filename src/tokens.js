@@ -22,8 +22,8 @@ export const STATUS_COLORS = {
 // ─── CONSTANTS ───────────────────────────────────────────────────
 export const ADULT_SIZES  = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 export const KIDS_SIZES   = ['4', '6', '8', '10', '12', '14', '16']
-export const CATEGORIES   = ['Felpa', 'T-Shirt', 'Polo', 'Short', 'Giacca', 'Pantalone', 'Skirt', 'Altro']
-export const LINES        = ['Performance', 'Club', 'Training', 'Lifestyle']
+export const CATEGORIES   = ['Hoodie', 'Zip Hoodie', 'Sweatshirt', 'T-Shirt PRF', 'T-Shirt Cot', 'Polo', 'T-Shirt Ws', 'Short', 'Skirt', 'Sweatpants', 'Jacket', 'Altro']
+export const LINES        = ['Premium', 'Club', 'WFox', 'Surfaces', 'Training', 'Lifestyle', 'LS24']
 export const PRICING_MODES = ['kit', 'singolo']
 
 // ─── SHARED STYLES ───────────────────────────────────────────────
