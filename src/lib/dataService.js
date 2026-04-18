@@ -11,7 +11,13 @@ export async function fetchOrders() {
     const kitsWithArticles = await Promise.all((kits || []).map(async (kit) => {
       const { data: articles } = await supabase
         .from('articles').select('*').eq('kit_id', kit.id)
-      return { ...kit, articles: (articles || []).map(a => ({ ...a, sizes: { adult: a.sizes_adult || {}, kids: a.sizes_kids || {} } })) }
+      return {
+        ...kit,
+        articles: (articles || []).map(a => ({
+          ...a, notes: a.notes || '',
+          sizes: { adult: a.sizes_adult || {}, kids: a.sizes_kids || {} }
+        }))
+      }
     }))
     const { data: payments } = await supabase
       .from('payments').select('*').eq('order_id', order.id)
@@ -23,8 +29,7 @@ export async function fetchOrders() {
       date: order.date, deliveryDate: order.delivery_date, alertDays: order.alert_days,
       status: order.status, pieces: order.pieces, pricingMode: order.pricing_mode,
       kitQuantity: order.kit_quantity || null,
-      ivaEnabled: order.iva_enabled || false,
-      ivaRate: order.iva_rate || 22,
+      ivaEnabled: order.iva_enabled || false, ivaRate: order.iva_rate || 22,
       notes: order.notes, productionNotes: order.production_notes,
       showTotalInClientPDF: order.show_total_in_client_pdf,
       kits: kitsWithArticles, payments: payments || [],
@@ -42,13 +47,11 @@ export async function createOrder(order) {
     date: order.date, delivery_date: order.deliveryDate || null, alert_days: order.alertDays || 7,
     status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
     kit_quantity: order.kitQuantity || null,
-    iva_enabled: order.ivaEnabled || false,
-    iva_rate: order.ivaRate || 22,
+    iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
   })
   if (error) { console.error('createOrder:', error); return false }
-
   for (let ki = 0; ki < order.kits.length; ki++) {
     const kit = order.kits[ki]
     const { data: kitData, error: kitErr } = await supabase.from('kits')
@@ -59,6 +62,7 @@ export async function createOrder(order) {
       await supabase.from('articles').insert({
         kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
         description: art.description, color: art.color, price: art.price || null,
+        notes: art.notes || null,
         sizes_adult: art.sizes?.adult || {}, sizes_kids: art.sizes?.kids || {},
       })
     }
@@ -81,13 +85,11 @@ export async function updateOrder(order) {
     date: order.date, delivery_date: order.deliveryDate || null, alert_days: order.alertDays || 7,
     status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
     kit_quantity: order.kitQuantity || null,
-    iva_enabled: order.ivaEnabled || false,
-    iva_rate: order.ivaRate || 22,
+    iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
   }).eq('id', order.id)
   if (error) { console.error('updateOrder:', error); return false }
-
   await supabase.from('kits').delete().eq('order_id', order.id)
   for (let ki = 0; ki < order.kits.length; ki++) {
     const kit = order.kits[ki]
@@ -99,6 +101,7 @@ export async function updateOrder(order) {
       await supabase.from('articles').insert({
         kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
         description: art.description, color: art.color, price: art.price || null,
+        notes: art.notes || null,
         sizes_adult: art.sizes?.adult || {}, sizes_kids: art.sizes?.kids || {},
       })
     }
@@ -132,25 +135,13 @@ export async function deleteOrder(orderId) {
   return true
 }
 
-// ── New ID generation: DU-2026-1601, 1602, 1603...
-// Starting base is 1600, so first order = 1601
 export async function generateOrderId() {
   const year = new Date().getFullYear()
-  const BASE = 1600 // DU-2026-1601 will be first
-
-  const { data, error } = await supabase
-    .from('orders').select('id')
-    .like('id', `DU-${year}-%`)
-    .order('id', { ascending: false })
-    .limit(1)
-
-  if (error || !data || data.length === 0) {
-    return `DU-${year}-${BASE + 1}`
-  }
-
-  const lastPart = data[0].id.split('-')[2]
-  const lastNum  = parseInt(lastPart) || BASE
-  // If existing orders used old format (e.g. 0001), start fresh from BASE+1
-  const nextNum  = lastNum < BASE ? BASE + 1 : lastNum + 1
+  const BASE = 1600
+  const { data, error } = await supabase.from('orders').select('id')
+    .like('id', `DU-${year}-%`).order('id', { ascending: false }).limit(1)
+  if (error || !data || data.length === 0) return `DU-${year}-${BASE + 1}`
+  const lastNum = parseInt(data[0].id.split('-')[2]) || BASE
+  const nextNum = lastNum < BASE ? BASE + 1 : lastNum + 1
   return `DU-${year}-${nextNum}`
 }

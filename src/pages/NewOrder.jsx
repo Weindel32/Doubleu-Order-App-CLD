@@ -4,12 +4,17 @@ import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderTotal as calcOrderTotal } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
+import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import { exportSizesCSV }        from '../utils/exportCSV.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 
 const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riepilogo']
-const emptyArticle = () => ({ sp:'', category:'Felpa', line:'Performance', description:'', color:'', price:'', sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])) } })
+
+const emptyArticle = () => ({
+  sp:'', category:'Felpa', line:'Performance', description:'', color:'', price:'', notes:'',
+  sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])) }
+})
 const emptyKit = () => ({ name:'', price:'', articles:[emptyArticle()] })
 
 // ── Date picker ──────────────────────────────────────────────────
@@ -40,11 +45,7 @@ function DatePicker({ value, onChange, label }) {
   const startPad = firstDay === 0 ? 6 : firstDay - 1
   const selectedDate = value ? new Date(value) : null
   const displayValue = value ? toItalianDate(value) : ''
-
-  const selectDay = (day) => {
-    onChange(`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`)
-    setOpen(false)
-  }
+  const selectDay = (day) => { onChange(`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`); setOpen(false) }
 
   return (
     <div style={{ position:'relative' }}>
@@ -87,28 +88,28 @@ function DatePicker({ value, onChange, label }) {
   )
 }
 
-export default function NewOrder({ editOrder, setView, onSaved }) {
-  const [step,setStep]             = useState(1)
-  const [club,setClub]             = useState(editOrder?.client||'')
-  const [clientEmail,setEmail]     = useState(editOrder?.clientEmail||'')
-  const [clientPhone,setPhone]     = useState(editOrder?.clientPhone||'')
-  const [clientAddress,setAddress] = useState(editOrder?.clientAddress||'')
-  const [clientCity,setCity]       = useState(editOrder?.clientCity||'')
-  const [clientCountry,setCountry] = useState(editOrder?.clientCountry||'Italia')
-  const [clientContact,setContact] = useState(editOrder?.clientContact||'')
+export default function NewOrder({ editOrder, setView, onSaved, prefillClient }) {
+  const [step,setStep]             = useState(prefillClient ? 2 : 1)
+  const [club,setClub]             = useState(prefillClient?.name || editOrder?.client || '')
+  const [clientEmail,setEmail]     = useState(prefillClient?.email || editOrder?.clientEmail || '')
+  const [clientPhone,setPhone]     = useState(prefillClient?.phone || editOrder?.clientPhone || '')
+  const [clientAddress,setAddress] = useState(prefillClient?.address || editOrder?.clientAddress || '')
+  const [clientCity,setCity]       = useState(prefillClient?.city || editOrder?.clientCity || '')
+  const [clientCountry,setCountry] = useState(prefillClient?.country || editOrder?.clientCountry || 'Italia')
+  const [clientContact,setContact] = useState(prefillClient?.contact || editOrder?.clientContact || '')
   const [orderDate,setOrderDate]   = useState(editOrder ? fromItalianDate(editOrder.date) : new Date().toISOString().split('T')[0])
   const [deliveryDate,setDelivery] = useState(editOrder ? fromItalianDate(editOrder.deliveryDate)||'' : '')
-  const [alertDays,setAlertDays]   = useState(editOrder?.alertDays??7)
-  const [status,setStatus]         = useState(editOrder?.status||'PREVENTIVO')
-  const [clientNotes,setCN]        = useState(editOrder?.notes||'')
-  const [productionNotes,setPN]    = useState(editOrder?.productionNotes||'')
-  const [showTotal,setShowTotal]   = useState(editOrder?.showTotalInClientPDF??true)
-  const [pricingMode,setPM]        = useState(editOrder?.pricingMode||'singolo')
-  const [kitQuantity,setKitQty]    = useState(editOrder?.kitQuantity||'')
-  const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled||false)
+  const [alertDays,setAlertDays]   = useState(editOrder?.alertDays ?? 7)
+  const [status,setStatus]         = useState(editOrder?.status || 'PREVENTIVO')
+  const [clientNotes,setCN]        = useState(editOrder?.notes || '')
+  const [productionNotes,setPN]    = useState(editOrder?.productionNotes || '')
+  const [showTotal,setShowTotal]   = useState(editOrder?.showTotalInClientPDF ?? true)
+  const [pricingMode,setPM]        = useState(editOrder?.pricingMode || 'singolo')
+  const [kitQuantity,setKitQty]    = useState(editOrder?.kitQuantity || '')
+  const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
-  const [kits,setKits]             = useState(editOrder?.kits||[emptyKit()])
-  const [payments,setPayments]     = useState(editOrder?.payments||[])
+  const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
+  const [payments,setPayments]     = useState(editOrder?.payments || [])
   const [saving,setSaving]         = useState(false)
   const [saveError,setSaveError]   = useState(null)
 
@@ -117,15 +118,13 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
 
   const orderObj = () => ({
     id: editOrder?.id||'DU-NEW',
-    client: club||'—',
-    clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    client: club||'—', clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
     deliveryDate: toItalianDate(deliveryDate),
     alertDays, status, pieces: totalPieces,
-    notes: clientNotes, productionNotes,
-    pricingMode, kitQuantity: parseInt(kitQuantity)||null,
-    ivaEnabled, ivaRate,
-    kits, payments,
+    notes: clientNotes, productionNotes, pricingMode,
+    kitQuantity: parseInt(kitQuantity)||null,
+    ivaEnabled, ivaRate, kits, payments,
     showTotalInClientPDF: showTotal,
   })
 
@@ -137,6 +136,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
   const totalPend = payments.filter(p=>!p.paid).reduce((s,p)=>s+(parseFloat(p.amount)||0),0)
   const residual  = Math.max(0,total-totalPaid-totalPend)
 
+  // ── Kit / article helpers ─────────────────────────────────────
   const updateKit  =(ki,f,v)=> setKits(kits.map((k,i)=>i===ki?{...k,[f]:v}:k))
   const addKit     =()=>       setKits([...kits,emptyKit()])
   const removeKit  =(ki)=>     setKits(kits.filter((_,i)=>i!==ki))
@@ -144,9 +144,27 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
   const removeArt  =(ki,ai)=>  setKits(kits.map((k,i)=>i===ki?{...k,articles:k.articles.filter((_,j)=>j!==ai)}:k))
   const updateArt  =(ki,ai,f,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,[f]:v})}))
   const updateSz   =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
-  const openPDF    =(gen)=>{ const h=gen(currentOrder); const w=window.open('','_blank'); w.document.write(h); w.document.close() }
-  const canGo2     = allArticles.some(a=>a.sp&&a.description)
-  const inp        = {...s.input}
+
+  // ── DUPLICATE ARTICLE ─────────────────────────────────────────
+  const duplicateArt = (ki, ai) => {
+    const original = kits[ki].articles[ai]
+    const copy = {
+      ...JSON.parse(JSON.stringify(original)), // deep copy
+      color: original.color + ' (copia)',       // signal it's a copy
+    }
+    setKits(kits.map((k, i) => i !== ki ? k : {
+      ...k,
+      articles: [
+        ...k.articles.slice(0, ai + 1),
+        copy,
+        ...k.articles.slice(ai + 1),
+      ]
+    }))
+  }
+
+  const openPDF = (gen) => { const h=gen(currentOrder); const w=window.open('','_blank'); w.document.write(h); w.document.close() }
+  const canGo2  = allArticles.some(a=>a.sp&&a.description)
+  const inp     = {...s.input}
 
   const handleSave = async (confirmOrder=false) => {
     if (!club.trim()) { alert('Inserisci il nome del club'); return }
@@ -169,7 +187,6 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
     </div>
   )
 
-  // ── Total summary box ──────────────────────────────────────────
   const TotalBox = () => (
     <div style={{ ...s.card, background:'rgba(184,150,90,0.07)', border:`1px solid rgba(184,150,90,0.2)` }}>
       <div style={s.cardTitle}>Riepilogo Importi</div>
@@ -177,10 +194,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
         {pricingMode==='kit' && (
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
             <span>Prezzo kit × {kitQuantity||'?'} kit</span>
-            <span style={{ color:CREAM }}>
-              {kits.map(k=>`€${parseFloat(k.price)||0} × ${kitQuantity||0}`).join(' + ')} = 
-              <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD, marginLeft:6 }}>€ {subtotal.toFixed(2)}</span>
-            </span>
+            <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>€ {subtotal.toFixed(2)}</span>
           </div>
         )}
         {pricingMode==='singolo' && (
@@ -196,7 +210,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
           </div>
         )}
         <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:`1px solid ${BORDER}` }}>
-          <span style={{ fontSize:11, letterSpacing:2, color:GOLD }}>TOTALE {ivaEnabled?'IVA INCL.':'IMPONIBILE'}</span>
+          <span style={{ fontSize:11, letterSpacing:2, color:GOLD }}>TOTALE</span>
           <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, color:GOLD }}>€ {total.toFixed(2)}</span>
         </div>
       </div>
@@ -207,7 +221,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
     <div style={{maxWidth:960}}>
       <div style={s.topBar}>
         <div>
-          <div style={s.pageTitle}>{editOrder?'Modifica Ordine':'Nuovo Ordine'}</div>
+          <div style={s.pageTitle}>{editOrder?'Modifica Ordine':'Nuovo Ordine'}{prefillClient?' · '+prefillClient.name:''}</div>
           <div style={s.pageSub}>{editOrder?.id||'Nuovo'} · {toItalianDate(orderDate)}</div>
         </div>
         <div style={{textAlign:'right'}}>
@@ -268,7 +282,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
         </div>
         <div style={s.card}>
           <div style={s.cardTitle}>⚠ Note Produzione (uso interno)</div>
-          <textarea rows={3} style={{...inp,resize:'vertical',borderColor:'rgba(196,98,58,0.35)'}} value={productionNotes} onChange={e=>setPN(e.target.value)} placeholder="Es. Piping bianco manica raglan. Pantone 356C..."/>
+          <textarea rows={3} style={{...inp,resize:'vertical',borderColor:'rgba(196,98,58,0.35)'}} value={productionNotes} onChange={e=>setPN(e.target.value)} placeholder="Es. Piping bianco manica raglan..."/>
           <div style={{fontSize:9,color:CLAY,letterSpacing:1,marginTop:8}}>Solo nel PDF Produzione</div>
         </div>
         <div style={s.card}>
@@ -297,22 +311,18 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
                 onClick={()=>setPM(mode)}>{mode==='singolo'?'Articolo singolo':'Prezzo per Kit'}</button>
             ))}
           </div>
-          <div style={{fontSize:11,color:MUTED}}>{pricingMode==='kit'?'Prezzo per kit completo (es. felpa+short = €30/giocatore × numero giocatori)':'Ogni articolo ha il proprio prezzo unitario'}</div>
         </div>
-
-        {/* IVA toggle */}
         <div style={s.card}>
           <div style={s.cardTitle}>IVA</div>
-          <label style={{display:'flex',alignItems:'center',gap:12,cursor:'pointer',marginBottom:8}}>
+          <label style={{display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}>
             <div onClick={()=>setIvaEnabled(!ivaEnabled)} style={{width:40,height:22,borderRadius:11,position:'relative',cursor:'pointer',background:ivaEnabled?GOLD:'rgba(255,255,255,0.12)',transition:'background 0.2s'}}>
               <div style={{position:'absolute',top:3,left:ivaEnabled?21:3,width:16,height:16,borderRadius:'50%',background:'white',transition:'left 0.2s'}}/>
             </div>
             <span style={{fontSize:12,color:CREAM}}>Applica IVA 22%</span>
-            <span style={{fontSize:10,color:MUTED}}>{ivaEnabled?'Sì, IVA inclusa nel totale':'No, importo imponibile'}</span>
+            <span style={{fontSize:10,color:MUTED}}>{ivaEnabled?'Sì':'No'}</span>
           </label>
         </div>
 
-        {/* Kit quantity field */}
         {pricingMode==='kit' && (
           <div style={s.card}>
             <div style={s.cardTitle}>Numero Kit / Giocatori *</div>
@@ -322,7 +332,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
                 <input type="number" min="1" style={inp} value={kitQuantity} onChange={e=>setKitQty(e.target.value)} placeholder="Es. 100"/>
               </div>
               <div style={{fontSize:11,color:MUTED,paddingTop:20}}>
-                Es. 100 giocatori = 100 kit. Il totale sarà: prezzo kit × {kitQuantity||'?'} = <span style={{color:GOLD}}>€ {(kits.reduce((s,k)=>s+(parseFloat(k.price)||0),0)*(parseInt(kitQuantity)||0)).toFixed(2)}</span>
+                Totale: € {((kits.reduce((s,k)=>s+(parseFloat(k.price)||0),0))*(parseInt(kitQuantity)||0)).toFixed(2)}
               </div>
             </div>
           </div>
@@ -332,23 +342,29 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
           <div key={ki} style={{...s.card,border:`1px solid rgba(184,150,90,0.25)`}}>
             {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 160px',gap:16,marginBottom:20}}>
               <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e=>updateKit(ki,'name',e.target.value)} placeholder="Es. Kit Completo Padel"/></div>
-              <div>
-                <label style={s.label}>Prezzo Kit € (per giocatore)</label>
-                <input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="30"/>
-              </div>
+              <div><label style={s.label}>Prezzo Kit € (per giocatore)</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="30"/></div>
             </div>}
-            <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:14}}>{pricingMode==='kit'?'ARTICOLI INCLUSI NEL KIT':'ARTICOLI'}</div>
+            <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:14}}>{pricingMode==='kit'?'ARTICOLI NEL KIT':'ARTICOLI'}</div>
             {kit.articles.map((art,ai)=>(
               <div key={ai} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'14px',marginBottom:10}}>
-                <div style={{display:'grid',gridTemplateColumns:'120px 1fr 1fr 1fr 1fr',gap:10,marginBottom:pricingMode==='singolo'?10:0}}>
+                <div style={{display:'grid',gridTemplateColumns:'120px 1fr 1fr 1fr 1fr',gap:10,marginBottom:10}}>
                   <div><label style={s.label}>Codice SP *</label><input style={inp} value={art.sp} onChange={e=>updateArt(ki,ai,'sp',e.target.value)} placeholder="SP-206"/></div>
                   <div><label style={s.label}>Descrizione *</label><input style={inp} value={art.description} onChange={e=>updateArt(ki,ai,'description',e.target.value)} placeholder="Felpa zip cappuccio"/></div>
                   <div><label style={s.label}>Colore / Pantone</label><input style={inp} value={art.color} onChange={e=>updateArt(ki,ai,'color',e.target.value)} placeholder="Navy/Cream"/></div>
                   <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e=>updateArt(ki,ai,'category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
                   <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e=>updateArt(ki,ai,'line',e.target.value)}>{LINES.map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
-                {pricingMode==='singolo' && <div style={{width:140}}><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e=>updateArt(ki,ai,'price',e.target.value)} placeholder="28"/></div>}
-                {kit.articles.length>1 && <button style={{...btnStyle(false),padding:'4px 10px',fontSize:9,color:CLAY,marginTop:8}} onClick={()=>removeArt(ki,ai)}>Rimuovi</button>}
+                <div style={{display:'grid',gridTemplateColumns:pricingMode==='singolo'?'140px 1fr':'1fr',gap:10}}>
+                  {pricingMode==='singolo' && <div><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e=>updateArt(ki,ai,'price',e.target.value)} placeholder="28"/></div>}
+                  <div><label style={s.label}>Note articolo</label><input style={inp} value={art.notes||''} onChange={e=>updateArt(ki,ai,'notes',e.target.value)} placeholder="Es. logo ricamato fronte sinistra, manica raglan..."/></div>
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:10}}>
+                  {/* ── DUPLICATE BUTTON ── */}
+                  <button style={{...btnGoldStyle,padding:'5px 14px',fontSize:9}} onClick={()=>duplicateArt(ki,ai)} title="Duplica articolo">
+                    ⧉ Duplica
+                  </button>
+                  {kit.articles.length>1 && <button style={{...btnStyle(false),padding:'5px 10px',fontSize:9,color:CLAY}} onClick={()=>removeArt(ki,ai)}>Rimuovi</button>}
+                </div>
               </div>
             ))}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6}}>
@@ -358,9 +374,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
           </div>
         ))}
         {pricingMode==='kit' && <button style={{...btnGoldStyle,marginBottom:16}} onClick={addKit}>+ Aggiungi Kit</button>}
-
         <TotalBox/>
-
         <NavBtns prev={()=>setStep(1)} next={()=>setStep(3)} nextDisabled={!canGo2}/>
       </div>}
 
@@ -377,11 +391,11 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
                   <div>
                     <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:CREAM}}>{art.description}</div>
                     <div style={{fontSize:10,color:CLAY,marginTop:2}}>{art.color}</div>
+                    {art.notes && <div style={{fontSize:10,color:MUTED,marginTop:2,fontStyle:'italic'}}>{art.notes}</div>}
                   </div>
-                  {pricingMode==='kit' && <span style={{fontSize:10,color:MUTED,background:'rgba(255,255,255,0.04)',padding:'3px 10px',borderRadius:2}}>{kit.name}</span>}
                 </div>
                 <div style={{textAlign:'right'}}>
-                  <div style={{fontSize:9,color:MUTED,letterSpacing:2}}>TOT. PEZZI</div>
+                  <div style={{fontSize:9,color:MUTED,letterSpacing:2}}>TOT.</div>
                   <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,color:GOLD,lineHeight:1}}>{adT+kiT}</div>
                 </div>
               </div>
@@ -440,9 +454,7 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
               </div>
             ))}
           </div>
-
           <TotalBox/>
-
           {payments.length>0 && (
             <div style={{marginTop:12,padding:'12px 16px',background:'rgba(74,158,110,0.07)',border:`1px solid rgba(74,158,110,0.18)`,borderRadius:6}}>
               <div style={{fontSize:9,letterSpacing:2,color:GREEN,marginBottom:8}}>SITUAZIONE PAGAMENTI</div>
@@ -455,13 +467,13 @@ export default function NewOrder({ editOrder, setView, onSaved }) {
           )}
           {saveError && <div style={{marginTop:12,padding:'10px 16px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:6,color:'#ef4444',fontSize:12}}>{saveError}</div>}
         </div>
-
         <div style={{display:'flex',gap:10,justifyContent:'space-between',marginTop:8,flexWrap:'wrap'}}>
           <button style={btnStyle(false)} onClick={()=>setStep(4)}>← Indietro</button>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             <button style={{...btnStyle(false),color:'#7aaee8',border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)'}} onClick={()=>exportSizesCSV(currentOrder)}>↓ CSV</button>
             <button style={{...btnGoldStyle,borderColor:CLAY,color:CLAY}} onClick={()=>openPDF(generateProductionPDF)}>↓ PDF Prod.</button>
             <button style={btnGoldStyle} onClick={()=>openPDF(generateClientPDF)}>↓ PDF Cliente</button>
+            <button style={{...btnGoldStyle,borderColor:'#7aaee8',color:'#7aaee8'}} onClick={()=>openPDF(generateDeliveryPDF)}>↓ Bolla</button>
             <button style={{...btnStyle(false),opacity:saving?0.5:1}} onClick={()=>handleSave(false)} disabled={saving}>{saving?'Salvataggio...':'Salva Bozza'}</button>
             <button style={{...btnStyle(true),opacity:saving?0.5:1}} onClick={()=>handleSave(true)} disabled={saving}>{saving?'Salvataggio...':'✓ Conferma Ordine'}</button>
           </div>

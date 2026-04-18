@@ -1,25 +1,20 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, NAVY } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import { orderTotal, paymentSummary } from '../utils/helpers.js'
 
-export default function Clients({ orders, setView, setEditOrder }) {
+export default function Clients({ orders, setView, setEditOrder, onNewOrderFromClient }) {
   const [selectedClient, setSelectedClient] = useState(null)
 
-  // Build clients map from real orders
   const clientMap = {}
   orders.forEach(o => {
     const tot = orderTotal(o)
     if (!clientMap[o.client]) {
       clientMap[o.client] = {
-        name: o.client,
-        email: o.clientEmail || '',
-        phone: o.clientPhone || '',
-        address: o.clientAddress || '',
-        city: o.clientCity || '',
-        country: o.clientCountry || '',
-        contact: o.clientContact || '',
+        name: o.client, email: o.clientEmail||'', phone: o.clientPhone||'',
+        address: o.clientAddress||'', city: o.clientCity||'',
+        country: o.clientCountry||'', contact: o.clientContact||'',
         orders: [], total: 0, pieces: 0,
       }
     }
@@ -29,13 +24,12 @@ export default function Clients({ orders, setView, setEditOrder }) {
   })
 
   const clients = Object.values(clientMap)
-    .sort((a, b) => b.total - a.total)
-    .map(c => ({ ...c, category: c.total >= 2000 ? 'Core' : 'Occasional' }))
+    .sort((a,b)=>b.total-a.total)
+    .map(c=>({...c, category: c.total>=2000?'Core':'Occasional'}))
 
-  const core  = clients.filter(c => c.category === 'Core')
-  const total = clients.reduce((a, c) => a + c.total, 0)
-
-  const selected = selectedClient ? clients.find(c => c.name === selectedClient) : null
+  const core  = clients.filter(c=>c.category==='Core')
+  const total = clients.reduce((a,c)=>a+c.total,0)
+  const selected = selectedClient ? clients.find(c=>c.name===selectedClient) : null
 
   return (
     <div>
@@ -43,15 +37,15 @@ export default function Clients({ orders, setView, setEditOrder }) {
       <div style={s.pageSub}>Panoramica commerciale club</div>
 
       <div style={s.grid3}>
-        <StatCard label="Club in Archivio" value={clients.length} />
-        <StatCard label="Fatturato Reale" value={`${total.toLocaleString('it-IT',{maximumFractionDigits:0})} €`} accent sub="Totale confermato" />
-        <StatCard label="Club Core" value={core.length} sub="Fatturato > 2.000 €" />
+        <StatCard label="Club in Archivio" value={clients.length}/>
+        <StatCard label="Fatturato Reale" value={`${total.toLocaleString('it-IT',{maximumFractionDigits:0})} €`} accent sub="Totale confermato"/>
+        <StatCard label="Club Core" value={core.length} sub="Fatturato > 2.000 €"/>
       </div>
 
-      <div style={s.divider} />
+      <div style={s.divider}/>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2,marginBottom:20}}>Club Clienti</div>
 
-      {clients.length === 0 ? (
+      {clients.length===0 ? (
         <div style={{textAlign:'center',padding:'60px 0',color:MUTED}}>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24}}>Nessun cliente ancora</div>
         </div>
@@ -61,7 +55,7 @@ export default function Clients({ orders, setView, setEditOrder }) {
             <tr>{['Club','Ordini','Fatturato','Ultimo Ordine','Pezzi','Categoria',''].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {clients.map(c => {
+            {clients.map(c=>{
               const lastOrder = c.orders.sort((a,b)=>b.date?.localeCompare(a.date))[0]
               return (
                 <tr key={c.name} style={{cursor:'pointer'}} onClick={()=>setSelectedClient(c.name)}>
@@ -89,20 +83,13 @@ export default function Clients({ orders, setView, setEditOrder }) {
         </table>
       )}
 
-      {/* ── Client detail modal ──────────────────────────────────── */}
+      {/* ── Client detail modal ── */}
       {selected && (
-        <div style={{
-          position:'fixed',top:0,left:0,right:0,bottom:0,
-          background:'rgba(0,0,0,0.7)',zIndex:500,
-          display:'flex',alignItems:'flex-start',justifyContent:'center',
-          padding:'40px 20px',overflowY:'auto',
-        }} onClick={()=>setSelectedClient(null)}>
-          <div style={{
-            background:'#1e2d50',border:`1px solid ${BORDER}`,borderRadius:14,
-            width:'100%',maxWidth:800,padding:0,overflow:'hidden',
-          }} onClick={e=>e.stopPropagation()}>
+        <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.7)',zIndex:500,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'40px 20px',overflowY:'auto'}}
+          onClick={()=>setSelectedClient(null)}>
+          <div style={{background:'#1e2d50',border:`1px solid ${BORDER}`,borderRadius:14,width:'100%',maxWidth:800,padding:0,overflow:'hidden'}}
+            onClick={e=>e.stopPropagation()}>
 
-            {/* Modal header */}
             <div style={{background:'rgba(255,255,255,0.04)',padding:'24px 32px',borderBottom:`1px solid ${BORDER}`,display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
               <div>
                 <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,color:CREAM,letterSpacing:2}}>{selected.name}</div>
@@ -110,11 +97,23 @@ export default function Clients({ orders, setView, setEditOrder }) {
                   {selected.category.toUpperCase()} · {selected.orders.length} ordini · {selected.pieces} pezzi totali
                 </div>
               </div>
-              <button onClick={()=>setSelectedClient(null)} style={{background:'none',border:'none',color:MUTED,fontSize:24,cursor:'pointer',lineHeight:1}}>×</button>
+              <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                {/* ── NEW ORDER FROM CLIENT ── */}
+                <button style={btnStyle(true)} onClick={()=>{
+                  setSelectedClient(null)
+                  onNewOrderFromClient({
+                    name: selected.name, email: selected.email, phone: selected.phone,
+                    address: selected.address, city: selected.city,
+                    country: selected.country, contact: selected.contact,
+                  })
+                }}>
+                  + Nuovo Ordine
+                </button>
+                <button onClick={()=>setSelectedClient(null)} style={{background:'none',border:'none',color:MUTED,fontSize:24,cursor:'pointer',lineHeight:1}}>×</button>
+              </div>
             </div>
 
             <div style={{padding:'24px 32px'}}>
-              {/* Anagraphic */}
               {(selected.contact||selected.email||selected.phone||selected.city) && (
                 <div style={{...s.card,marginBottom:20}}>
                   <div style={s.cardTitle}>Anagrafica</div>
@@ -128,12 +127,11 @@ export default function Clients({ orders, setView, setEditOrder }) {
                 </div>
               )}
 
-              {/* Financial summary */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:20}}>
                 {[
-                  {l:'Fatturato Totale', v:`€ ${selected.total.toLocaleString('it-IT',{minimumFractionDigits:2})}`, color:GOLD},
-                  {l:'Ordini Totali',    v:selected.orders.length},
-                  {l:'Pezzi Totali',     v:selected.pieces},
+                  {l:'Fatturato Totale',v:`€ ${selected.total.toLocaleString('it-IT',{minimumFractionDigits:2})}`,color:GOLD},
+                  {l:'Ordini Totali',v:selected.orders.length},
+                  {l:'Pezzi Totali',v:selected.pieces},
                 ].map(item=>(
                   <div key={item.l} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'16px 20px'}}>
                     <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:6}}>{item.l}</div>
@@ -142,7 +140,6 @@ export default function Clients({ orders, setView, setEditOrder }) {
                 ))}
               </div>
 
-              {/* Order history */}
               <div style={s.cardTitle}>Storico Ordini</div>
               <table style={s.table}>
                 <thead>
@@ -150,7 +147,7 @@ export default function Clients({ orders, setView, setEditOrder }) {
                 </thead>
                 <tbody>
                   {selected.orders.sort((a,b)=>b.date?.localeCompare(a.date)).map(o=>{
-                    const {total:tot} = paymentSummary(o)
+                    const {total:tot}=paymentSummary(o)
                     return (
                       <tr key={o.id}>
                         <td style={{...s.td,fontSize:11,color:MUTED,letterSpacing:1}}>{o.id}</td>
