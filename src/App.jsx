@@ -90,8 +90,11 @@ export default function App() {
     setOrders([]); setView('dashboard')
   }
 
-  const navigate  = (v) => { setView(v); window.scrollTo(0, 0) }
+  const [ordersFilter, setOrdersFilter] = useState('Tutti')
+
+  const navigate  = (v) => { if (v === 'orders') setOrdersFilter('Tutti'); setView(v); window.scrollTo(0, 0) }
   const goToOrder = (order) => { setEditOrder(order); setPrefill(null); navigate('new') }
+  const navigateToOrders = (filter) => { setOrdersFilter(filter); setView('orders'); window.scrollTo(0, 0) }
 
   // New order from client profile — prefill client data
   const handleNewOrderFromClient = (clientData) => {
@@ -137,8 +140,8 @@ export default function App() {
     <div style={s.app}>
       <Sidebar view={view} setView={navigate} orders={orders} onLogout={handleLogout}/>
       <main style={s.main}>
-        {view==='dashboard' && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange}/>}
-        {view==='orders'    && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange}/>}
+        {view==='dashboard' && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders}/>}
+        {view==='orders'    && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view==='clients'   && <Clients   orders={orders} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient}/>}
         {view==='analytics' && <Analytics orders={orders}/>}
         {view==='new'       && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} setView={navigate} onSaved={handleSaved}/>}
