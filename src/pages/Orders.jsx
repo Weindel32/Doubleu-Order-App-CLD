@@ -69,12 +69,12 @@ function PaymentQuick({ order, onPaymentToggle }) {
   )
 }
 
-export default function Orders({ orders, setView, setEditOrder, onDelete, onOrdersChange }) {
-  const [filter, setFilter]   = useState('Tutti')
+export default function Orders({ orders, setView, setEditOrder, onDelete, onOrdersChange, initialFilter = 'Tutti' }) {
+  const [filter, setFilter]   = useState(initialFilter)
   const [search, setSearch]   = useState('')
   const [sortBy, setSortBy]   = useState('date')
   const [sortDir, setSortDir] = useState('desc')
-  const filters = ['Tutti','Preventivo','Confermato','In Produzione','Consegna Parziale','Consegnato']
+  const filters = ['Tutti','Preventivo','Confermato','In Produzione','Consegna Parziale','Consegnato','Da Incassare']
 
   const handleSort = (col) => {
     if (sortBy === col) setSortDir(d => d==='asc'?'desc':'asc')
@@ -85,7 +85,8 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
 
   const filtered = orders
     .filter(o => {
-      const matchFilter = filter==='Tutti' || o.status===filter.toUpperCase()
+      const matchFilter = filter==='Tutti' ||
+        (filter==='Da Incassare' ? o.status!=='PREVENTIVO' && paymentSummary(o).pending > 0 : o.status===filter.toUpperCase())
       const matchSearch = !search || o.client.toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase())
       return matchFilter && matchSearch
     })
