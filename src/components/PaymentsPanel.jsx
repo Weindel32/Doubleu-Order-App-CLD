@@ -12,6 +12,12 @@ const TYPE_COLORS = {
   saldo:      { bg: 'rgba(74,158,110,0.15)', color: GREEN, border: 'rgba(74,158,110,0.3)' },
 }
 
+const isoToDisplay = (iso) => {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
 export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
   const [newP, setNewP] = useState({ type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false })
 
@@ -19,9 +25,15 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
   const totalPending = payments.filter(p => !p.paid).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const residual     = Math.max(0, orderTotal - totalPaid - totalPending)
 
+  const handleTypeChange = (type) => {
+    const updates = { type }
+    if (type === 'saldo') updates.amount = residual > 0 ? residual.toFixed(2) : newP.amount
+    setNewP(prev => ({ ...prev, ...updates }))
+  }
+
   const addPayment = () => {
     if (!newP.amount || !newP.date) return
-    const p = { ...newP, id: `p${Date.now()}`, amount: parseFloat(newP.amount) }
+    const p = { ...newP, id: `p${Date.now()}`, amount: parseFloat(newP.amount), date: isoToDisplay(newP.date) }
     setPayments([...payments, p])
     setNewP({ type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false })
   }
@@ -121,7 +133,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
         <div style={{ display: 'grid', gridTemplateColumns: '120px 120px 140px 1fr 120px', gap: 10, marginBottom: 10 }}>
           <div>
             <label style={s.label}>Tipo</label>
-            <select style={inp} value={newP.type} onChange={e => setNewP({ ...newP, type: e.target.value })}>
+            <select style={inp} value={newP.type} onChange={e => handleTypeChange(e.target.value)}>
               {PAYMENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
             </select>
           </div>
@@ -130,8 +142,8 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
             <input type="number" style={inp} value={newP.amount} onChange={e => setNewP({ ...newP, amount: e.target.value })} placeholder="0.00" />
           </div>
           <div>
-            <label style={s.label}>Data (DD/MM/YYYY)</label>
-            <input style={inp} value={newP.date} onChange={e => setNewP({ ...newP, date: e.target.value })} placeholder="15/05/2026" />
+            <label style={s.label}>Data</label>
+            <input type="date" style={{ ...inp, colorScheme: 'dark' }} value={newP.date} onChange={e => setNewP({ ...newP, date: e.target.value })} />
           </div>
           <div>
             <label style={s.label}>Nota</label>
