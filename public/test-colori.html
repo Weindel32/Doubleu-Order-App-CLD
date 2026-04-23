@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Daltonismo – DOUBLEU</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  body { font-family: 'Segoe UI', sans-serif; background: #111; color: #eee; padding: 40px 20px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 26px; color: #d4a84b; margin-bottom: 6px; letter-spacing: 2px }
+  .subtitle { font-size: 12px; color: #888; letter-spacing: 2px; margin-bottom: 40px }
+  h2 { font-size: 15px; color: #d4a84b; letter-spacing: 2px; margin: 36px 0 14px; text-transform: uppercase }
+  p { font-size: 13px; color: #aaa; line-height: 1.7; margin-bottom: 14px }
+
+  .pair { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding: 16px; background: #1a1a1a; border-radius: 10px }
+  .swatch { width: 80px; height: 80px; border-radius: 8px; flex-shrink: 0 }
+  .swatch-label { font-size: 10px; color: #666; text-align: center; margin-top: 4px; letter-spacing: 1px }
+  .pair-info { flex: 1 }
+  .pair-info b { font-size: 13px; color: #ddd }
+  .pair-info p { font-size: 12px; color: #888; margin: 4px 0 0 }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px }
+  .color-box { border-radius: 8px; padding: 24px 12px; text-align: center; font-size: 11px; letter-spacing: 1px; font-weight: 700 }
+
+  .answer-section { background: #1a1a1a; border-radius: 12px; padding: 20px; margin-bottom: 16px; border-left: 3px solid #d4a84b }
+  .answer-section h3 { font-size: 13px; color: #d4a84b; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase }
+
+  .result { padding: 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid }
+  .result h3 { font-size: 15px; margin-bottom: 10px }
+  .result ul { padding-left: 20px }
+  .result li { font-size: 13px; margin-bottom: 6px; color: #ccc }
+
+  .palette { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 }
+  .chip { width: 56px; height: 56px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-align: center; line-height: 1.3 }
+  .divider { border: none; border-top: 1px solid #333; margin: 40px 0 }
+  .note { background: #1e2d1e; border: 1px solid #2a5a2a; border-radius: 8px; padding: 16px; font-size: 12px; color: #8bc88b; margin-top: 30px }
+</style>
+</head>
+<body>
+
+<h1>TEST COLORI</h1>
+<div class="subtitle">DOUBLEU · Analisi daltonismo personale</div>
+
+<p>Questo test non è medico, ma ti aiuta a capire <strong style="color:#eee">quale tipo di daltonismo</strong> hai e quali colori l'app dovrebbe usare per te. Rispondi onestamente a ogni sezione.</p>
+
+<hr class="divider">
+
+<!-- SEZIONE 1 -->
+<h2>1 · Rosso vs Verde</h2>
+<p>Guarda le due coppie qui sotto. Riesci a vedere chiaramente la differenza tra i colori di sinistra e destra?</p>
+
+<div class="pair">
+  <div>
+    <div class="swatch" style="background:#e53e3e"></div>
+    <div class="swatch-label">ROSSO</div>
+  </div>
+  <div style="font-size:24px; color:#555">↔</div>
+  <div>
+    <div class="swatch" style="background:#38a169"></div>
+    <div class="swatch-label">VERDE</div>
+  </div>
+  <div class="pair-info">
+    <b>Coppia A: Rosso vs Verde classico</b>
+    <p>Se li vedi quasi uguali (entrambi marroncino / giallastro) → probabile Deuteranopia o Protanopia (rosso-verde)</p>
+  </div>
+</div>
+
+<div class="pair">
+  <div>
+    <div class="swatch" style="background:#c53030"></div>
+    <div class="swatch-label">ROSSO SCURO</div>
+  </div>
+  <div style="font-size:24px; color:#555">↔</div>
+  <div>
+    <div class="swatch" style="background:#276749"></div>
+    <div class="swatch-label">VERDE SCURO</div>
+  </div>
+  <div class="pair-info">
+    <b>Coppia B: Rosso scuro vs Verde scuro</b>
+    <p>Entrambi neri/uguali? → conferma daltonismo rosso-verde marcato</p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- SEZIONE 2 -->
+<h2>2 · Blu vs Giallo / Arancio</h2>
+
+<div class="pair">
+  <div>
+    <div class="swatch" style="background:#3182ce"></div>
+    <div class="swatch-label">BLU</div>
+  </div>
+  <div style="font-size:24px; color:#555">↔</div>
+  <div>
+    <div class="swatch" style="background:#d69e2e"></div>
+    <div class="swatch-label">GIALLO/ORO</div>
+  </div>
+  <div class="pair-info">
+    <b>Coppia C: Blu vs Oro/Giallo</b>
+    <p>Se li vedi simili o confusi → raro Tritanopia (blue-yellow). Se li vedi benissimo → buona notizia, il blu e il dorato ti funzionano!</p>
+  </div>
+</div>
+
+<div class="pair">
+  <div>
+    <div class="swatch" style="background:#2b6cb0"></div>
+    <div class="swatch-label">BLU</div>
+  </div>
+  <div style="font-size:24px; color:#555">↔</div>
+  <div>
+    <div class="swatch" style="background:#c05621"></div>
+    <div class="swatch-label">ARANCIO</div>
+  </div>
+  <div class="pair-info">
+    <b>Coppia D: Blu vs Arancio/Terracotta</b>
+    <p>Questi due si distinguono bene nella maggior parte dei tipi di daltonismo</p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- SEZIONE 3 -->
+<h2>3 · I colori dell'app – Come li vedi?</h2>
+<p>Questi sono i colori attuali della DOUBLEU Order App. Guarda la griglia e segna mentalmente quelli che ti sembrano troppo simili tra loro.</p>
+
+<div class="grid3">
+  <div>
+    <div class="color-box" style="background:#b8965a; color:#1a1a1a">ORO<br><span style="font-weight:400; font-size:9px">#b8965a</span></div>
+    <div class="swatch-label" style="margin-top:6px; font-size:10px; color:#888">Totali / Importi</div>
+  </div>
+  <div>
+    <div class="color-box" style="background:#4a9e6e; color:#fff">VERDE<br><span style="font-weight:400; font-size:9px">#4a9e6e</span></div>
+    <div class="swatch-label" style="margin-top:6px; font-size:10px; color:#888">Pagato / OK</div>
+  </div>
+  <div>
+    <div class="color-box" style="background:#c4623a; color:#fff">TERRACOTTA<br><span style="font-weight:400; font-size:9px">#c4623a</span></div>
+    <div class="swatch-label" style="margin-top:6px; font-size:10px; color:#888">Alert / Urgente</div>
+  </div>
+  <div>
+    <div class="color-box" style="background:#7aaee8; color:#1a1a1a">BLU<br><span style="font-weight:400; font-size:9px">#7aaee8</span></div>
+    <div class="swatch-label" style="margin-top:6px; font-size:10px; color:#888">ALLIED / Bolla</div>
+  </div>
+  <div>
+    <div class="color-box" style="background:#e8c96e; color:#1a1a1a">GIALLO<br><span style="font-weight:400; font-size:9px">#e8c96e</span></div>
+    <div class="swatch-label" style="margin-top:6px; font-size:10px; color:#888">Giacca / Accento</div>
+  </div>
+  <div>
+    <div class="color-box" style="background:#f0e6d3; color:#1a1a1a">CREMA<br><span style="font-weight:400; font-size:9px">#f0e6d3</span></div>
+    <div class="swatch-label" style="margin-top:6px; font-size:10px; color:#888">Testo principale</div>
+  </div>
+</div>
+
+<p><strong style="color:#eee">Domanda chiave:</strong> ORO e VERDE (primi due) ti sembrano troppo simili? Se sì, questo è il problema principale nell'app attuale.</p>
+
+<hr class="divider">
+
+<!-- SEZIONE 4 – RISULTATI -->
+<h2>4 · Leggi il tuo profilo</h2>
+
+<div class="result" style="border-color:#e59a6a; background:#1e1510">
+  <h3 style="color:#e59a6a">🔴🟢 Deuteranopia / Protanopia (Rosso-Verde) — il più comune</h3>
+  <ul>
+    <li>Coppie A e B difficili da distinguere ✓</li>
+    <li>Coppie C e D (blu/giallo, blu/arancio) ben distinguibili ✓</li>
+    <li>ORO e VERDE dell'app possono sembrare simili</li>
+    <li><strong style="color:#e59a6a">Soluzione:</strong> usa blu vs arancio come coppia principale. Evita verde/rosso per stati contrapposti.</li>
+  </ul>
+</div>
+
+<div class="result" style="border-color:#68a4d0; background:#10151e">
+  <h3 style="color:#68a4d0">🔵🟡 Tritanopia (Blu-Giallo) — raro</h3>
+  <ul>
+    <li>Coppia C (blu/oro) difficile da distinguere ✓</li>
+    <li>Coppie A e B (rosso/verde) ben distinguibili ✓</li>
+    <li><strong style="color:#68a4d0">Soluzione:</strong> usa rosso vs verde per stati contrapposti. Evita blu/giallo come coppia.</li>
+  </ul>
+</div>
+
+<div class="result" style="border-color:#a0a0a0; background:#1a1a1a">
+  <h3 style="color:#a0a0a0">⬛ Monocromatismo — molto raro</h3>
+  <ul>
+    <li>Tutti i colori sembrano uguali o quasi ✓</li>
+    <li><strong style="color:#a0a0a0">Soluzione:</strong> usa icone e forme oltre al colore. Testo + simbolo è fondamentale.</li>
+  </ul>
+</div>
+
+<hr class="divider">
+
+<!-- PALETTE SICURE -->
+<h2>5 · Palette universalmente sicure</h2>
+<p>Questi colori sono distinguibili dalla quasi totalità delle persone con daltonismo:</p>
+
+<div class="palette">
+  <div>
+    <div class="chip" style="background:#0077bb; color:#fff">BLU<br>#0077bb</div>
+    <div class="swatch-label" style="margin-top:4px">OK sicuro</div>
+  </div>
+  <div>
+    <div class="chip" style="background:#ee7733; color:#fff">ARANCIO<br>#ee7733</div>
+    <div class="swatch-label" style="margin-top:4px">OK sicuro</div>
+  </div>
+  <div>
+    <div class="chip" style="background:#009988; color:#fff">TEAL<br>#009988</div>
+    <div class="swatch-label" style="margin-top:4px">OK sicuro</div>
+  </div>
+  <div>
+    <div class="chip" style="background:#cc3311; color:#fff">ROSSO<br>#cc3311</div>
+    <div class="swatch-label" style="margin-top:4px">Evita col verde</div>
+  </div>
+  <div>
+    <div class="chip" style="background:#f0e442; color:#333">GIALLO<br>#f0e442</div>
+    <div class="swatch-label" style="margin-top:4px">Evita col blu</div>
+  </div>
+  <div>
+    <div class="chip" style="background:#ffffff; color:#333">BIANCO<br>#ffffff</div>
+    <div class="swatch-label" style="margin-top:4px">Sempre OK</div>
+  </div>
+</div>
+
+<p style="margin-top:8px"><strong style="color:#eee">Regola d'oro:</strong> non usare <em>mai solo il colore</em> per comunicare un'informazione critica. Aggiungi sempre un simbolo (✓ × ⚠) o una parola.</p>
+
+<div class="note">
+  <strong>💡 Per l'app DOUBLEU:</strong> dimmi quali coppie di colori nella sezione 3 ti sembrano troppo simili, e modifico i colori dell'app per renderla perfettamente leggibile per te. La coppia più critica è ORO (pagamenti) vs VERDE (pagato) — se quella è il problema, li separo con forme diverse e li rinforzo con simboli più grandi.
+</div>
+
+</body>
+</html>
