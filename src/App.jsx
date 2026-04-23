@@ -7,7 +7,7 @@ import Clients   from './pages/Clients.jsx'
 import NewOrder  from './pages/NewOrder.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient } from './lib/dataService.js'
 import { needsAlert } from './utils/helpers.js'
 import { supabase } from './lib/supabase.js'
 
@@ -29,7 +29,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
     <div style={s.sidebar}>
       <div style={s.logo}>
         <div style={s.logoMark}>DOUBLEU</div>
-        <div style={s.logoSub}>Order App · v11</div>
+        <div style={s.logoSub}>Order App · v12</div>
       </div>
       <nav style={{ marginTop: 16 }}>
         {items.map(item => (
@@ -48,7 +48,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
       </nav>
       <div style={{ marginTop: 'auto', padding: '0 24px', borderTop: `1px solid ${BORDER}`, paddingTop: 20 }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>BUILD</div>
-        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v11 · Supabase</div>
+        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v12 · Supabase</div>
         <button onClick={onLogout} style={{ marginTop: 16, width: '100%', padding: '8px', background: 'rgba(196,98,58,0.1)', border: `1px solid rgba(196,98,58,0.3)`, borderRadius: 4, color: CLAY, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif" }}>
           Esci
         </button>
@@ -62,6 +62,7 @@ export default function App() {
   const [editOrder, setEditOrder]     = useState(null)
   const [prefillClient, setPrefill]   = useState(null)
   const [orders, setOrders]           = useState([])
+  const [clients, setClients]         = useState([])
   const [loading, setLoading]         = useState(true)
   const [session, setSession]         = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -80,9 +81,18 @@ export default function App() {
 
   const loadOrders = async () => {
     setLoading(true)
-    const data = await fetchOrders()
+    const [data, clientData] = await Promise.all([fetchOrders(), fetchClients()])
     setOrders(data)
+    setClients(clientData)
     setLoading(false)
+  }
+
+  const handleUpsertClient = async (name, fields) => {
+    const ok = await upsertClient(name, fields)
+    if (ok) {
+      const clientData = await fetchClients()
+      setClients(clientData)
+    }
   }
 
   const handleLogout = async () => {
@@ -142,7 +152,7 @@ export default function App() {
       <main style={s.main}>
         {view==='dashboard' && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders}/>}
         {view==='orders'    && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
-        {view==='clients'   && <Clients   orders={orders} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient}/>}
+        {view==='clients'   && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onUpsertClient={handleUpsertClient}/>}
         {view==='analytics' && <Analytics orders={orders}/>}
         {view==='new'       && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} setView={navigate} onSaved={handleSaved}/>}
       </main>
