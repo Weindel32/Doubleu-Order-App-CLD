@@ -110,6 +110,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
   const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
   const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
+  const [orderType,setOrderType]   = useState(editOrder?.orderType || 'istituzionale')
   const [payments,setPayments]     = useState(editOrder?.payments || [])
   const [saving,setSaving]         = useState(false)
   const [saveError,setSaveError]   = useState(null)
@@ -128,7 +129,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
     client: club||'—', clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
     deliveryDate: toItalianDate(deliveryDate),
-    alertDays, status, pieces: totalPieces,
+    alertDays, status, pieces: totalPieces, orderType,
     notes: clientNotes, productionNotes, pricingMode,
     kitQuantity: parseInt(kitQuantity)||null,
     ivaEnabled, ivaRate, kits, payments,
@@ -292,6 +293,16 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
           <div style={s.cardTitle}>⚠ Note Produzione (uso interno)</div>
           <textarea rows={3} style={{...inp,resize:'vertical',borderColor:'rgba(196,98,58,0.35)'}} value={productionNotes} onChange={e=>setPN(e.target.value)} placeholder="Es. Piping bianco manica raglan..."/>
           <div style={{fontSize:9,color:CLAY,letterSpacing:1,marginTop:8}}>Solo nel PDF Produzione</div>
+        </div>
+        <div style={s.card}>
+          <div style={s.cardTitle}>Tipo Ordine</div>
+          <div style={{display:'flex',gap:10}}>
+            {[['istituzionale','Istituzionale'],['soci','Soci / Shop']].map(([val,label])=>(
+              <button key={val} onClick={()=>setOrderType(val)} style={{padding:'10px 28px',borderRadius:3,border:`1px solid ${orderType===val?GOLD:BORDER}`,background:orderType===val?'rgba(184,150,90,0.12)':'transparent',color:orderType===val?GOLD:MUTED,cursor:'pointer',fontSize:10,letterSpacing:2,textTransform:'uppercase',fontWeight:600}}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={s.card}>
           <div style={s.cardTitle}>Opzioni PDF Cliente</div>
@@ -507,7 +518,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
             <button style={{...btnGoldStyle,borderColor:CLAY,color:CLAY}} onClick={()=>openPDF(generateProductionPDF)}>↓ PDF Prod.</button>
             <button style={btnGoldStyle} onClick={()=>openPDF(generateClientPDF)}>↓ PDF Cliente</button>
             <button style={{...btnGoldStyle,borderColor:'#7aaee8',color:'#7aaee8'}} onClick={()=>openPDF(generateDeliveryPDF)}>↓ Bolla</button>
-            <button style={{...btnStyle(false),opacity:saving?0.5:1}} onClick={()=>handleSave(false)} disabled={saving}>{saving?'Salvataggio...':'Salva Bozza'}</button>
+            <button style={{...btnStyle(false),opacity:saving?0.5:1}} onClick={()=>handleSave(false)} disabled={saving}>{saving?'Salvataggio...':'Salva'}</button>
             <button style={{...btnStyle(true),opacity:saving?0.5:1}} onClick={()=>handleSave(true)} disabled={saving}>{saving?'Salvataggio...':'✓ Conferma Ordine'}</button>
           </div>
         </div>

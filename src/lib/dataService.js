@@ -1,5 +1,20 @@
 import { supabase } from './supabase.js'
 
+export async function fetchClients() {
+  const { data, error } = await supabase.from('clients').select('*')
+  if (error) { console.error('fetchClients:', error); return [] }
+  return data || []
+}
+
+export async function upsertClient(name, fields) {
+  const { error } = await supabase.from('clients').upsert(
+    { name, ...fields },
+    { onConflict: 'name' }
+  )
+  if (error) { console.error('upsertClient:', error); return false }
+  return true
+}
+
 export async function fetchOrders() {
   const { data: orders, error } = await supabase
     .from('orders').select('*').order('created_at', { ascending: false })
@@ -33,6 +48,7 @@ export async function fetchOrders() {
       ivaEnabled: order.iva_enabled || false, ivaRate: order.iva_rate || 22,
       notes: order.notes, productionNotes: order.production_notes,
       showTotalInClientPDF: order.show_total_in_client_pdf,
+      orderType: order.order_type || 'istituzionale',
       kits: kitsWithArticles, payments: payments || [],
     }
   }))
@@ -51,6 +67,7 @@ export async function createOrder(order) {
     iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
+    order_type: order.orderType || 'istituzionale',
   })
   if (error) { console.error('createOrder:', error); return false }
   for (let ki = 0; ki < order.kits.length; ki++) {
@@ -89,6 +106,7 @@ export async function updateOrder(order) {
     iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
+    order_type: order.orderType || 'istituzionale',
   }).eq('id', order.id)
   if (error) { console.error('updateOrder:', error); return false }
   await supabase.from('kits').delete().eq('order_id', order.id)
