@@ -133,7 +133,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
       {/* Add payment form */}
       <div style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '16px' }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 12 }}>AGGIUNGI PAGAMENTO</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
           <div>
             <label style={s.label}>Tipo</label>
             <select style={inp} value={newP.type} onChange={e => handleTypeChange(e.target.value)}>
@@ -145,15 +145,15 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
             <input type="number" style={inp} value={newP.amount} onChange={e => setNewP({ ...newP, amount: e.target.value })} placeholder="0.00" />
           </div>
           <div>
-            <label style={s.label}>Data</label>
-            <input type="date" style={{ ...inp, colorScheme: 'dark' }} value={newP.date} onChange={e => setNewP({ ...newP, date: e.target.value })} />
-          </div>
-          <div>
             <label style={s.label}>Metodo</label>
             <select style={inp} value={newP.method} onChange={e => setNewP({ ...newP, method: e.target.value })}>
               {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
             </select>
           </div>
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <label style={s.label}>Data</label>
+          <input type="date" style={{ ...inp, colorScheme: 'dark' }} value={newP.date} onChange={e => setNewP({ ...newP, date: e.target.value })} />
         </div>
         <div style={{ marginBottom: 10 }}>
           <label style={s.label}>Nota</label>
