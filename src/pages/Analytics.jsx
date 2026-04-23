@@ -82,7 +82,12 @@ export default function Analytics({ orders }) {
     })
   })
 
-  orders.forEach(o => { byStatus[o.status] = (byStatus[o.status]||0)+o.pieces })
+  orders.forEach(o => {
+    const pz = o.status === 'CONSEGNA PARZIALE'
+      ? getAllArticles(o).filter(a => !a.delivered).reduce((s, a) => s + artPieceCount(a), 0)
+      : o.pieces
+    byStatus[o.status] = (byStatus[o.status]||0) + pz
+  })
 
   if (orders.length === 0) {
     return (

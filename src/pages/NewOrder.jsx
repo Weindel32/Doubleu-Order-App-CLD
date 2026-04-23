@@ -13,6 +13,7 @@ const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riep
 
 const emptyArticle = () => ({
   sp:'', category:'Felpa', line:'Performance', description:'', color:'', price:'', notes:'',
+  delivered: false,
   sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])) }
 })
 const emptyKit = () => ({ name:'', price:'', articles:[emptyArticle()] })
@@ -143,7 +144,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
   const addArt     =(ki)=>     setKits(kits.map((k,i)=>i===ki?{...k,articles:[...k.articles,emptyArticle()]}:k))
   const removeArt  =(ki,ai)=>  setKits(kits.map((k,i)=>i===ki?{...k,articles:k.articles.filter((_,j)=>j!==ai)}:k))
   const updateArt  =(ki,ai,f,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,[f]:v})}))
-  const updateSz   =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
+  const updateSz        =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
+  const toggleDelivered =(ki,ai)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,delivered:!a.delivered})}))
 
   // ── DUPLICATE ARTICLE ─────────────────────────────────────────
   const duplicateArt = (ki, ai) => {
@@ -465,6 +467,37 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
               </div>
             </div>
           )}
+          {(status==='CONSEGNA PARZIALE'||status==='CONSEGNATO') && (()=>{
+            const artList=kits.flatMap((kit,ki)=>kit.articles.map((art,ai)=>({art,ki,ai})))
+            const delivPieces=artList.filter(({art})=>art.delivered).reduce((s,{art})=>s+artPieceCount(art),0)
+            const pendPieces =artList.filter(({art})=>!art.delivered).reduce((s,{art})=>s+artPieceCount(art),0)
+            const delivCount =artList.filter(({art})=>art.delivered).length
+            return (
+              <div style={{marginTop:12,padding:'14px 16px',background:'rgba(90,130,184,0.07)',border:'1px solid rgba(90,130,184,0.25)',borderRadius:6}}>
+                <div style={{fontSize:9,letterSpacing:2,color:'#7aaee8',marginBottom:12}}>CONSEGNE ARTICOLI</div>
+                <div style={{display:'flex',flexDirection:'column',gap:2,marginBottom:12}}>
+                  {artList.map(({art,ki,ai})=>(
+                    <div key={`${ki}-${ai}`} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                      <div onClick={()=>toggleDelivered(ki,ai)} style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',border:`2px solid ${art.delivered?GREEN:BORDER}`,background:art.delivered?GREEN:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.2s'}}>
+                        {art.delivered&&<span style={{color:'white',fontSize:12,lineHeight:1}}>✓</span>}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,color:art.delivered?GREEN:CREAM}}>{art.description||'—'}</div>
+                        <div style={{fontSize:10,color:MUTED}}>{art.sp}{art.color?` · ${art.color}`:''}</div>
+                      </div>
+                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:art.delivered?GREEN:GOLD}}>{artPieceCount(art)} pz</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',gap:24,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+                  <div><div style={{fontSize:9,color:MUTED}}>Articoli consegnati</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GREEN}}>{delivCount}/{artList.length}</div></div>
+                  <div><div style={{fontSize:9,color:MUTED}}>Pz consegnate</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GREEN}}>{delivPieces}</div></div>
+                  <div><div style={{fontSize:9,color:MUTED}}>Pz rimanenti</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:pendPieces>0?GOLD:MUTED}}>{pendPieces}</div></div>
+                </div>
+                {delivCount===artList.length&&status==='CONSEGNA PARZIALE'&&<div style={{marginTop:10,fontSize:10,color:'#7aaee8',letterSpacing:1}}>✓ Tutti gli articoli consegnati — considera di aggiornare lo stato a CONSEGNATO</div>}
+              </div>
+            )
+          })()}
           {saveError && <div style={{marginTop:12,padding:'10px 16px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:6,color:'#ef4444',fontSize:12}}>{saveError}</div>}
         </div>
         <div style={{display:'flex',gap:10,justifyContent:'space-between',marginTop:8,flexWrap:'wrap'}}>
