@@ -80,7 +80,10 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
       {/* Existing payments */}
       {payments.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          {payments.map(p => {
+          {[...payments].sort((a, b) => {
+            const parse = s => { if (!s) return 0; const [d,m,y] = s.split('/'); return new Date(y,m-1,d).getTime() }
+            return parse(a.date) - parse(b.date)
+          }).map(p => {
             const tc = TYPE_COLORS[p.type] || TYPE_COLORS.acconto
             return (
               <div key={p.id} style={{
