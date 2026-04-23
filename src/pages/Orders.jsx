@@ -53,7 +53,10 @@ function PaymentQuick({ order, onPaymentToggle }) {
   if (total === 0) return <span style={{ color:MUTED, fontSize:10 }}>—</span>
   return (
     <div>
-      {order.payments.map(p => (
+      {[...order.payments].sort((a, b) => {
+        const p = s => { if (!s) return 0; const [d,m,y] = s.split('/'); return new Date(y,m-1,d).getTime() }
+        return p(a.date) - p(b.date)
+      }).map(p => (
         <div key={p.id} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
           <div onClick={()=>saving!==p.id&&toggle(p)} style={{ width:14, height:14, borderRadius:'50%', cursor:'pointer', flexShrink:0, border:`1.5px solid ${p.paid?GREEN:GOLD}`, background:p.paid?GREEN:'transparent', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', opacity:saving===p.id?0.5:1 }}>
             {p.paid&&<span style={{ color:'white', fontSize:8, lineHeight:1 }}>✓</span>}
