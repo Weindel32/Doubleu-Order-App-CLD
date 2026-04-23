@@ -133,7 +133,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
       {/* Add payment form */}
       <div style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '16px' }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 12 }}>AGGIUNGI PAGAMENTO</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           <div>
             <label style={s.label}>Tipo</label>
             <select style={inp} value={newP.type} onChange={e => handleTypeChange(e.target.value)}>
