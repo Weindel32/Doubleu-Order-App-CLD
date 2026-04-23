@@ -89,6 +89,22 @@ export default function Analytics({ orders }) {
     byStatus[o.status] = (byStatus[o.status]||0) + pz
   })
 
+  const totalRevenue      = confirmed.reduce((s,o)=>s+orderTotal(o),0)
+  const istituzionale     = confirmed.filter(o=>o.orderType!=='soci').reduce((s,o)=>s+orderTotal(o),0)
+  const sociShop          = confirmed.filter(o=>o.orderType==='soci').reduce((s,o)=>s+orderTotal(o),0)
+  const pctIst            = totalRevenue>0 ? Math.round(istituzionale/totalRevenue*100) : 0
+  const pctSoci           = totalRevenue>0 ? Math.round(sociShop/totalRevenue*100) : 0
+
+  const byClientSplit = {}
+  confirmed.forEach(o => {
+    const tot = orderTotal(o)
+    if (!byClientSplit[o.client]) byClientSplit[o.client] = { name:o.client, ist:0, soci:0, total:0 }
+    byClientSplit[o.client].total += tot
+    if (o.orderType==='soci') byClientSplit[o.client].soci += tot
+    else byClientSplit[o.client].ist += tot
+  })
+  const clientSplitRows = Object.values(byClientSplit).filter(c=>c.soci>0||c.ist>0).sort((a,b)=>b.total-a.total)
+
   if (orders.length === 0) {
     return (
       <div>
@@ -121,6 +137,64 @@ export default function Analytics({ orders }) {
           </div>
         ))}
       </div>
+
+      <div style={s.divider}/>
+
+      {/* ── Revenue split section ── */}
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2,marginBottom:20}}>Fatturato per Tipo Ordine</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:20}}>
+        {[
+          {label:'Fatturato Totale',    value:totalRevenue,  color:GOLD},
+          {label:'Istituzionale',       value:istituzionale, color:CREAM,  pct:pctIst},
+          {label:'Soci / Shop',         value:sociShop,      color:'#7aaee8', pct:pctSoci},
+        ].map(item=>(
+          <div key={item.label} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'16px 20px'}}>
+            <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:6}}>{item.label}</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,color:item.color,lineHeight:1}}>
+              € {item.value.toLocaleString('it-IT',{minimumFractionDigits:2})}
+            </div>
+            {item.pct!==undefined && <div style={{fontSize:10,color:MUTED,marginTop:4}}>{item.pct}% sul totale</div>}
+          </div>
+        ))}
+      </div>
+      {totalRevenue>0 && (
+        <div style={{marginBottom:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+            <span style={{fontSize:9,letterSpacing:2,color:MUTED}}>SPLIT FATTURATO</span>
+            <span style={{fontSize:9,color:MUTED}}>{pctIst}% Istituzionale · {pctSoci}% Soci/Shop</span>
+          </div>
+          <div style={{height:8,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden',display:'flex',marginBottom:24}}>
+            <div style={{width:`${pctIst}%`,background:GOLD,transition:'width 0.4s'}}/>
+            <div style={{width:`${pctSoci}%`,background:'#7aaee8',opacity:0.7,transition:'width 0.4s'}}/>
+          </div>
+        </div>
+      )}
+      {clientSplitRows.length>0 && (
+        <table style={{...s.table,marginBottom:0}}>
+          <thead>
+            <tr>{['Club','Istituzionale','Soci / Shop','Totale','Mix Soci'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {clientSplitRows.map(c=>(
+              <tr key={c.name}>
+                <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17}}>{c.name}</td>
+                <td style={{...s.td,fontSize:13,color:MUTED}}>{c.ist>0?`€ ${c.ist.toLocaleString('it-IT',{maximumFractionDigits:0})}`:'—'}</td>
+                <td style={{...s.td,fontSize:13,color:'#7aaee8'}}>{c.soci>0?`€ ${c.soci.toLocaleString('it-IT',{maximumFractionDigits:0})}`:'—'}</td>
+                <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GOLD}}>€ {c.total.toLocaleString('it-IT',{maximumFractionDigits:0})}</td>
+                <td style={s.td}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{flex:1,height:4,background:'rgba(255,255,255,0.06)',borderRadius:2,overflow:'hidden',display:'flex'}}>
+                      <div style={{width:`${c.total>0?Math.round(c.ist/c.total*100):0}%`,background:GOLD}}/>
+                      <div style={{width:`${c.total>0?Math.round(c.soci/c.total*100):0}%`,background:'#7aaee8',opacity:0.7}}/>
+                    </div>
+                    <span style={{fontSize:9,color:MUTED,whiteSpace:'nowrap'}}>{c.total>0?Math.round(c.soci/c.total*100):0}% Soci</span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       <div style={s.divider}/>
 
