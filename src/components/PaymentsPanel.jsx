@@ -3,7 +3,7 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
-const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Assegno', 'PayPal', 'Altro']
+const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Carta di Credito', 'Assegno', 'PayPal', 'Altro']
 
 const TYPE_LABELS = { acconto: 'Acconto', intermedio: 'Intermedio', saldo: 'Saldo' }
 const TYPE_COLORS = {
