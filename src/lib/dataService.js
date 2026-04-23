@@ -15,6 +15,7 @@ export async function fetchOrders() {
         ...kit,
         articles: (articles || []).map(a => ({
           ...a, notes: a.notes || '',
+          delivered: a.delivered || false,
           sizes: { adult: a.sizes_adult || {}, kids: a.sizes_kids || {} }
         }))
       }
@@ -62,7 +63,7 @@ export async function createOrder(order) {
       await supabase.from('articles').insert({
         kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
         description: art.description, color: art.color, price: art.price || null,
-        notes: art.notes || null,
+        notes: art.notes || null, delivered: art.delivered || false,
         sizes_adult: art.sizes?.adult || {}, sizes_kids: art.sizes?.kids || {},
       })
     }
@@ -101,7 +102,7 @@ export async function updateOrder(order) {
       await supabase.from('articles').insert({
         kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
         description: art.description, color: art.color, price: art.price || null,
-        notes: art.notes || null,
+        notes: art.notes || null, delivered: art.delivered || false,
         sizes_adult: art.sizes?.adult || {}, sizes_kids: art.sizes?.kids || {},
       })
     }
