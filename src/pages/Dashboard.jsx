@@ -6,8 +6,11 @@ import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import AlertsPanel               from '../components/AlertsPanel.jsx'
 import StatCard                  from '../components/StatCard.jsx'
+import BollaModal                from '../components/BollaModal.jsx'
+import { useState }              from 'react'
 
 export default function Dashboard({ orders, setView, setEditOrder, onDelete, onOrdersChange, navigateToOrders }) {
+  const [bollaOrder, setBollaOrder] = useState(null)
   const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
   const quote     = orders.filter(o => o.status === 'PREVENTIVO')
   const inProd    = orders.filter(o => o.status === 'IN PRODUZIONE')
@@ -33,7 +36,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     const h=gen(order); const w=window.open('','_blank'); w.document.write(h); w.document.close()
   }
 
-  return (
+  return (<>
     <div>
       <div style={s.topBar}>
         <div>
@@ -143,7 +146,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
                       <button style={{...btnGoldStyle,padding:'4px 7px',fontSize:8}} onClick={()=>{setEditOrder(o);setView('new')}}>Apri</button>
                       <button style={{padding:'4px 7px',fontSize:8,border:'1px solid rgba(196,98,58,0.4)',background:'rgba(196,98,58,0.08)',color:CLAY,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateProductionPDF,o)}>Prod.</button>
                       <button style={{padding:'4px 7px',fontSize:8,border:`1px solid rgba(184,150,90,0.3)`,background:'rgba(184,150,90,0.06)',color:GOLD,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateClientPDF,o)}>Cliente</button>
-                      <button style={{padding:'4px 7px',fontSize:8,border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)',color:'#7aaee8',borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateDeliveryPDF,o)}>Bolla</button>
+                      <button style={{padding:'4px 7px',fontSize:8,border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)',color:'#7aaee8',borderRadius:3,cursor:'pointer'}} onClick={()=>o.status==='CONSEGNA PARZIALE'?setBollaOrder(o):openPDF(generateDeliveryPDF,o)}>Bolla</button>
                     </div>
                   </td>
                 </tr>
@@ -153,5 +156,6 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
         </table>
       )}
     </div>
-  )
+    {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} />}
+  </>)
 }
