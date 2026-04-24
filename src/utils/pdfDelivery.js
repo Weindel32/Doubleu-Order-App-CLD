@@ -2,7 +2,9 @@ import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 
 export function generateDeliveryPDF(order) {
-  const articles    = getAllArticles(order)
+  const articles    = order.status === 'CONSEGNA PARZIALE'
+    ? getAllArticles(order).filter(a => a.delivered)
+    : getAllArticles(order)
   const totalPieces = articles.reduce((s, a) => s + artPieceCount(a), 0)
   const hasKids     = articles.some(a => KIDS_SIZES.some(sz => (a.sizes.kids?.[sz]  || 0) > 0))
   const hasAdult    = articles.some(a => ADULT_SIZES.some(sz => (a.sizes.adult?.[sz] || 0) > 0))
