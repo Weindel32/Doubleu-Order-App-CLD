@@ -228,7 +228,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
     </div>
   )
 
-  return (
+  return (<>
     <div style={{maxWidth:960}}>
       <div style={s.topBar}>
         <div>
@@ -527,5 +527,5 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
       </div>}
     </div>
     {showBollaModal && <BollaModal order={currentOrder} onClose={() => setShowBollaModal(false)} />}
-  )
+  </>)
 }

@@ -36,7 +36,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     const h=gen(order); const w=window.open('','_blank'); w.document.write(h); w.document.close()
   }
 
-  return (
+  return (<>
     <div>
       <div style={s.topBar}>
         <div>
@@ -157,5 +157,5 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
       )}
     </div>
     {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} />}
-  )
+  </>)
 }

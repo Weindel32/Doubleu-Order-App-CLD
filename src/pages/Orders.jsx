@@ -120,7 +120,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
     color: sortBy===col ? GOLD : MUTED,
   })
 
-  return (
+  return (<>
     <div>
       <div style={s.topBar}>
         <div>
@@ -202,5 +202,5 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
       )}
     </div>
     {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} />}
-  )
+  </>)
 }
