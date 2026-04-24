@@ -5,6 +5,7 @@ import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../ut
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
+import BollaModal                from '../components/BollaModal.jsx'
 import { exportSizesCSV, exportAllOrdersCSV } from '../utils/exportCSV.js'
 import { quickUpdateStatus, quickTogglePayment } from '../lib/dataService.js'
 import { BORDER } from '../tokens.js'
@@ -77,6 +78,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
   const [search, setSearch]   = useState('')
   const [sortBy, setSortBy]   = useState('date')
   const [sortDir, setSortDir] = useState('desc')
+  const [bollaOrder, setBollaOrder] = useState(null)
   const filters = ['Tutti','Preventivo','Confermato','In Produzione','Consegna Parziale','Consegnato','Da Incassare']
 
   const handleSort = (col) => {
@@ -188,7 +190,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
                       <button style={{...btnGoldStyle,padding:'4px 8px',fontSize:8}} onClick={()=>{setEditOrder(o);setView('new')}}>Apri</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(196,98,58,0.4)',background:'rgba(196,98,58,0.08)',color:CLAY,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateProductionPDF,o)}>Prod.</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:`1px solid rgba(184,150,90,0.3)`,background:'rgba(184,150,90,0.06)',color:GOLD,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateClientPDF,o)}>Cliente</button>
-                      <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)',color:'#7aaee8',borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateDeliveryPDF,o)}>Bolla</button>
+                      <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)',color:'#7aaee8',borderRadius:3,cursor:'pointer'}} onClick={()=>o.status==='CONSEGNA PARZIALE'?setBollaOrder(o):openPDF(generateDeliveryPDF,o)}>Bolla</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.06)',color:'#ef4444',borderRadius:3,cursor:'pointer'}} onClick={()=>onDelete(o.id)}>✕</button>
                     </div>
                   </td>
@@ -199,5 +201,6 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
         </table>
       )}
     </div>
+    {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} />}
   )
 }
