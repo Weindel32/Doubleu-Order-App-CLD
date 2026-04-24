@@ -70,7 +70,7 @@ export function generateDeliveryPDF(order, selectedArticles = null) {
     * { box-sizing: border-box; }
     body { font-family: 'Josefin Sans', sans-serif; color: #1a2744; margin: 0; background: #fff; }
     .print-btn { position:fixed;top:20px;right:20px;z-index:999;background:#1a2744;color:white;border:none;padding:12px 28px;font-family:'Josefin Sans',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; }
-    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm;margin-top:0; } }
+    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm;margin-top:0;margin-bottom:0; } }
   </style>
 </head>
 <body>
@@ -137,7 +137,7 @@ export function generateDeliveryPDF(order, selectedArticles = null) {
   </div>
 
   <!-- FIRMA RICEVUTA -->
-  <div style="margin:0 40px 40px;padding:20px 24px;border:1px solid #e0d8cc;border-radius:8px;">
+  <div style="margin:0 40px 40px;padding:20px 24px;border:1px solid #e0d8cc;border-radius:8px;page-break-inside:avoid;break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:16px;">RICEVUTA MERCE</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;">
       <div>
