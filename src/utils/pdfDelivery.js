@@ -70,7 +70,7 @@ export function generateDeliveryPDF(order, selectedArticles = null) {
     * { box-sizing: border-box; }
     body { font-family: 'Josefin Sans', sans-serif; color: #1a2744; margin: 0; background: #fff; }
     .print-btn { position:fixed;top:20px;right:20px;z-index:999;background:#1a2744;color:white;border:none;padding:12px 28px;font-family:'Josefin Sans',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; }
-    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm;margin-top:0;margin-bottom:0; } }
+    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact;margin:0;padding:0; } @page { margin:0;size:A4; } }
   </style>
 </head>
 <body>
@@ -118,7 +118,7 @@ export function generateDeliveryPDF(order, selectedArticles = null) {
   </div>
 
   <!-- RIEPILOGO -->
-  <div style="margin:0 40px 24px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:8px;padding:18px 24px;">
+  <div style="margin:0 40px 24px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:8px;padding:18px 24px;page-break-inside:avoid;break-inside:avoid;">
     <div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:12px;">RIEPILOGO</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;">
       ${articles.map(a => {
