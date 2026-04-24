@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NAVY, CREAM, GOLD, MUTED, CLAY, BORDER } from '../tokens.js'
+import { CREAM, GOLD, MUTED, CLAY, BORDER } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 import { generateDeliveryPDF } from '../utils/pdfDelivery.js'
 
