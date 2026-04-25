@@ -159,7 +159,7 @@ export default function App() {
   }
 
   if (isMobile) {
-    return <MobileApp orders={orders} clients={clients} onLogout={handleLogout} />
+    return <MobileApp orders={orders} clients={clients} onLogout={handleLogout} onUpsertClient={handleUpsertClient} />
   }
 
   return (

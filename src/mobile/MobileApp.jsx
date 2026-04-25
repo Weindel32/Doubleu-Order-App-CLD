@@ -11,7 +11,7 @@ const TABS = [
   { key: 'clients', label: 'Clienti', icon: '◎' },
 ]
 
-export default function MobileApp({ orders, clients, onLogout }) {
+export default function MobileApp({ orders, clients, onLogout, onUpsertClient }) {
   const [tab, setTab] = useState('home')
   const [selectedOrder, setSelectedOrder] = useState(null)
 
@@ -67,7 +67,7 @@ export default function MobileApp({ orders, clients, onLogout }) {
       }}>
         {tab === 'home'    && <MobileHome    orders={orders} onSelectOrder={setSelectedOrder} />}
         {tab === 'orders'  && <MobileOrders  orders={orders} onSelectOrder={setSelectedOrder} />}
-        {tab === 'clients' && <MobileClients clients={clients} orders={orders} onSelectOrder={setSelectedOrder} />}
+        {tab === 'clients' && <MobileClients clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
       </div>
 
       {/* Bottom Tab Bar */}
