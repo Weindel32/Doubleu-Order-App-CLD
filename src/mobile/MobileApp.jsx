@@ -13,7 +13,13 @@ const TABS = [
 
 export default function MobileApp({ orders, clients, onLogout, onUpsertClient }) {
   const [tab, setTab] = useState('home')
+  const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
+
+  const goToOrders = (filter) => {
+    setOrdersFilter(filter)
+    setTab('orders')
+  }
 
   if (selectedOrder) {
     return <MobileOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} />
@@ -65,8 +71,8 @@ export default function MobileApp({ orders, clients, onLogout, onUpsertClient })
         WebkitOverflowScrolling: 'touch',
         paddingBottom: 'calc(64px + env(safe-area-inset-bottom))',
       }}>
-        {tab === 'home'    && <MobileHome    orders={orders} onSelectOrder={setSelectedOrder} />}
-        {tab === 'orders'  && <MobileOrders  orders={orders} onSelectOrder={setSelectedOrder} />}
+        {tab === 'home'    && <MobileHome    orders={orders} onSelectOrder={setSelectedOrder} onGoToOrders={goToOrders} />}
+        {tab === 'orders'  && <MobileOrders  orders={orders} onSelectOrder={setSelectedOrder} filter={ordersFilter} onFilterChange={setOrdersFilter} />}
         {tab === 'clients' && <MobileClients clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
       </div>
 

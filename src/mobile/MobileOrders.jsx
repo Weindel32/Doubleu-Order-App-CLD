@@ -9,8 +9,7 @@ function fmt(n) {
 
 const FILTERS = ['Attivi', 'Tutti', ...ORDER_STATUSES]
 
-export default function MobileOrders({ orders, onSelectOrder }) {
-  const [filter, setFilter] = useState('Attivi')
+export default function MobileOrders({ orders, onSelectOrder, filter, onFilterChange }) {
 
   const filtered = orders.filter(o => {
     if (filter === 'Tutti') return true
@@ -34,7 +33,7 @@ export default function MobileOrders({ orders, onSelectOrder }) {
         {FILTERS.map(f => {
           const active = filter === f
           return (
-            <button key={f} onClick={() => setFilter(f)} style={{
+            <button key={f} onClick={() => onFilterChange(f)} style={{
               flexShrink: 0,
               padding: '7px 14px',
               borderRadius: 20,
