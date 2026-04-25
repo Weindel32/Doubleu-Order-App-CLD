@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import MobileApp from './mobile/MobileApp.jsx'
 import { GOLD, MUTED, BORDER, CLAY } from './tokens.js'
 import { s } from './tokens.js'
 import Dashboard from './pages/Dashboard.jsx'
@@ -10,6 +11,16 @@ import Login     from './pages/Login.jsx'
 import { fetchOrders, deleteOrder, fetchClients, upsertClient } from './lib/dataService.js'
 import { needsAlert } from './utils/helpers.js'
 import { supabase } from './lib/supabase.js'
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 480)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 480)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return isMobile
+}
 
 function Sidebar({ view, setView, orders, onLogout }) {
   const alertCount   = orders.filter(o => needsAlert(o)).length
@@ -58,6 +69,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
 }
 
 export default function App() {
+  const isMobile = useIsMobile()
   const [view, setView]               = useState('dashboard')
   const [editOrder, setEditOrder]     = useState(null)
   const [prefillClient, setPrefill]   = useState(null)
@@ -144,6 +156,10 @@ export default function App() {
         </div>
       </div>
     )
+  }
+
+  if (isMobile) {
+    return <MobileApp orders={orders} clients={clients} onLogout={handleLogout} />
   }
 
   return (
