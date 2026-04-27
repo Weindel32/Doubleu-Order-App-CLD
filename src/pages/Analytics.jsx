@@ -36,6 +36,7 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
   const maxVal = Math.max(...monthly2025, ...monthly2026, 1)
   const BAR_H = 120
   const both = has2025 && has2026
+  const fmt = n => n >= 10000 ? `${Math.round(n/1000)}k` : n >= 1000 ? `${(n/1000).toFixed(1)}k` : `${Math.round(n)}`
 
   return (
     <div style={{...s.card, marginBottom: 20}}>
@@ -64,34 +65,30 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
             <div key={m} style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}>
               <div style={{display:'flex', alignItems:'flex-end', gap: both ? 2 : 0, height: BAR_H}}>
                 {has2025 && (
-                  <div
-                    title={`2025: € ${v25.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
-                    style={{
-                      width: both ? 7 : 12,
-                      height: h25,
-                      background: v25 > 0 ? MUTED : 'rgba(255,255,255,0.05)',
-                      opacity: v25 > 0 ? 0.45 : 1,
-                      borderRadius:'2px 2px 0 0',
-                      alignSelf:'flex-end',
-                      transition:'height 0.5s'
-                    }}
-                  />
+                  <div style={{
+                    width: both ? 7 : 12,
+                    height: h25,
+                    background: v25 > 0 ? MUTED : 'rgba(255,255,255,0.05)',
+                    opacity: v25 > 0 ? 0.45 : 1,
+                    borderRadius:'2px 2px 0 0',
+                    alignSelf:'flex-end',
+                    transition:'height 0.5s'
+                  }}/>
                 )}
                 {has2026 && (
-                  <div
-                    title={`2026: € ${v26.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
-                    style={{
-                      width: both ? 7 : 12,
-                      height: h26,
-                      background: v26 > 0 ? `linear-gradient(180deg,${CLAY},${GOLD})` : 'rgba(255,255,255,0.05)',
-                      borderRadius:'2px 2px 0 0',
-                      alignSelf:'flex-end',
-                      transition:'height 0.5s'
-                    }}
-                  />
+                  <div style={{
+                    width: both ? 7 : 12,
+                    height: h26,
+                    background: v26 > 0 ? `linear-gradient(180deg,${CLAY},${GOLD})` : 'rgba(255,255,255,0.05)',
+                    borderRadius:'2px 2px 0 0',
+                    alignSelf:'flex-end',
+                    transition:'height 0.5s'
+                  }}/>
                 )}
               </div>
               <span style={{fontSize:8, color:MUTED, letterSpacing:1, textTransform:'uppercase'}}>{m}</span>
+              {has2025 && <span style={{fontSize:7, color: v25>0 ? MUTED : 'transparent', opacity: v25>0 ? 0.7 : 0}}>{v25>0 ? fmt(v25) : '—'}</span>}
+              {has2026 && <span style={{fontSize:7, color: v26>0 ? GOLD : 'transparent'}}>{v26>0 ? fmt(v26) : '—'}</span>}
             </div>
           )
         })}
