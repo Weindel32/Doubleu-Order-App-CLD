@@ -28,6 +28,78 @@ function BarChart({ data, title, colorFn }) {
   )
 }
 
+function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
+  const MONTHS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']
+  const has2025 = monthly2025.some(v => v > 0)
+  const has2026 = monthly2026.some(v => v > 0)
+  if (!has2025 && !has2026) return null
+  const maxVal = Math.max(...monthly2025, ...monthly2026, 1)
+  const BAR_H = 120
+  const both = has2025 && has2026
+
+  return (
+    <div style={{...s.card, marginBottom: 20}}>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20}}>
+        <div style={s.cardTitle}>Fatturato Mensile</div>
+        <div style={{display:'flex', gap: 16, alignItems:'center'}}>
+          {has2025 && (
+            <span style={{display:'flex', alignItems:'center', gap:5, fontSize:9, color:MUTED, letterSpacing:2}}>
+              <span style={{display:'inline-block', width:8, height:8, borderRadius:1, background:MUTED, opacity:0.5}}/>2025
+            </span>
+          )}
+          {has2026 && (
+            <span style={{display:'flex', alignItems:'center', gap:5, fontSize:9, color:MUTED, letterSpacing:2}}>
+              <span style={{display:'inline-block', width:8, height:8, borderRadius:1, background:GOLD}}/>2026
+            </span>
+          )}
+        </div>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(12,1fr)', gap:6}}>
+        {MONTHS.map((m, i) => {
+          const v25 = monthly2025[i]
+          const v26 = monthly2026[i]
+          const h25 = v25 > 0 ? Math.max(Math.round((v25/maxVal)*BAR_H), 3) : 1
+          const h26 = v26 > 0 ? Math.max(Math.round((v26/maxVal)*BAR_H), 3) : 1
+          return (
+            <div key={m} style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}>
+              <div style={{display:'flex', alignItems:'flex-end', gap: both ? 2 : 0, height: BAR_H}}>
+                {has2025 && (
+                  <div
+                    title={`2025: € ${v25.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
+                    style={{
+                      width: both ? 7 : 12,
+                      height: h25,
+                      background: v25 > 0 ? MUTED : 'rgba(255,255,255,0.05)',
+                      opacity: v25 > 0 ? 0.45 : 1,
+                      borderRadius:'2px 2px 0 0',
+                      alignSelf:'flex-end',
+                      transition:'height 0.5s'
+                    }}
+                  />
+                )}
+                {has2026 && (
+                  <div
+                    title={`2026: € ${v26.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
+                    style={{
+                      width: both ? 7 : 12,
+                      height: h26,
+                      background: v26 > 0 ? `linear-gradient(180deg,${CLAY},${GOLD})` : 'rgba(255,255,255,0.05)',
+                      borderRadius:'2px 2px 0 0',
+                      alignSelf:'flex-end',
+                      transition:'height 0.5s'
+                    }}
+                  />
+                )}
+              </div>
+              <span style={{fontSize:8, color:MUTED, letterSpacing:1, textTransform:'uppercase'}}>{m}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function DonutChart({ data, title }) {
   const entries = Object.entries(data).sort((a,b)=>b[1]-a[1])
   const total   = entries.reduce((s,[,v])=>s+v,0)
@@ -89,6 +161,18 @@ export default function Analytics({ orders }) {
     byStatus[o.status] = (byStatus[o.status]||0) + pz
   })
 
+  const monthly2025 = Array(12).fill(0)
+  const monthly2026 = Array(12).fill(0)
+  confirmed.forEach(o => {
+    if (!o.date) return
+    const parts = o.date.split('/')
+    if (parts.length < 3) return
+    const month = parseInt(parts[1]) - 1
+    const year  = parseInt(parts[2])
+    if (year === 2025 && month >= 0 && month < 12) monthly2025[month] += orderTotal(o)
+    if (year === 2026 && month >= 0 && month < 12) monthly2026[month] += orderTotal(o)
+  })
+
   const totalRevenue      = confirmed.reduce((s,o)=>s+orderTotal(o),0)
   const istituzionale     = confirmed.filter(o=>o.orderType!=='soci').reduce((s,o)=>s+orderTotal(o),0)
   const sociShop          = confirmed.filter(o=>o.orderType==='soci').reduce((s,o)=>s+orderTotal(o),0)
@@ -139,6 +223,8 @@ export default function Analytics({ orders }) {
       </div>
 
       <div style={s.divider}/>
+
+      <MonthlyRevenueChart monthly2025={monthly2025} monthly2026={monthly2026}/>
 
       {/* ── Revenue split section ── */}
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2,marginBottom:20}}>Fatturato per Tipo Ordine</div>
