@@ -55,7 +55,8 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
 
   const hideTip = () => setTooltip(null)
 
-  const handleTouch = (e, text) => {
+  const handleTap = (e, text) => {
+    if (tooltip?.text === text) { hideTip(); return }
     showTip(e, text)
     hideTimer.current = setTimeout(() => setTooltip(null), 2500)
   }
@@ -89,8 +90,9 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
           return (
             <div
               key={m}
-              style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}
-              onTouchStart={e => { if (v25 > 0 || v26 > 0) handleTouch(e, touchText) }}
+              role="button"
+              style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor: v25 > 0 || v26 > 0 ? 'pointer' : 'default'}}
+              onClick={e => { if (v25 > 0 || v26 > 0) handleTap(e, touchText) }}
             >
               <div style={{display:'flex', alignItems:'flex-end', gap: both ? 2 : 0, height: BAR_H}}>
                 {has2025 && (
