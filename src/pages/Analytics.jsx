@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { s } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderTotal } from '../utils/helpers.js'
@@ -30,15 +31,37 @@ function BarChart({ data, title, colorFn }) {
 
 function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
   const MONTHS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']
+  const [tooltip, setTooltip] = useState(null)
+  const containerRef = useRef(null)
+  const hideTimer = useRef(null)
+
+  useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current) }, [])
+
   const has2025 = monthly2025.some(v => v > 0)
   const has2026 = monthly2026.some(v => v > 0)
   if (!has2025 && !has2026) return null
+
   const maxVal = Math.max(...monthly2025, ...monthly2026, 1)
   const BAR_H = 120
   const both = has2025 && has2026
 
+  const showTip = (e, text) => {
+    if (hideTimer.current) clearTimeout(hideTimer.current)
+    if (!containerRef.current) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const cRect = containerRef.current.getBoundingClientRect()
+    setTooltip({ x: rect.left - cRect.left + rect.width / 2, y: rect.top - cRect.top, text })
+  }
+
+  const hideTip = () => setTooltip(null)
+
+  const handleTouch = (e, text) => {
+    showTip(e, text)
+    hideTimer.current = setTimeout(() => setTooltip(null), 2500)
+  }
+
   return (
-    <div style={{...s.card, marginBottom: 20}}>
+    <div style={{...s.card, marginBottom: 20, position: 'relative'}} ref={containerRef}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20}}>
         <div style={s.cardTitle}>Fatturato Mensile</div>
         <div style={{display:'flex', gap: 16, alignItems:'center'}}>
@@ -60,12 +83,20 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
           const v26 = monthly2026[i]
           const h25 = v25 > 0 ? Math.max(Math.round((v25/maxVal)*BAR_H), 3) : 1
           const h26 = v26 > 0 ? Math.max(Math.round((v26/maxVal)*BAR_H), 3) : 1
+          const tip25 = `2025: € ${v25.toLocaleString('it-IT',{maximumFractionDigits:0})}`
+          const tip26 = `2026: € ${v26.toLocaleString('it-IT',{maximumFractionDigits:0})}`
+          const touchText = [m, ...(v25 > 0 ? [tip25] : []), ...(v26 > 0 ? [tip26] : [])].join('\n')
           return (
-            <div key={m} style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}>
+            <div
+              key={m}
+              style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}
+              onTouchStart={e => { if (v25 > 0 || v26 > 0) handleTouch(e, touchText) }}
+            >
               <div style={{display:'flex', alignItems:'flex-end', gap: both ? 2 : 0, height: BAR_H}}>
                 {has2025 && (
                   <div
-                    title={`2025: € ${v25.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
+                    onMouseEnter={e => showTip(e, tip25)}
+                    onMouseLeave={hideTip}
                     style={{
                       width: both ? 7 : 12,
                       height: h25,
@@ -73,20 +104,21 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
                       opacity: v25 > 0 ? 0.45 : 1,
                       borderRadius:'2px 2px 0 0',
                       alignSelf:'flex-end',
-                      transition:'height 0.5s'
+                      transition:'height 0.5s',
                     }}
                   />
                 )}
                 {has2026 && (
                   <div
-                    title={`2026: € ${v26.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
+                    onMouseEnter={e => showTip(e, tip26)}
+                    onMouseLeave={hideTip}
                     style={{
                       width: both ? 7 : 12,
                       height: h26,
                       background: v26 > 0 ? `linear-gradient(180deg,${CLAY},${GOLD})` : 'rgba(255,255,255,0.05)',
                       borderRadius:'2px 2px 0 0',
                       alignSelf:'flex-end',
-                      transition:'height 0.5s'
+                      transition:'height 0.5s',
                     }}
                   />
                 )}
@@ -96,6 +128,28 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
           )
         })}
       </div>
+      {tooltip && (
+        <div style={{
+          position: 'absolute',
+          left: tooltip.x,
+          top: Math.max(tooltip.y - 48, 8),
+          transform: 'translateX(-50%)',
+          background: 'rgba(10,18,40,0.95)',
+          border: `1px solid ${BORDER}`,
+          borderRadius: 4,
+          padding: '6px 12px',
+          fontSize: 11,
+          color: CREAM,
+          letterSpacing: 0.5,
+          whiteSpace: 'pre',
+          lineHeight: 1.7,
+          pointerEvents: 'none',
+          zIndex: 10,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        }}>
+          {tooltip.text}
+        </div>
+      )}
     </div>
   )
 }
