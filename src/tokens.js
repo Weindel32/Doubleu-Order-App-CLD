@@ -36,9 +36,9 @@ export const s = {
   },
   logo: { padding: '0 24px 28px', borderBottom: `1px solid rgba(184,150,90,0.12)`, marginBottom: 8 },
   logoMark: { fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 600, color: CREAM, letterSpacing: 4, lineHeight: 1 },
-  logoSub: { fontSize: 9, letterSpacing: 3, color: GOLD, marginTop: 5, textTransform: 'uppercase' },
+  logoSub: { fontSize: 11, letterSpacing: 2, color: GOLD, marginTop: 5, textTransform: 'uppercase' },
   navItem: (active) => ({
-    padding: '11px 24px', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+    padding: '11px 24px', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase',
     color: active ? CREAM : MUTED, cursor: 'pointer',
     borderLeft: active ? `2px solid ${GOLD}` : '2px solid transparent',
     background: active ? 'rgba(184,150,90,0.07)' : 'transparent',
@@ -46,10 +46,10 @@ export const s = {
   }),
   main: { flex: 1, overflow: 'auto', padding: '40px 48px', maxWidth: 'calc(100vw - 220px)' },
   pageTitle: { fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 300, color: CREAM, letterSpacing: 2, marginBottom: 4 },
-  pageSub: { fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 36 },
+  pageSub: { fontSize: 11, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 36 },
   topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 36 },
   card: { background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '24px 28px', marginBottom: 16 },
-  cardTitle: { fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 16 },
+  cardTitle: { fontSize: 11, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 16 },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   grid3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 },
   grid4: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 16 },
@@ -58,39 +58,39 @@ export const s = {
     border: accent ? 'none' : `1px solid ${BORDER}`,
     borderRadius: 10, padding: '24px 28px',
   }),
-  statLabel: { fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: MUTED, marginBottom: 8 },
-  statValue: { fontFamily: "'Cormorant Garamond', serif", fontSize: 38, fontWeight: 300, color: CREAM, lineHeight: 1 },
-  statSub: { fontSize: 11, color: GOLD, marginTop: 6, letterSpacing: 1 },
+  statLabel: { fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: MUTED, marginBottom: 8 },
+  statValue: { fontFamily: "'Cormorant Garamond', serif", fontSize: 38, fontWeight: 300, color: CREAM, lineHeight: 1.1 },
+  statSub: { fontSize: 12, color: GOLD, marginTop: 6, letterSpacing: 1 },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', padding: '10px 14px', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: GOLD, borderBottom: `1px solid rgba(184,150,90,0.2)` },
-  td: { padding: '14px', fontSize: 12, color: CREAM, borderBottom: `1px solid rgba(255,255,255,0.05)`, letterSpacing: 0.5 },
+  th: { textAlign: 'left', padding: '10px 14px', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: GOLD, borderBottom: `1px solid rgba(184,150,90,0.2)` },
+  td: { padding: '14px', fontSize: 12, color: CREAM, borderBottom: `1px solid rgba(255,255,255,0.05)`, letterSpacing: 0.5, lineHeight: 1.5 },
   divider: { height: 1, background: `linear-gradient(90deg, rgba(184,150,90,0.25), transparent)`, margin: '28px 0' },
   input: {
     background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4,
     padding: '10px 14px', color: CREAM, fontSize: 12, letterSpacing: 0.5,
     outline: 'none', width: '100%',
   },
-  label: { fontSize: 9, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' },
+  label: { fontSize: 11, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' },
 }
 
 export const badgeStyle = (status) => {
   const sc = STATUS_COLORS[status] || STATUS_COLORS['PREVENTIVO']
   return {
     display: 'inline-block', padding: '3px 10px', borderRadius: 2,
-    fontSize: 9, letterSpacing: 2, fontWeight: 600,
+    fontSize: 10, letterSpacing: 1.5, fontWeight: 600,
     background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`,
   }
 }
 
 export const btnStyle = (primary) => ({
   padding: '10px 24px', borderRadius: 3, border: 'none', cursor: 'pointer',
-  fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600,
+  fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600,
   background: primary ? `linear-gradient(135deg, ${CLAY}, #a0502e)` : 'rgba(255,255,255,0.06)',
   color: primary ? CREAM : MUTED, transition: 'all 0.2s',
 })
 
 export const btnGoldStyle = {
   padding: '10px 24px', borderRadius: 3, border: `1px solid ${GOLD}`,
-  cursor: 'pointer', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+  cursor: 'pointer', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase',
   fontWeight: 600, background: 'transparent', color: GOLD,
 }
