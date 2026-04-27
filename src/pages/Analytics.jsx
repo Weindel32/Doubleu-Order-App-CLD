@@ -1,6 +1,7 @@
 import { GOLD, MUTED, CREAM, CLAY, NAVY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { s } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderTotal } from '../utils/helpers.js'
+import { useState } from 'react'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
 const LINE_COLORS = { 'Performance':CLAY,'Club':GOLD,'Training':'#7aaee8','Lifestyle':GREEN }
@@ -30,13 +31,20 @@ function BarChart({ data, title, colorFn }) {
 
 function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
   const MONTHS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']
+  const [open, setOpen] = useState(false)
   const has2025 = monthly2025.some(v => v > 0)
   const has2026 = monthly2026.some(v => v > 0)
   if (!has2025 && !has2026) return null
   const maxVal = Math.max(...monthly2025, ...monthly2026, 1)
   const BAR_H = 120
   const both = has2025 && has2026
-  const fmt = n => n >= 10000 ? `${Math.round(n/1000)}k` : n >= 1000 ? `${(n/1000).toFixed(1)}k` : `${Math.round(n)}`
+  const fmtFull = n => n.toLocaleString('it-IT', {maximumFractionDigits:0})
+  const delta = (v25, v26) => {
+    if (v25 === 0 && v26 === 0) return null
+    if (v25 === 0) return { pct: null, new: true }
+    const pct = Math.round((v26 - v25) / v25 * 100)
+    return { pct, new: false }
+  }
 
   return (
     <div style={{...s.card, marginBottom: 20}}>
@@ -53,8 +61,15 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
               <span style={{display:'inline-block', width:8, height:8, borderRadius:1, background:GOLD}}/>2026
             </span>
           )}
+          <button
+            onClick={() => setOpen(o => !o)}
+            style={{background:'none', border:`1px solid ${BORDER}`, borderRadius:4, padding:'3px 10px', cursor:'pointer', fontSize:9, color:MUTED, letterSpacing:2, display:'flex', alignItems:'center', gap:5}}
+          >
+            {open ? '▲' : '▼'} DETTAGLIO
+          </button>
         </div>
       </div>
+
       <div style={{display:'grid', gridTemplateColumns:'repeat(12,1fr)', gap:6}}>
         {MONTHS.map((m, i) => {
           const v25 = monthly2025[i]
@@ -87,12 +102,48 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
                 )}
               </div>
               <span style={{fontSize:8, color:MUTED, letterSpacing:1, textTransform:'uppercase'}}>{m}</span>
-              {has2025 && v25>0 && <span style={{fontSize:9, color:MUTED}}>{fmt(v25)}</span>}
-              {has2026 && v26>0 && <span style={{fontSize:9, color:GOLD}}>{fmt(v26)}</span>}
             </div>
           )
         })}
       </div>
+
+      {open && (
+        <div style={{marginTop:20, borderTop:`1px solid rgba(255,255,255,0.06)`, paddingTop:16}}>
+          <table style={{width:'100%', borderCollapse:'collapse'}}>
+            <thead>
+              <tr>
+                {['Mese', has2025&&'2025', has2026&&'2026', both&&'Δ %'].filter(Boolean).map(h=>(
+                  <th key={h} style={{...s.th, textAlign: h==='Mese' ? 'left' : 'right'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {MONTHS.map((m, i) => {
+                const v25 = monthly2025[i]
+                const v26 = monthly2026[i]
+                if (v25 === 0 && v26 === 0) return null
+                const d = delta(v25, v26)
+                return (
+                  <tr key={m}>
+                    <td style={{...s.td, fontSize:13, color:CREAM}}>{m}</td>
+                    {has2025 && <td style={{...s.td, textAlign:'right', fontSize:13, color:MUTED, fontFamily:"'Cormorant Garamond',serif"}}>
+                      {v25 > 0 ? `€ ${fmtFull(v25)}` : '—'}
+                    </td>}
+                    {has2026 && <td style={{...s.td, textAlign:'right', fontSize:13, color:GOLD, fontFamily:"'Cormorant Garamond',serif"}}>
+                      {v26 > 0 ? `€ ${fmtFull(v26)}` : '—'}
+                    </td>}
+                    {both && <td style={{...s.td, textAlign:'right', fontSize:12, fontWeight:700,
+                      color: d===null ? MUTED : d.new ? GOLD : d.pct >= 0 ? GREEN : CLAY
+                    }}>
+                      {d === null ? '—' : d.new ? 'Nuovo' : `${d.pct >= 0 ? '▲' : '▼'} ${Math.abs(d.pct)}%`}
+                    </td>}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
