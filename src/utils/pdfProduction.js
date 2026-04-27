@@ -58,8 +58,17 @@ export function generateProductionPDF(order) {
             ${adultSection}${kidsSection}
           </table>
         </div>
-        <div style="text-align:right;margin-top:6px;font-size:11px;color:#8a9ab5;">
-          Totale pezzi articolo: <strong style="color:#1a2744;font-size:14px;">${grandTotal}</strong>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+          <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+            ${['CRTM','TESS','TAGLIO','RIC/ST','CONF','PRONTO'].map(s=>`
+              <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid #c8d0dd;border-radius:3px;">
+                <div style="width:11px;height:11px;border:1.5px solid #8a9ab5;border-radius:2px;flex-shrink:0;"></div>
+                <span style="font-size:8px;letter-spacing:1px;color:#1a2744;font-family:'Josefin Sans',sans-serif;">${s}</span>
+              </div>`).join('')}
+          </div>
+          <div style="font-size:11px;color:#8a9ab5;white-space:nowrap;margin-left:12px;">
+            Totale pezzi articolo: <strong style="color:#1a2744;font-size:14px;">${grandTotal}</strong>
+          </div>
         </div>
       </div>`
   }).join('')
