@@ -154,8 +154,8 @@ export async function deleteOrder(orderId) {
   return true
 }
 
-export async function generateOrderId() {
-  const year = new Date().getFullYear()
+export async function generateOrderId(orderDate) {
+  const year = orderDate ? new Date(orderDate).getFullYear() : new Date().getFullYear()
   const BASE = 1600
   const { data, error } = await supabase.from('orders').select('id')
     .like('id', `DU-${year}-%`).order('id', { ascending: false }).limit(1)
