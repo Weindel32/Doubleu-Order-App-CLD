@@ -87,8 +87,8 @@ function MonthlyRevenueChart({ monthly2025, monthly2026 }) {
                 )}
               </div>
               <span style={{fontSize:8, color:MUTED, letterSpacing:1, textTransform:'uppercase'}}>{m}</span>
-              {has2025 && <span style={{fontSize:7, color: v25>0 ? MUTED : 'transparent', opacity: v25>0 ? 0.7 : 0}}>{v25>0 ? fmt(v25) : '—'}</span>}
-              {has2026 && <span style={{fontSize:7, color: v26>0 ? GOLD : 'transparent'}}>{v26>0 ? fmt(v26) : '—'}</span>}
+              {has2025 && v25>0 && <span style={{fontSize:9, color:MUTED}}>{fmt(v25)}</span>}
+              {has2026 && v26>0 && <span style={{fontSize:9, color:GOLD}}>{fmt(v26)}</span>}
             </div>
           )
         })}
