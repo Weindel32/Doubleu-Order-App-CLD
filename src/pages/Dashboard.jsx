@@ -18,10 +18,19 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
   const totalPending = orders.filter(o=>o.status!=='PREVENTIVO').reduce((s,o)=>s+paymentSummary(o).pending,0)
 
   // ── Yearly comparison ─────────────────────────────────────────
-  const rev2025 = confirmed.filter(o=>o.date?.includes('2025')).reduce((a,o)=>a+orderTotal(o),0)
-  const rev2026 = confirmed.filter(o=>o.date?.includes('2026')).reduce((a,o)=>a+orderTotal(o),0)
-  const maxRev  = Math.max(rev2025, rev2026, 1)
-  const growth  = rev2025 > 0 ? ((rev2026 - rev2025) / rev2025 * 100).toFixed(0) : null
+  const revenueByYear = confirmed.reduce((acc, o) => {
+    const match = o.date?.match(/(\d{4})/)
+    if (!match) return acc
+    const y = match[1]
+    acc[y] = (acc[y] || 0) + orderTotal(o)
+    return acc
+  }, {})
+  const yearEntries = Object.entries(revenueByYear).sort(([a],[b])=>a-b)
+  const maxRev  = Math.max(...yearEntries.map(([,v])=>v), 1)
+  const lastTwo = yearEntries.slice(-2)
+  const growth  = lastTwo.length === 2 && lastTwo[0][1] > 0
+    ? ((lastTwo[1][1] - lastTwo[0][1]) / lastTwo[0][1] * 100).toFixed(0)
+    : null
 
   const top3 = Object.values(
     orders.filter(o=>o.status!=='PREVENTIVO').reduce((acc,o)=>{
@@ -56,18 +65,18 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
       </div>
 
       {/* ── Yearly comparison ────────────────────────────────── */}
-      {(rev2025 > 0 || rev2026 > 0) && (
+      {yearEntries.length > 0 && (
         <div style={{...s.card, marginBottom:16}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
             <div style={s.cardTitle}>Fatturato Annuale</div>
             {growth !== null && (
               <div style={{fontSize:11,color:parseFloat(growth)>=0?GREEN:CLAY,letterSpacing:1,fontWeight:700}}>
-                {parseFloat(growth)>=0?'▲':'▼'} {Math.abs(parseFloat(growth))}% vs 2025
+                {parseFloat(growth)>=0?'▲':'▼'} {Math.abs(parseFloat(growth))}% vs {lastTwo[0][0]}
               </div>
             )}
           </div>
           <div style={{display:'flex',gap:20,alignItems:'flex-end'}}>
-            {[{year:'2025',rev:rev2025},{year:'2026',rev:rev2026}].map(({year,rev})=>(
+            {yearEntries.map(([year,rev])=>(
               <div key={year} style={{flex:1}}>
                 <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
                   <span style={{fontSize:11,color:MUTED,letterSpacing:2}}>{year}</span>
