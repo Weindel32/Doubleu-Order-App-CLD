@@ -45,13 +45,13 @@ function MonthlyRevenueChart({ monthlyByYear }) {
 
   // Oldest year = most muted, newest = most prominent (gold gradient)
   const PALETTE = [
-    { bar: 'rgba(138,154,181,0.3)', dot: '#5a6a81', opacity: 1 },
-    { bar: MUTED,                   dot: MUTED,     opacity: 0.5 },
+    { bar: 'rgba(90,140,210,0.75)', dot: '#5a8cd2', opacity: 1 },
+    { bar: '#4db8c8',               dot: '#4db8c8', opacity: 0.9 },
     { bar: `linear-gradient(180deg,${CLAY},${GOLD})`, dot: GOLD, opacity: 1 },
   ]
   const getStyle = (year) => PALETTE[Math.max(0, PALETTE.length - years.length + years.indexOf(year))]
 
-  const barW = years.length === 1 ? 12 : years.length === 2 ? 7 : 5
+  const barW = years.length === 1 ? 14 : years.length === 2 ? 9 : 7
 
   const showTip = (e, text) => {
     if (hideTimer.current) clearTimeout(hideTimer.current)
