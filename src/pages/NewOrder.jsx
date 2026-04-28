@@ -182,9 +182,10 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
     if (pricingMode==='kit' && !kitQuantity) { alert('Inserisci il numero di kit'); return }
     setSaving(true); setSaveError(null)
     try {
-      const id = editOrder?.id || await generateOrderId(orderDate)
       const finalStatus = confirmOrder ? 'CONFERMATO' : status
-      const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces }
+      const order = { ...orderObj(), status: finalStatus, pieces: totalPieces }
+      const id = editOrder?.id || await generateOrderId(order.date)
+      order.id = id
       const ok = editOrder ? await updateOrder(order) : await createOrder(order)
       if (ok) { onSaved() } else { setSaveError('Errore nel salvataggio. Riprova.') }
     } catch (e) { setSaveError('Errore: ' + e.message) }

@@ -160,8 +160,17 @@ export async function deleteOrder(orderId) {
   return true
 }
 
-export async function generateOrderId(orderDate) {
-  const year = orderDate ? parseInt(orderDate.split('-')[0]) : new Date().getFullYear()
+export async function generateOrderId(dateStr) {
+  let year = new Date().getFullYear()
+  if (dateStr) {
+    if (dateStr.includes('/')) {
+      const y = parseInt(dateStr.split('/')[2])
+      if (!isNaN(y) && y > 2000) year = y
+    } else {
+      const y = parseInt(dateStr.split('-')[0])
+      if (!isNaN(y) && y > 2000) year = y
+    }
+  }
   const BASE = 1600
   const { data, error } = await supabase.from('orders').select('id')
     .like('id', `DU-${year}-%`).order('id', { ascending: false }).limit(1)
