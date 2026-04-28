@@ -52,6 +52,12 @@ export async function fetchOrders() {
       kits: kitsWithArticles, payments: payments || [],
     }
   }))
+  const parseDate = str => {
+    if (!str) return 0
+    const [d, m, y] = str.split('/')
+    return new Date(y, m - 1, d).getTime()
+  }
+  full.sort((a, b) => parseDate(b.date) - parseDate(a.date))
   return full
 }
 
@@ -155,7 +161,7 @@ export async function deleteOrder(orderId) {
 }
 
 export async function generateOrderId(orderDate) {
-  const year = orderDate ? new Date(orderDate).getFullYear() : new Date().getFullYear()
+  const year = orderDate ? parseInt(orderDate.split('-')[0]) : new Date().getFullYear()
   const BASE = 1600
   const { data, error } = await supabase.from('orders').select('id')
     .like('id', `DU-${year}-%`).order('id', { ascending: false }).limit(1)
