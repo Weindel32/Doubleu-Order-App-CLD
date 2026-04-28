@@ -136,11 +136,16 @@ export default function MobileAnalytics({ orders }) {
   const currentYear = new Date().getFullYear()
   const currentYearRevenue = (monthlyByYear[currentYear] || []).reduce((s, v) => s + v, 0)
 
-  const totalRevenue = confirmed.reduce((s, o) => s + orderTotal(o), 0)
-  const istituzionale = confirmed.filter(o => o.orderType !== 'soci').reduce((s, o) => s + orderTotal(o), 0)
-  const sociShop = confirmed.filter(o => o.orderType === 'soci').reduce((s, o) => s + orderTotal(o), 0)
-  const pctIst = totalRevenue > 0 ? Math.round(istituzionale / totalRevenue * 100) : 0
-  const pctSoci = totalRevenue > 0 ? Math.round(sociShop / totalRevenue * 100) : 0
+  const currentYearOrders = confirmed.filter(o => {
+    if (!o.date) return false
+    const parts = o.date.split('/')
+    return parts.length >= 3 && parseInt(parts[2]) === currentYear
+  })
+  const currentYearTotal = currentYearOrders.reduce((s, o) => s + orderTotal(o), 0)
+  const istituzionale = currentYearOrders.filter(o => o.orderType !== 'soci').reduce((s, o) => s + orderTotal(o), 0)
+  const sociShop = currentYearOrders.filter(o => o.orderType === 'soci').reduce((s, o) => s + orderTotal(o), 0)
+  const pctIst = currentYearTotal > 0 ? Math.round(istituzionale / currentYearTotal * 100) : 0
+  const pctSoci = currentYearTotal > 0 ? Math.round(sociShop / currentYearTotal * 100) : 0
 
   const totalPieces = confirmed.reduce((sum, o) => sum + getAllArticles(o).reduce((s, a) => s + artPieceCount(a), 0), 0)
 
@@ -178,7 +183,7 @@ export default function MobileAnalytics({ orders }) {
 
       {/* Split istituzionale / soci */}
       <div style={{ marginBottom: 20 }}>
-        <SectionTitle>Split Ordini</SectionTitle>
+        <SectionTitle>Split Ordini {currentYear}</SectionTitle>
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
           <div style={{ display: 'flex' }}>
             <div style={{ flex: 1, padding: '16px', borderRight: `1px solid rgba(184,150,90,0.12)` }}>
