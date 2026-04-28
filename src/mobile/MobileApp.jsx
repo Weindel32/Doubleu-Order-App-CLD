@@ -4,11 +4,13 @@ import MobileHome from './MobileHome.jsx'
 import MobileOrders from './MobileOrders.jsx'
 import MobileClients from './MobileClients.jsx'
 import MobileOrderDetail from './MobileOrderDetail.jsx'
+import MobileAnalytics from './MobileAnalytics.jsx'
 
 const TABS = [
-  { key: 'home',    label: 'Home',    icon: '◈' },
-  { key: 'orders',  label: 'Ordini',  icon: '≡' },
-  { key: 'clients', label: 'Clienti', icon: '◎' },
+  { key: 'home',      label: 'Home',    icon: '◈' },
+  { key: 'orders',    label: 'Ordini',  icon: '≡' },
+  { key: 'clients',   label: 'Clienti', icon: '◎' },
+  { key: 'analytics', label: 'Stats',   icon: '◫' },
 ]
 
 export default function MobileApp({ orders, clients, onLogout, onUpsertClient }) {
@@ -71,9 +73,10 @@ export default function MobileApp({ orders, clients, onLogout, onUpsertClient })
         WebkitOverflowScrolling: 'touch',
         paddingBottom: 'calc(64px + env(safe-area-inset-bottom))',
       }}>
-        {tab === 'home'    && <MobileHome    orders={orders} onSelectOrder={setSelectedOrder} onGoToOrders={goToOrders} />}
-        {tab === 'orders'  && <MobileOrders  orders={orders} onSelectOrder={setSelectedOrder} filter={ordersFilter} onFilterChange={setOrdersFilter} />}
-        {tab === 'clients' && <MobileClients clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
+        {tab === 'home'      && <MobileHome      orders={orders} onSelectOrder={setSelectedOrder} onGoToOrders={goToOrders} />}
+        {tab === 'orders'    && <MobileOrders    orders={orders} onSelectOrder={setSelectedOrder} filter={ordersFilter} onFilterChange={setOrdersFilter} />}
+        {tab === 'clients'   && <MobileClients   clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
+        {tab === 'analytics' && <MobileAnalytics orders={orders} />}
       </div>
 
       {/* Bottom Tab Bar */}
