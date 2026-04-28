@@ -64,7 +64,7 @@ function DatePicker({ value, onChange, label }) {
             <button onClick={()=>{ if(viewMonth===11){setViewMonth(0);setViewYear(y=>y+1)}else setViewMonth(m=>m+1) }} style={{ background:'none', border:'none', color:GOLD, fontSize:18, cursor:'pointer', padding:'0 8px' }}>›</button>
           </div>
           <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
-            {[2024,2025,2026].map(y=>(
+            {[2023,2024,2025,2026].map(y=>(
               <button key={y} onClick={()=>setViewYear(y)} style={{ padding:'3px 10px', borderRadius:3, border:`1px solid ${y===viewYear?GOLD:BORDER}`, background:y===viewYear?'rgba(184,150,90,0.2)':'transparent', color:y===viewYear?GOLD:MUTED, cursor:'pointer', fontSize:10 }}>{y}</button>
             ))}
           </div>
