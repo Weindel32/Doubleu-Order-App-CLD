@@ -97,12 +97,13 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
     })
     .sort((a, b) => {
       let av, bv
+      const pd = str => { if (!str) return 0; const [d,m,y]=str.split('/'); return new Date(+y,+m-1,+d).getTime()||0 }
       if (sortBy==='client')   { av=a.client||''; bv=b.client||'' }
-      else if (sortBy==='date')     { av=a.date||''; bv=b.date||'' }
-      else if (sortBy==='delivery') { av=a.deliveryDate||''; bv=b.deliveryDate||'' }
+      else if (sortBy==='date')     { av=pd(a.date); bv=pd(b.date) }
+      else if (sortBy==='delivery') { av=pd(a.deliveryDate); bv=pd(b.deliveryDate) }
       else if (sortBy==='total')    { av=orderTotal(a); bv=orderTotal(b) }
       else if (sortBy==='pieces')   { av=a.pieces||0; bv=b.pieces||0 }
-      else { av=a.date||''; bv=b.date||'' }
+      else { av=pd(a.date); bv=pd(b.date) }
       if (av<bv) return sortDir==='asc'?-1:1
       if (av>bv) return sortDir==='asc'?1:-1
       return 0
