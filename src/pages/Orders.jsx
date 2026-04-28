@@ -79,7 +79,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
   const [sortBy, setSortBy]   = useState('date')
   const [sortDir, setSortDir] = useState('desc')
   const [bollaOrder, setBollaOrder] = useState(null)
-  const filters = ['Tutti','Preventivo','Confermato','In Produzione','Consegna Parziale','Consegnato','Da Incassare']
+  const filters = ['Tutti','Confermato','In Produzione','Consegna Parziale','Consegnato','Da Incassare']
 
   const handleSort = (col) => {
     if (sortBy === col) setSortDir(d => d==='asc'?'desc':'asc')
@@ -90,8 +90,9 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
 
   const filtered = orders
     .filter(o => {
-      const matchFilter = filter==='Tutti' ||
-        (filter==='Da Incassare' ? o.status!=='PREVENTIVO' && paymentSummary(o).pending > 0 : o.status===filter.toUpperCase())
+      if (o.status === 'PREVENTIVO') return false
+      const matchFilter = filter === 'Tutti' ||
+        (filter === 'Da Incassare' ? paymentSummary(o).pending > 0 : o.status === filter.toUpperCase())
       const matchSearch = !search || o.client.toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase())
       return matchFilter && matchSearch
     })
@@ -125,7 +126,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
       <div style={s.topBar}>
         <div>
           <div style={s.pageTitle}>Archivio Ordini</div>
-          <div style={s.pageSub}>{orders.length} ordini in archivio</div>
+          <div style={s.pageSub}>{orders.filter(o => o.status !== 'PREVENTIVO').length} ordini in archivio</div>
         </div>
         <div style={{display:'flex',gap:10}}>
           <button style={{...btnStyle(false),color:'#7aaee8',border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)',padding:'9px 18px'}}

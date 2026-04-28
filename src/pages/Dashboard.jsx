@@ -9,7 +9,7 @@ import StatCard                  from '../components/StatCard.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
 import { useState }              from 'react'
 
-export default function Dashboard({ orders, setView, setEditOrder, onDelete, onOrdersChange, navigateToOrders }) {
+export default function Dashboard({ orders, setView, setEditOrder, onDelete, onOrdersChange, navigateToOrders, onNavigateToQuotes }) {
   const [bollaOrder, setBollaOrder] = useState(null)
   const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
   const quote     = orders.filter(o => o.status === 'PREVENTIVO')
@@ -58,7 +58,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
       <AlertsPanel orders={orders} setView={setView} setEditOrder={setEditOrder}/>
 
       <div style={s.grid4}>
-        <StatCard label="Preventivi"    value={quote.length}     sub="In attesa"           onClick={navigateToOrders ? () => navigateToOrders('Preventivo')     : undefined} />
+        <StatCard label="Preventivi"    value={quote.length}     sub="In attesa"           onClick={onNavigateToQuotes || undefined} />
         <StatCard label="Confermati"    value={confirmed.length} sub={`${totalRev.toLocaleString('it-IT',{maximumFractionDigits:0})} €`} accent onClick={navigateToOrders ? () => navigateToOrders('Confermato')    : undefined} />
         <StatCard label="In Produzione" value={inProd.length}    sub="Ordini attivi"       onClick={navigateToOrders ? () => navigateToOrders('In Produzione')  : undefined} />
         <StatCard label="Da Incassare"  value={`€ ${totalPending.toLocaleString('it-IT',{maximumFractionDigits:0})}`} sub="Pagamenti in sospeso" onClick={navigateToOrders ? () => navigateToOrders('Da Incassare') : undefined} />
