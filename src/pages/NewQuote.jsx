@@ -133,9 +133,20 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
     }))
   }
 
-  const openPDF = () => {
-    const h = generateQuotePDF(currentQuote)
+  const openPDF = async () => {
+    let quoteForPDF = currentQuote
+    // Auto-save before opening PDF to prevent data loss
+    if (!isEdit && club.trim()) {
+      try {
+        const id = await generateOrderId(orderDate)
+        const order = { ...quoteObj(), id }
+        await createOrder(order)
+        quoteForPDF = { ...order }
+      } catch {}
+    }
+    const h = generateQuotePDF(quoteForPDF)
     const w = window.open('', '_blank')
+    if (!w) { alert('Popup bloccato dal browser. Abilita i popup per visualizzare il PDF.'); return }
     w.document.write(h)
     w.document.close()
   }
