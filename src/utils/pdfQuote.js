@@ -26,6 +26,8 @@ export function generateQuotePDF(order) {
       }).join('')
     } else {
       return articles.map(a => {
+        const qty = parseInt(a.estimatedQty) || 0
+        const artTotal = (parseFloat(a.price) || 0) * qty
         return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
             <div>
@@ -33,8 +35,14 @@ export function generateQuotePDF(order) {
               <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${[a.category, a.line, a.color].filter(Boolean).join(' · ')}</div>
             </div>
             <div style="text-align:right;">
+              ${qty ? `
+              <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO × QUANTITÀ STIMATA</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(a.price)||0).toFixed(2)} × ${qty} pz</div>
+              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${artTotal.toFixed(2)}</div>
+              ` : `
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO UNITARIO</div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(a.price)||0).toFixed(2)}</div>
+              `}
             </div>
           </div>`
       }).join('')

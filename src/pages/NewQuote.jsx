@@ -8,7 +8,7 @@ import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js
 const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Riepilogo']
 
 const emptyArticle = () => ({
-  sp: '', category: 'Felpa', line: 'Performance', description: '', color: '', price: '', notes: '',
+  sp: '', category: 'Felpa', line: 'Performance', description: '', color: '', price: '', estimatedQty: '', notes: '',
   delivered: false,
   sizes: { adult: {}, kids: {} },
 })
@@ -297,9 +297,12 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
                     <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e => updateArt(ki, ai, 'category', e.target.value)}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
                     <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e => updateArt(ki, ai, 'line', e.target.value)}>{LINES.map(l => <option key={l}>{l}</option>)}</select></div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: pricingMode === 'singolo' ? '140px 1fr' : '1fr', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: pricingMode === 'singolo' ? '140px 100px 1fr' : '1fr', gap: 10 }}>
                     {pricingMode === 'singolo' && (
                       <div><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e => updateArt(ki, ai, 'price', e.target.value)} placeholder="28"/></div>
+                    )}
+                    {pricingMode === 'singolo' && (
+                      <div><label style={s.label}>Quantità stimata</label><input type="number" min="1" style={inp} value={art.estimatedQty || ''} onChange={e => updateArt(ki, ai, 'estimatedQty', e.target.value)} placeholder="10"/></div>
                     )}
                     <div><label style={s.label}>Note articolo</label><input style={inp} value={art.notes || ''} onChange={e => updateArt(ki, ai, 'notes', e.target.value)} placeholder="Es. logo ricamato fronte sinistra..."/></div>
                   </div>

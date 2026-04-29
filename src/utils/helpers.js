@@ -20,7 +20,8 @@ export function orderSubtotal(order) {
     }, 0)
   }
   return (order.kits || []).flatMap(k => k.articles || []).reduce((sum, a) => {
-    return sum + (parseFloat(a.price) || 0) * artPieceCount(a)
+    const pieces = artPieceCount(a) || parseInt(a.estimatedQty) || 0
+    return sum + (parseFloat(a.price) || 0) * pieces
   }, 0)
 }
 
