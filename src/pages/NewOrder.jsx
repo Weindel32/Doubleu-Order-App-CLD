@@ -375,17 +375,18 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
             <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:14}}>{pricingMode==='kit'?'ARTICOLI NEL KIT':'ARTICOLI'}</div>
             {kit.articles.map((art,ai)=>(
               <div key={ai} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'14px',marginBottom:10}}>
-                <div style={{display:'grid',gridTemplateColumns:'160px 1fr 1fr 1fr 1fr',gap:10,marginBottom:10}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 160px 1fr 1fr 1fr',gap:10,marginBottom:10}}>
+                  <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e=>updateArt(ki,ai,'category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
                   <SpAutocomplete
                     value={art.sp}
+                    category={art.category}
                     inputStyle={inp}
                     onSelect={product => {
-                      setKits(kits.map((k,i) => i!==ki ? k : { ...k, articles: k.articles.map((a,j) => j!==ai ? a : { ...a, sp: product.code, description: product.description }) }))
+                      setKits(kits.map((k,i) => i!==ki ? k : { ...k, articles: k.articles.map((a,j) => j!==ai ? a : { ...a, sp: product.code, description: product.description, category: product.category }) }))
                     }}
                   />
                   <div><label style={s.label}>Descrizione *</label><input style={inp} value={art.description} onChange={e=>updateArt(ki,ai,'description',e.target.value)} placeholder="Felpa zip cappuccio"/></div>
                   <div><label style={s.label}>Colore / Pantone</label><input style={inp} value={art.color} onChange={e=>updateArt(ki,ai,'color',e.target.value)} placeholder="Navy/Cream"/></div>
-                  <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e=>updateArt(ki,ai,'category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
                   <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e=>updateArt(ki,ai,'line',e.target.value)}>{LINES.map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:pricingMode==='singolo'?'140px 1fr':'1fr',gap:10,alignItems:'end'}}>
