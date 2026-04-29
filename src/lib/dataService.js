@@ -31,7 +31,8 @@ export async function fetchOrders() {
         articles: (articles || []).map(a => ({
           ...a, notes: a.notes || '',
           delivered: a.delivered || false,
-          sizes: { adult: a.sizes_adult || {}, kids: a.sizes_kids || {} }
+          estimatedQty: (a.sizes_adult || {}).__qty || null,
+          sizes: { adult: (({ __qty, ...rest }) => rest)(a.sizes_adult || {}), kids: a.sizes_kids || {} }
         }))
       }
     }))
@@ -88,7 +89,8 @@ export async function createOrder(order) {
         kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
         description: art.description, color: art.color, price: art.price || null,
         notes: art.notes || null, delivered: art.delivered || false,
-        sizes_adult: art.sizes?.adult || {}, sizes_kids: art.sizes?.kids || {},
+        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}) },
+        sizes_kids: art.sizes?.kids || {},
       })
     }
   }
@@ -128,7 +130,8 @@ export async function updateOrder(order) {
         kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
         description: art.description, color: art.color, price: art.price || null,
         notes: art.notes || null, delivered: art.delivered || false,
-        sizes_adult: art.sizes?.adult || {}, sizes_kids: art.sizes?.kids || {},
+        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}) },
+        sizes_kids: art.sizes?.kids || {},
       })
     }
   }
