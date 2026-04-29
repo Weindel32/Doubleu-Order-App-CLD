@@ -381,7 +381,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
                   <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e=>updateArt(ki,ai,'category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
                   <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e=>updateArt(ki,ai,'line',e.target.value)}>{LINES.map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:pricingMode==='singolo'?'140px 1fr':'1fr',gap:10}}>
+                <div style={{display:'grid',gridTemplateColumns:pricingMode==='singolo'?'140px 1fr':'1fr',gap:10,alignItems:'end'}}>
                   {pricingMode==='singolo' && <div><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e=>updateArt(ki,ai,'price',e.target.value)} placeholder="28"/></div>}
                   <div><label style={s.label}>Note articolo</label><input style={inp} value={art.notes||''} onChange={e=>updateArt(ki,ai,'notes',e.target.value)} placeholder="Es. logo ricamato fronte sinistra, manica raglan..."/></div>
                 </div>
