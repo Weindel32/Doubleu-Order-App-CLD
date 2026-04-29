@@ -154,7 +154,21 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
   const removeArt  =(ki,ai)=>  setKits(kits.map((k,i)=>i===ki?{...k,articles:k.articles.filter((_,j)=>j!==ai)}:k))
   const updateArt  =(ki,ai,f,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,[f]:v})}))
   const updateSz        =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
-  const toggleDelivered =(ki,ai)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,delivered:!a.delivered})}))
+  const toggleDelivered = async (ki, ai) => {
+    const newKits = kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,delivered:!a.delivered})})
+    setKits(newKits)
+    if (status === 'CONSEGNA PARZIALE' && editOrder?.id) {
+      const allDelivered = newKits.flatMap(k => k.articles).every(a => a.delivered)
+      if (allDelivered) {
+        setStatus('CONSEGNATO')
+        setSaving(true)
+        const order = { ...orderObj(), kits: newKits, status: 'CONSEGNATO', pieces: totalPieces }
+        const ok = await updateOrder(order)
+        if (!ok) setSaveError('Errore aggiornamento automatico stato. Salva manualmente.')
+        setSaving(false)
+      }
+    }
+  }
 
   // ── DUPLICATE ARTICLE ─────────────────────────────────────────
   const duplicateArt = (ki, ai) => {
@@ -508,7 +522,6 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
                 <div><div style={{fontSize:9,color:MUTED}}>Pz consegnate</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GREEN}}>{deliveredPieces}</div></div>
                 <div><div style={{fontSize:9,color:MUTED}}>Pz rimanenti</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:pendingPieces>0?GOLD:MUTED}}>{pendingPieces}</div></div>
               </div>
-              {deliveredCount===deliveryArtList.length&&status==='CONSEGNA PARZIALE'&&<div style={{marginTop:10,fontSize:10,color:'#7aaee8',letterSpacing:1}}>✓ Tutti gli articoli consegnati — considera di aggiornare lo stato a CONSEGNATO</div>}
             </div>
           )}
           {saveError && <div style={{marginTop:12,padding:'10px 16px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:6,color:'#ef4444',fontSize:12}}>{saveError}</div>}
