@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { PRODUCT_CATALOG } from '../data/productCatalog.js'
-import { GOLD, CREAM, MUTED, BORDER, CLAY } from '../tokens.js'
+import { GOLD, CREAM, MUTED, BORDER } from '../tokens.js'
 import { s } from '../tokens.js'
 
-export default function SpAutocomplete({ value, onSelect, inputStyle }) {
+export default function SpAutocomplete({ value, category, onSelect, inputStyle }) {
   const [query, setQuery] = useState(value || '')
   const [open, setOpen] = useState(false)
   const containerRef = useRef(null)
@@ -22,12 +22,16 @@ export default function SpAutocomplete({ value, onSelect, inputStyle }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filtered = query.trim().length === 0
-    ? []
-    : PRODUCT_CATALOG.filter(p =>
-        p.code.toLowerCase().includes(query.toLowerCase()) ||
-        p.description.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 12)
+  const filtered = (() => {
+    const byCat = category && category !== 'Altro'
+      ? PRODUCT_CATALOG.filter(p => p.category === category)
+      : PRODUCT_CATALOG
+    if (query.trim().length === 0) return byCat.slice(0, 12)
+    return byCat.filter(p =>
+      p.code.toLowerCase().includes(query.toLowerCase()) ||
+      p.description.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 12)
+  })()
 
   function handleChange(e) {
     setQuery(e.target.value)
@@ -51,7 +55,7 @@ export default function SpAutocomplete({ value, onSelect, inputStyle }) {
         style={inputStyle}
         value={query}
         onChange={handleChange}
-        onFocus={() => query.trim().length > 0 && setOpen(true)}
+        onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder="DUSP 206 o felpa..."
         autoComplete="off"
@@ -68,7 +72,7 @@ export default function SpAutocomplete({ value, onSelect, inputStyle }) {
           borderRadius: 8,
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           minWidth: '100%',
-          maxWidth: 420,
+          maxWidth: 440,
           maxHeight: 280,
           overflowY: 'auto',
         }}>
