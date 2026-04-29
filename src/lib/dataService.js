@@ -80,7 +80,7 @@ export async function createOrder(order) {
   for (let ki = 0; ki < order.kits.length; ki++) {
     const kit = order.kits[ki]
     const { data: kitData, error: kitErr } = await supabase.from('kits')
-      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, position: ki })
+      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki })
       .select().single()
     if (kitErr) { console.error('createKit:', kitErr); continue }
     for (const art of kit.articles) {
@@ -120,7 +120,7 @@ export async function updateOrder(order) {
   for (let ki = 0; ki < order.kits.length; ki++) {
     const kit = order.kits[ki]
     const { data: kitData, error: kitErr } = await supabase.from('kits')
-      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, position: ki })
+      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki })
       .select().single()
     if (kitErr) { console.error('updateKit:', kitErr); continue }
     for (const art of kit.articles) {

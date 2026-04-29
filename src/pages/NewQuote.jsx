@@ -145,6 +145,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
 
   const handleSave = async () => {
     if (!club.trim()) { alert('Inserisci il nome del club'); return }
+    if (pricingMode === 'kit' && kits.some(k => !k.quantity)) { alert('Inserisci la quantità per ogni kit'); return }
     setSaving(true); setSaveError(null)
     try {
       const id    = editOrder?.id || await generateOrderId(orderDate)
