@@ -12,7 +12,7 @@ const emptyArticle = () => ({
   delivered: false,
   sizes: { adult: {}, kids: {} },
 })
-const emptyKit = () => ({ name: '', price: '', articles: [emptyArticle()] })
+const emptyKit = () => ({ name: '', price: '', quantity: '', articles: [emptyArticle()] })
 
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
 
@@ -93,7 +93,6 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
   const [orderDate, setOrderDate]     = useState(editOrder ? (editOrder.date?.split('/').length === 3 ? `${editOrder.date.split('/')[2]}-${editOrder.date.split('/')[1]}-${editOrder.date.split('/')[0]}` : editOrder.date) : new Date().toISOString().split('T')[0])
   const [clientNotes, setCN]          = useState(editOrder?.notes || '')
   const [pricingMode, setPM]          = useState(editOrder?.pricingMode || 'singolo')
-  const [kitQuantity, setKitQty]      = useState(editOrder?.kitQuantity || '')
   const [ivaEnabled, setIvaEnabled]   = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                     = useState(22)
   const [kits, setKits]               = useState(editOrder?.kits || [emptyKit()])
@@ -109,7 +108,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
     deliveryDate: '', alertDays: 7, status: 'PREVENTIVO',
     pieces: 0, orderType: 'istituzionale',
     notes: clientNotes, productionNotes: '', pricingMode,
-    kitQuantity: parseInt(kitQuantity) || null,
+    kitQuantity: null,
     ivaEnabled, ivaRate, kits, payments: [],
     showTotalInClientPDF: true,
   })
@@ -146,7 +145,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
 
   const handleSave = async () => {
     if (!club.trim()) { alert('Inserisci il nome del club'); return }
-    if (pricingMode === 'kit' && !kitQuantity) { alert('Inserisci il numero di kit stimati'); return }
+    if (pricingMode === 'kit' && kits.some(k => !k.quantity)) { alert('Inserisci la quantità per ogni kit'); return }
     setSaving(true); setSaveError(null)
     try {
       const id    = editOrder?.id || await generateOrderId(orderDate)
@@ -168,12 +167,16 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
     <div style={{ ...s.card, background: 'rgba(184,150,90,0.07)', border: `1px solid rgba(184,150,90,0.2)` }}>
       <div style={s.cardTitle}>Importo Preventivo</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {pricingMode === 'kit' && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
-            <span>Prezzo kit × {kitQuantity || '?'} kit stimati</span>
-            <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, color: GOLD }}>€ {subtotal.toFixed(2)}</span>
-          </div>
-        )}
+        {pricingMode === 'kit' && kits.map((kit, ki) => {
+          const qty = parseInt(kit.quantity) || 0
+          const kitTotal = (parseFloat(kit.price) || 0) * qty
+          return (
+            <div key={ki} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
+              <span>{kit.name || `Kit ${ki + 1}`} — € {parseFloat(kit.price) || 0} × {qty || '?'}</span>
+              <span style={{ color: CREAM }}>€ {kitTotal.toFixed(2)}</span>
+            </div>
+          )
+        })}
         {pricingMode === 'singolo' && (
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
             <span>Subtotale</span>
@@ -272,27 +275,16 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
             </label>
           </div>
 
-          {pricingMode === 'kit' && (
-            <div style={s.card}>
-              <div style={s.cardTitle}>Numero Kit Stimati *</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 16, alignItems: 'center' }}>
-                <div>
-                  <label style={s.label}>Quanti kit circa?</label>
-                  <input type="number" min="1" style={inp} value={kitQuantity} onChange={e => setKitQty(e.target.value)} placeholder="Es. 80"/>
-                </div>
-                <div style={{ fontSize: 11, color: MUTED, paddingTop: 20 }}>
-                  Totale stimato: € {((kits.reduce((s, k) => s + (parseFloat(k.price) || 0), 0)) * (parseInt(kitQuantity) || 0)).toFixed(2)}
-                </div>
-              </div>
-            </div>
-          )}
-
           {kits.map((kit, ki) => (
             <div key={ki} style={{ ...s.card, border: `1px solid rgba(196,98,58,0.25)` }}>
               {pricingMode === 'kit' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 16, marginBottom: 20 }}>
-                  <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e => updateKit(ki, 'name', e.target.value)} placeholder="Es. Kit Completo Padel"/></div>
-                  <div><label style={s.label}>Prezzo Kit € (per giocatore)</label><input type="number" style={inp} value={kit.price} onChange={e => updateKit(ki, 'price', e.target.value)} placeholder="30"/></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px', gap: 16, marginBottom: 20, alignItems: 'end' }}>
+                  <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e => updateKit(ki, 'name', e.target.value)} placeholder="Es. Kit Scuola Tennis"/></div>
+                  <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e => updateKit(ki, 'price', e.target.value)} placeholder="85"/></div>
+                  <div>
+                    <label style={s.label}>Quantità (n° persone) *</label>
+                    <input type="number" min="1" style={{ ...inp, borderColor: !kit.quantity ? 'rgba(196,98,58,0.5)' : undefined }} value={kit.quantity} onChange={e => updateKit(ki, 'quantity', e.target.value)} placeholder="Es. 50"/>
+                  </div>
                 </div>
               )}
               <div style={{ fontSize: 9, letterSpacing: 3, color: MUTED, marginBottom: 14 }}>{pricingMode === 'kit' ? 'ARTICOLI NEL KIT' : 'ARTICOLI'}</div>
@@ -339,8 +331,8 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
                 { l: 'CLUB',      v: club || '—',          serif: true },
                 { l: 'ARTICOLI',  v: allArticles.length,   serif: true, color: GOLD },
                 pricingMode === 'kit'
-                  ? { l: 'KIT STIMATI', v: kitQuantity || '—', serif: true, color: GOLD }
-                  : { l: 'DATA',        v: toItalianDate(orderDate) || '—' },
+                  ? { l: 'TOTALE PERSONE', v: kits.reduce((s, k) => s + (parseInt(k.quantity) || 0), 0) || '—', serif: true, color: GOLD }
+                  : { l: 'DATA',           v: toItalianDate(orderDate) || '—' },
               ].map(item => (
                 <div key={item.l}>
                   <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 6 }}>{item.l}</div>
