@@ -9,6 +9,7 @@ import { exportSizesCSV }        from '../utils/exportCSV.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
+import SpAutocomplete            from '../components/SpAutocomplete.jsx'
 
 const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riepilogo']
 
@@ -374,8 +375,14 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
             <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:14}}>{pricingMode==='kit'?'ARTICOLI NEL KIT':'ARTICOLI'}</div>
             {kit.articles.map((art,ai)=>(
               <div key={ai} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'14px',marginBottom:10}}>
-                <div style={{display:'grid',gridTemplateColumns:'120px 1fr 1fr 1fr 1fr',gap:10,marginBottom:10}}>
-                  <div><label style={s.label}>Codice SP *</label><input style={inp} value={art.sp} onChange={e=>updateArt(ki,ai,'sp',e.target.value)} placeholder="SP-206"/></div>
+                <div style={{display:'grid',gridTemplateColumns:'160px 1fr 1fr 1fr 1fr',gap:10,marginBottom:10}}>
+                  <SpAutocomplete
+                    value={art.sp}
+                    inputStyle={inp}
+                    onSelect={product => {
+                      setKits(kits.map((k,i) => i!==ki ? k : { ...k, articles: k.articles.map((a,j) => j!==ai ? a : { ...a, sp: product.code, description: product.description }) }))
+                    }}
+                  />
                   <div><label style={s.label}>Descrizione *</label><input style={inp} value={art.description} onChange={e=>updateArt(ki,ai,'description',e.target.value)} placeholder="Felpa zip cappuccio"/></div>
                   <div><label style={s.label}>Colore / Pantone</label><input style={inp} value={art.color} onChange={e=>updateArt(ki,ai,'color',e.target.value)} placeholder="Navy/Cream"/></div>
                   <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e=>updateArt(ki,ai,'category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
