@@ -7,7 +7,6 @@
 -- MIGRATION: quantità per-kit (esegui una volta sola)
 -- ----------------------------------------------------------------
 ALTER TABLE kits ADD COLUMN IF NOT EXISTS quantity integer;
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS estimated_qty integer;
 -- ----------------------------------------------------------------
 
 -- ORDINE 1: ECO VILLAGE
