@@ -9,7 +9,7 @@ export function generateQuotePDF(order) {
   const pricingBlock = (() => {
     if (order.pricingMode === 'kit') {
       return order.kits.map(kit => {
-        const qty      = parseInt(order.kitQuantity) || 0
+        const qty      = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
         const kitTotal = (parseFloat(kit.price) || 0) * qty
         return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
@@ -18,8 +18,8 @@ export function generateQuotePDF(order) {
               <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${kit.articles.map(a => a.description).filter(Boolean).join(' + ')}</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° KIT STIMATI</div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(kit.price)||0).toFixed(2)} × ${qty} kit</div>
+              <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° PERSONE</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(kit.price)||0).toFixed(2)} × ${qty} pers.</div>
               <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${kitTotal.toFixed(2)}</div>
             </div>
           </div>`
@@ -64,7 +64,7 @@ export function generateQuotePDF(order) {
     <div style="margin-top:20px;padding-top:16px;border-top:2px solid #e0d8cc;">
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
         <div style="display:flex;justify-content:space-between;width:300px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">${order.pricingMode === 'kit' ? `TOTALE STIMATO (${order.kitQuantity || '?'} KIT)` : 'IMPONIBILE STIMATO'}</span>
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">${order.pricingMode === 'kit' ? `TOTALE STIMATO (${order.kits.reduce((s,k)=>s+(parseInt(k.quantity)||parseInt(order.kitQuantity)||0),0)} PERSONE)` : 'IMPONIBILE STIMATO'}</span>
           <span style="font-size:15px;color:#1a2744;">€ ${subtotal.toFixed(2)}</span>
         </div>
         ${order.ivaEnabled ? `
@@ -111,7 +111,7 @@ export function generateQuotePDF(order) {
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div><div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2744;">${order.client}</div></div>
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA PREVENTIVO</div><div style="font-size:14px;font-weight:600;">${order.date}</div></div>
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">N° ARTICOLI</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4623a;">${articles.length}</div></div>
-      ${order.pricingMode === 'kit' && order.kitQuantity ? `<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">KIT STIMATI</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#1a2744;">${order.kitQuantity}</div></div>` : ''}
+      ${order.pricingMode === 'kit' ? `<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PERSONE</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#1a2744;">${order.kits.reduce((s,k)=>s+(parseInt(k.quantity)||parseInt(order.kitQuantity)||0),0)}</div></div>` : ''}
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#c4623a;">PREVENTIVO</div></div>
     </div>
     ${clientDetailsBlock}

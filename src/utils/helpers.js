@@ -9,13 +9,13 @@ export function artPieceCount(art) {
        + KIDS_SIZES.reduce((s, sz)  => s + (art.sizes?.kids?.[sz]  || 0), 0)
 }
 
-// ── Kit pricing: price × kitQuantity (explicit number of kits/players)
+// ── Kit pricing: price × kit.quantity (per-kit), fallback to order.kitQuantity for old records
 // ── Single pricing: price × pieces per article
 export function orderSubtotal(order) {
   if (!order.kits) return 0
   if (order.pricingMode === 'kit') {
     return order.kits.reduce((sum, kit) => {
-      const qty = parseInt(order.kitQuantity) || 0
+      const qty = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
       return sum + (parseFloat(kit.price) || 0) * qty
     }, 0)
   }
