@@ -1,4 +1,4 @@
-import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderTotal, paymentSummary, daysUntilDelivery } from '../utils/helpers.js'
 
@@ -25,11 +25,11 @@ function InfoRow({ label, value, valueColor, href }) {
       borderBottom: '1px solid rgba(255,255,255,0.05)',
       marginBottom: 10,
     }}>
-      <span style={{ fontSize: 10, color: MUTED, letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
+      <span style={{ fontSize: 11, color: '#a8b8d0', letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
       {href ? (
-        <a href={href} style={{ fontSize: 12, color: valueColor || GOLD, textDecoration: 'none', textAlign: 'right' }}>{value}</a>
+        <a href={href} style={{ fontSize: 14, color: valueColor || GOLD, textDecoration: 'none', textAlign: 'right' }}>{value}</a>
       ) : (
-        <span style={{ fontSize: 12, color: valueColor || CREAM, textAlign: 'right', maxWidth: '65%' }}>{value}</span>
+        <span style={{ fontSize: 14, color: valueColor || CREAM, textAlign: 'right', maxWidth: '65%' }}>{value}</span>
       )}
     </div>
   )
@@ -157,6 +157,29 @@ export default function MobileOrderDetail({ order, onBack }) {
                     {art.color && <div style={{ fontSize: 10, color: MUTED, marginTop: 3 }}>{art.color}</div>}
                     {art.sp && <div style={{ fontSize: 9, color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
                     {art.notes && <div style={{ fontSize: 10, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
+                    {(() => {
+                      const adultEntries = ADULT_SIZES.filter(sz => (art.sizes?.adult?.[sz] || 0) > 0)
+                      const kidsEntries  = KIDS_SIZES.filter(sz  => (art.sizes?.kids?.[sz]  || 0) > 0)
+                      if (!adultEntries.length && !kidsEntries.length) return null
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {adultEntries.map(sz => (
+                            <span key={sz} style={{
+                              fontSize: 9, background: 'rgba(184,150,90,0.12)',
+                              border: '1px solid rgba(184,150,90,0.28)',
+                              borderRadius: 3, padding: '2px 6px', color: GOLD, letterSpacing: 0.5,
+                            }}>{sz} · {art.sizes.adult[sz]}</span>
+                          ))}
+                          {kidsEntries.map(sz => (
+                            <span key={`k${sz}`} style={{
+                              fontSize: 9, background: 'rgba(138,154,181,0.1)',
+                              border: '1px solid rgba(138,154,181,0.28)',
+                              borderRadius: 3, padding: '2px 6px', color: MUTED, letterSpacing: 0.5,
+                            }}>{sz} · {art.sizes.kids[sz]}</span>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: GOLD, lineHeight: 1 }}>{artPieceCount(art)}</div>
