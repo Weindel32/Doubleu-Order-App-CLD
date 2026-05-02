@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
@@ -21,15 +21,34 @@ function CategoryBadge({ cat }) {
   )
 }
 
-export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onUpsertClient }) {
+const inp = { ...s.input }
+
+function Field({ label, value }) {
+  if (!value) return null
+  return (
+    <div>
+      <div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>{label}</div>
+      <div style={{fontSize:13,color:CREAM}}>{value}</div>
+    </div>
+  )
+}
+
+export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onUpsertClient, onRenameClient }) {
   const [selectedClient, setSelectedClient] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [editForm, setEditForm] = useState(null)
+  const [editSaving, setEditSaving] = useState(false)
+
+  useEffect(() => { setEditForm(null) }, [selectedClient])
 
   const overrideMap = {}
   clients.forEach(c => { overrideMap[c.name] = c })
 
+  // Exclude preventivi: only confirmed orders create clients
+  const confirmedOrders = orders.filter(o => o.status !== 'PREVENTIVO')
+
   const clientMap = {}
-  orders.forEach(o => {
+  confirmedOrders.forEach(o => {
     const tot = orderTotal(o)
     if (!clientMap[o.client]) {
       clientMap[o.client] = {
@@ -51,6 +70,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     const autoCategory = getAutoCategory(c.total)
     return {
       ...c,
+      // Prefer data saved in clients table over order snapshot
+      email:    ov?.email    || c.email,
+      phone:    ov?.phone    || c.phone,
+      address:  ov?.address  || c.address,
+      city:     ov?.city     || c.city,
+      province: ov?.province || '',
+      country:  ov?.country  || c.country,
+      contact:  ov?.contact  || c.contact,
       autoCategory,
       category: ov?.category_override || autoCategory,
       categoryOverride: ov?.category_override || null,
@@ -85,6 +112,52 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     setSaving(false)
   }
 
+  const openEdit = () => {
+    if (!selected) return
+    setEditForm({
+      name:     selected.name,
+      contact:  selected.contact  || '',
+      email:    selected.email    || '',
+      phone:    selected.phone    || '',
+      address:  selected.address  || '',
+      city:     selected.city     || '',
+      province: selected.province || '',
+      country:  selected.country  || 'Italia',
+    })
+  }
+
+  const handleSaveClient = async () => {
+    if (!editForm || !selected) return
+    const trimmedName = editForm.name.trim()
+    if (!trimmedName) return
+    const ov = overrideMap[selected.name]
+    const fields = {
+      email:             editForm.email,
+      phone:             editForm.phone,
+      address:           editForm.address,
+      city:              editForm.city,
+      province:          editForm.province,
+      country:           editForm.country,
+      contact:           editForm.contact,
+      category_override: ov?.category_override || null,
+      shop_attivo:       ov?.shop_attivo || false,
+    }
+    setEditSaving(true)
+    if (trimmedName !== selected.name) {
+      await onRenameClient(selected.name, trimmedName, fields)
+      setSelectedClient(trimmedName)
+    } else {
+      await onUpsertClient(selected.name, fields)
+    }
+    setEditForm(null)
+    setEditSaving(false)
+  }
+
+  const cityProvince = (city, province) => {
+    if (city && province) return `${city} (${province})`
+    return city || province || ''
+  }
+
   return (
     <div>
       <div style={s.pageTitle}>Clienti</div>
@@ -116,7 +189,6 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
           <tbody>
             {clientList.map(c => {
               const cc = CAT_COLORS[c.category] || CAT_COLORS.SCOUT
-              const lastOrder = [...c.orders].sort((a,b)=>b.date?.localeCompare(a.date))[0]
               return (
                 <tr key={c.name} style={{cursor:'pointer'}} onClick={()=>setSelectedClient(c.name)}>
                   <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:18}}>{c.name}</td>
@@ -178,19 +250,67 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
             </div>
 
             <div style={{padding:'24px 32px'}}>
+
               {/* Anagrafica */}
-              {(selected.contact||selected.email||selected.phone||selected.city) && (
-                <div style={{...s.card,marginBottom:20}}>
+              <div style={{...s.card,marginBottom:20}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:editForm?16:12}}>
                   <div style={s.cardTitle}>Anagrafica</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                    {selected.contact && <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>REFERENTE</div><div style={{fontSize:13,color:CREAM}}>{selected.contact}</div></div>}
-                    {selected.email   && <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>EMAIL</div><div style={{fontSize:13,color:CREAM}}>{selected.email}</div></div>}
-                    {selected.phone   && <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>TELEFONO</div><div style={{fontSize:13,color:CREAM}}>{selected.phone}</div></div>}
-                    {selected.city    && <div><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>CITTÀ</div><div style={{fontSize:13,color:CREAM}}>{selected.city}{selected.country?', '+selected.country:''}</div></div>}
-                    {selected.address && <div style={{gridColumn:'span 2'}}><div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>INDIRIZZO</div><div style={{fontSize:13,color:CREAM}}>{selected.address}</div></div>}
-                  </div>
+                  {!editForm && (
+                    <button style={{...btnStyle(false),padding:'4px 14px',fontSize:9}} onClick={openEdit}>
+                      Modifica
+                    </button>
+                  )}
                 </div>
-              )}
+
+                {editForm ? (
+                  <div>
+                    {/* Name field with rename warning */}
+                    <div style={{marginBottom:14}}>
+                      <label style={s.label}>Nome Club / Ragione Sociale *</label>
+                      <input style={inp} value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
+                      {editForm.name.trim() !== selected.name && (
+                        <div style={{marginTop:6,padding:'6px 10px',background:'rgba(184,150,90,0.1)',border:'1px solid rgba(184,150,90,0.3)',borderRadius:4,fontSize:11,color:GOLD}}>
+                          Tutti gli ordini associati a "{selected.name}" verranno aggiornati a "{editForm.name.trim() || '…'}"
+                        </div>
+                      )}
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+                      <div><label style={s.label}>Referente</label><input style={inp} value={editForm.contact} onChange={e=>setEditForm(f=>({...f,contact:e.target.value}))}/></div>
+                      <div><label style={s.label}>Email</label><input style={inp} type="email" value={editForm.email} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/></div>
+                      <div><label style={s.label}>Telefono</label><input style={inp} value={editForm.phone} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/></div>
+                      <div><label style={s.label}>Indirizzo</label><input style={inp} value={editForm.address} onChange={e=>setEditForm(f=>({...f,address:e.target.value}))}/></div>
+                      <div><label style={s.label}>Città</label><input style={inp} value={editForm.city} onChange={e=>setEditForm(f=>({...f,city:e.target.value}))}/></div>
+                      <div><label style={s.label}>Provincia</label><input style={inp} value={editForm.province} onChange={e=>setEditForm(f=>({...f,province:e.target.value}))} placeholder="Es. MI"/></div>
+                      <div><label style={s.label}>Paese</label><input style={inp} value={editForm.country} onChange={e=>setEditForm(f=>({...f,country:e.target.value}))}/></div>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button style={{...btnGoldStyle,padding:'8px 24px'}} onClick={handleSaveClient} disabled={editSaving||!editForm.name.trim()}>
+                        {editSaving ? 'Salvataggio…' : 'Salva'}
+                      </button>
+                      <button style={{...btnStyle(false),padding:'8px 20px'}} onClick={()=>setEditForm(null)}>Annulla</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                    <Field label="REFERENTE" value={selected.contact}/>
+                    <Field label="EMAIL" value={selected.email}/>
+                    <Field label="TELEFONO" value={selected.phone}/>
+                    <Field label="CITTÀ / PROVINCIA" value={cityProvince(selected.city, selected.province)}/>
+                    {selected.address && (
+                      <div style={{gridColumn:'span 2'}}>
+                        <div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:3}}>INDIRIZZO</div>
+                        <div style={{fontSize:13,color:CREAM}}>{selected.address}</div>
+                      </div>
+                    )}
+                    {selected.country && selected.country !== 'Italia' && (
+                      <Field label="PAESE" value={selected.country}/>
+                    )}
+                    {!selected.contact && !selected.email && !selected.phone && !selected.city && !selected.address && (
+                      <div style={{gridColumn:'span 2',fontSize:12,color:MUTED,fontStyle:'italic'}}>Nessun dato anagrafico — clicca Modifica per aggiungere</div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Stats grid */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:12,marginBottom:20}}>
