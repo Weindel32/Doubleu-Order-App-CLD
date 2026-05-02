@@ -114,7 +114,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
       <div style={s.divider}/>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2,marginBottom:20}}>Ultimi Ordini</div>
 
-      {orders.length===0 ? (
+      {confirmed.length===0 ? (
         <div style={{textAlign:'center',padding:'60px 0',color:MUTED}}>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,marginBottom:12}}>Nessun ordine ancora</div>
           <button style={btnStyle(true)} onClick={()=>{setEditOrder(null);setView('new')}}>+ Crea Primo Ordine</button>
@@ -125,7 +125,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
             <tr>{['Cliente','Codice','Consegna','Stato','Pezzi','Totale','Pagamenti','PDF'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {orders.slice(0,7).map(o=>{
+            {confirmed.slice(0,7).map(o=>{
               const {paid,pending,total:tot}=paymentSummary(o)
               const days=daysUntilDelivery(o)
               const alert=needsAlert(o)
@@ -163,6 +163,45 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
             })}
           </tbody>
         </table>
+      )}
+
+      {/* ── Preventivi in attesa ───────────────────────────────── */}
+      {quote.length > 0 && (
+        <>
+          <div style={s.divider}/>
+          <div style={{display:'flex',alignItems:'baseline',gap:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2}}>Preventivi in Attesa</div>
+            <div style={{fontSize:11,color:MUTED,letterSpacing:1}}>
+              Potenziale: <span style={{color:GOLD,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>
+                {quote.reduce((a,o)=>a+orderTotal(o),0).toLocaleString('it-IT',{minimumFractionDigits:2})} €
+              </span>
+            </div>
+          </div>
+          <table style={s.table}>
+            <thead>
+              <tr>{['Cliente','Codice','Data','Pezzi','Valore Potenziale',''].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {quote.map(o=>{
+                const tot=orderTotal(o)
+                return (
+                  <tr key={o.id}>
+                    <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>{o.client}</td>
+                    <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.id}</td>
+                    <td style={{...s.td,fontSize:11,color:MUTED}}>{o.date||'—'}</td>
+                    <td style={{...s.td,textAlign:'center',color:MUTED}}>{o.pieces||'—'}</td>
+                    <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:'rgba(184,150,90,0.6)'}}>
+                      {tot>0?`${tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €`:'—'}
+                    </td>
+                    <td style={s.td}>
+                      <button style={{...btnGoldStyle,padding:'4px 10px',fontSize:8}} onClick={()=>{setEditOrder(o);setView('newQuote')}}>Apri</button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
       )}
     </div>
     {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} />}
