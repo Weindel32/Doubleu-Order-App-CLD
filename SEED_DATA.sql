@@ -9,6 +9,12 @@
 ALTER TABLE kits ADD COLUMN IF NOT EXISTS quantity integer;
 -- ----------------------------------------------------------------
 
+-- ----------------------------------------------------------------
+-- MIGRATION: provincia cliente (esegui una volta sola)
+-- ----------------------------------------------------------------
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS province text;
+-- ----------------------------------------------------------------
+
 -- ORDINE 1: ECO VILLAGE
 INSERT INTO orders VALUES ('DU-2026-0038','ECO VILLAGE','10/12/2025','28/02/2026',10,'CONSEGNATO',242,'kit','Cliente premium - priorità assoluta','Verde ECO pantone 356C. Logo fronte ricamato, retro stampa.',true,now());
 INSERT INTO kits (order_id,name,price,position) VALUES ('DU-2026-0038','Kit Completo ECO Village',90,0);

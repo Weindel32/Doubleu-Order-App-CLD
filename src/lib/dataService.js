@@ -15,6 +15,17 @@ export async function upsertClient(name, fields) {
   return true
 }
 
+export async function renameClient(oldName, newName, fields) {
+  const { error: e1 } = await supabase.from('orders').update({ client: newName }).eq('client', oldName)
+  if (e1) { console.error('renameClient orders:', e1); return false }
+  const { error: e2 } = await supabase.from('clients').upsert({ name: newName, ...fields }, { onConflict: 'name' })
+  if (e2) { console.error('renameClient upsert:', e2); return false }
+  if (oldName !== newName) {
+    await supabase.from('clients').delete().eq('name', oldName)
+  }
+  return true
+}
+
 export async function fetchOrders() {
   const { data: orders, error } = await supabase
     .from('orders').select('*').order('created_at', { ascending: false })
