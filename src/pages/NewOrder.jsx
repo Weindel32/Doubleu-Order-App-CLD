@@ -15,7 +15,7 @@ const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riep
 
 const emptyArticle = () => ({
   sp:'', category:'Felpa', line:'Performance', description:'', color:'', price:'', notes:'',
-  delivered: false,
+  delivered: false, omaggio: 0,
   sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])) }
 })
 const emptyKit = () => ({ name:'', price:'', quantity:'', articles:[emptyArticle()] })
@@ -389,8 +389,12 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
                   <div><label style={s.label}>Colore / Pantone</label><input style={inp} value={art.color} onChange={e=>updateArt(ki,ai,'color',e.target.value)} placeholder="Navy/Cream"/></div>
                   <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e=>updateArt(ki,ai,'line',e.target.value)}>{LINES.map(l=><option key={l}>{l}</option>)}</select></div>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:pricingMode==='singolo'?'140px 1fr':'1fr',gap:10,alignItems:'end'}}>
+                <div style={{display:'grid',gridTemplateColumns:pricingMode==='singolo'?'140px 100px 1fr':'100px 1fr',gap:10,alignItems:'end'}}>
                   {pricingMode==='singolo' && <div><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e=>updateArt(ki,ai,'price',e.target.value)} placeholder="28"/></div>}
+                  <div>
+                    <label style={s.label}>Pz Omaggio</label>
+                    <input type="number" min="0" style={{...inp,borderColor:art.omaggio>0?'rgba(196,98,58,0.6)':undefined}} value={art.omaggio||''} onChange={e=>updateArt(ki,ai,'omaggio',parseInt(e.target.value)||0)} placeholder="0"/>
+                  </div>
                   <div><label style={s.label}>Note articolo</label><input style={inp} value={art.notes||''} onChange={e=>updateArt(ki,ai,'notes',e.target.value)} placeholder="Es. logo ricamato fronte sinistra, manica raglan..."/></div>
                 </div>
                 <div style={{display:'flex',gap:8,marginTop:10}}>

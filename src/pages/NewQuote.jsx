@@ -10,7 +10,7 @@ const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Riepilogo']
 
 const emptyArticle = () => ({
   sp: '', category: 'Felpa', line: 'Performance', description: '', color: '', price: '', estimatedQty: '', notes: '',
-  delivered: false,
+  delivered: false, omaggio: 0,
   sizes: { adult: {}, kids: {} },
 })
 const emptyKit = () => ({ name: '', price: '', quantity: '', articles: [emptyArticle()] })
@@ -317,14 +317,26 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
                     <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e => updateArt(ki, ai, 'line', e.target.value)}>{LINES.map(l => <option key={l}>{l}</option>)}</select></div>
                   </div>
                   {pricingMode === 'singolo' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '140px 100px', gap: 10, marginBottom: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '140px 100px 100px', gap: 10, marginBottom: 10 }}>
                       <div><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e => updateArt(ki, ai, 'price', e.target.value)} placeholder="28"/></div>
                       <div><label style={s.label}>Quantità stimata</label><input type="number" min="1" style={inp} value={art.estimatedQty || ''} onChange={e => updateArt(ki, ai, 'estimatedQty', e.target.value)} placeholder="10"/></div>
+                      <div>
+                        <label style={s.label}>Pz Omaggio</label>
+                        <input type="number" min="0" style={{...inp,borderColor:art.omaggio>0?'rgba(196,98,58,0.6)':undefined}} value={art.omaggio||''} onChange={e => updateArt(ki, ai, 'omaggio', parseInt(e.target.value)||0)} placeholder="0"/>
+                      </div>
                     </div>
                   )}
-                  <div>
-                    <label style={s.label}>Note articolo</label>
-                    <input style={inp} value={art.notes || ''} onChange={e => updateArt(ki, ai, 'notes', e.target.value)} placeholder="Es. logo ricamato fronte sinistra..."/>
+                  <div style={{ display: 'grid', gridTemplateColumns: pricingMode === 'kit' ? '100px 1fr' : '1fr', gap: 10 }}>
+                    {pricingMode === 'kit' && (
+                      <div>
+                        <label style={s.label}>Pz Omaggio</label>
+                        <input type="number" min="0" style={{...inp,borderColor:art.omaggio>0?'rgba(196,98,58,0.6)':undefined}} value={art.omaggio||''} onChange={e => updateArt(ki, ai, 'omaggio', parseInt(e.target.value)||0)} placeholder="0"/>
+                      </div>
+                    )}
+                    <div>
+                      <label style={s.label}>Note articolo</label>
+                      <input style={inp} value={art.notes || ''} onChange={e => updateArt(ki, ai, 'notes', e.target.value)} placeholder="Es. logo ricamato fronte sinistra..."/>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                     <button style={{ ...btnGoldStyle, padding: '5px 14px', fontSize: 9, borderColor: CLAY, color: CLAY }} onClick={() => duplicateArt(ki, ai)}>⧉ Duplica</button>

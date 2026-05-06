@@ -11,11 +11,13 @@ export function generateQuotePDF(order) {
       return order.kits.map(kit => {
         const qty      = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
         const kitTotal = (parseFloat(kit.price) || 0) * qty
+        const omaggioInKit = kit.articles.filter(a=>(a.omaggio||0)>0).map(a=>`${a.description} (${a.omaggio} pz)`).join(', ')
         return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${kit.name || 'Kit'}</div>
               <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${kit.articles.map(a => a.description).filter(Boolean).join(' + ')}</div>
+              ${omaggioInKit?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ${omaggioInKit}</div>`:''}
             </div>
             <div style="text-align:right;">
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° PERSONE</div>
@@ -57,6 +59,7 @@ export function generateQuotePDF(order) {
         <div style="font-size:10px;color:#8a9ab5;margin-top:3px;letter-spacing:1px;">${[art.category, art.line].filter(Boolean).join(' · ')}</div>
         ${art.color ? `<div style="font-size:11px;color:#c4623a;margin-top:3px;font-weight:600;">${art.color}</div>` : ''}
         ${art.notes ? `<div style="font-size:10px;color:#8a9ab5;margin-top:4px;font-style:italic;">${art.notes}</div>` : ''}
+        ${(art.omaggio||0)>0 ? `<div style="display:inline-block;margin-top:6px;padding:2px 8px;background:#fff3ee;border:1px solid #c4623a;border-radius:3px;font-size:9px;letter-spacing:2px;color:#c4623a;font-weight:700;">OMAGGIO: ${art.omaggio} PZ</div>` : ''}
       </div>
     </div>`).join('')
 

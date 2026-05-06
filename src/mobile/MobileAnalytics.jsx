@@ -148,6 +148,7 @@ export default function MobileAnalytics({ orders }) {
   const pctSoci = currentYearTotal > 0 ? Math.round(sociShop / currentYearTotal * 100) : 0
 
   const totalPieces = confirmed.reduce((sum, o) => sum + getAllArticles(o).reduce((s, a) => s + artPieceCount(a), 0), 0)
+  const totalOmaggio = confirmed.reduce((sum, o) => sum + getAllArticles(o).reduce((s, a) => s + (a.omaggio || 0), 0), 0)
 
   const byClient = {}
   confirmed.forEach(o => { byClient[o.client] = (byClient[o.client] || 0) + orderTotal(o) })
@@ -175,6 +176,13 @@ export default function MobileAnalytics({ orders }) {
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px' }}>
           <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Pezzi Prodotti</div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, color: CREAM, lineHeight: 1 }}>{totalPieces}</div>
+        </div>
+        <div style={{ background: SURFACE, border: `1px solid rgba(196,98,58,0.35)`, borderRadius: 10, padding: '16px', gridColumn: '1 / -1' }}>
+          <div style={{ fontSize: 9, letterSpacing: 2, color: CLAY, textTransform: 'uppercase', marginBottom: 4 }}>Pezzi in Omaggio</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, color: CLAY, lineHeight: 1 }}>{totalOmaggio}</div>
+            {totalPieces > 0 && <div style={{ fontSize: 11, color: MUTED }}>{Math.round(totalOmaggio / totalPieces * 100)}% del totale prodotto</div>}
+          </div>
         </div>
       </div>
 
