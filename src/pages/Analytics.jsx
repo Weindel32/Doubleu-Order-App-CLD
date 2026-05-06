@@ -177,8 +177,8 @@ function DonutChart({ data, title }) {
 export default function Analytics({ orders }) {
   const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
 
-  const byCategory={}, byLine={}, byStatus={}
-  let totalPieces=0
+  const byCategory={}, byLine={}, byStatus={}, omaggioByCategory={}
+  let totalPieces=0, totalOmaggio=0
 
   confirmed.forEach(order => {
     getAllArticles(order).forEach(art => {
@@ -186,6 +186,11 @@ export default function Analytics({ orders }) {
       byCategory[art.category] = (byCategory[art.category]||0)+pz
       byLine[art.line]         = (byLine[art.line]||0)+pz
       totalPieces += pz
+      const om = art.omaggio || 0
+      if (om > 0) {
+        omaggioByCategory[art.category] = (omaggioByCategory[art.category]||0)+om
+        totalOmaggio += om
+      }
     })
   })
 
@@ -245,13 +250,13 @@ export default function Analytics({ orders }) {
       <div style={s.grid4}>
         {[
           {label:'Pezzi Totali Prodotti',value:totalPieces,sub:'Ordini confermati+'},
+          {label:'Pezzi in Omaggio',value:totalOmaggio,sub:totalPieces>0?`${Math.round(totalOmaggio/totalPieces*100)}% sul totale`:'—',highlight:totalOmaggio>0},
           {label:'Categorie Attive',value:Object.keys(byCategory).length},
-          {label:'Linee Attive',value:Object.keys(byLine).length},
           {label:'Categoria Top',value:Object.entries(byCategory).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—',sub:`${Object.entries(byCategory).sort((a,b)=>b[1]-a[1])[0]?.[1]||0} pz`},
         ].map(item=>(
-          <div key={item.label} style={s.statCard(false)}>
-            <div style={{...s.statLabel,color:MUTED}}>{item.label}</div>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:item.value?.toString().length>4?22:34,fontWeight:300,color:CREAM,lineHeight:1}}>{item.value}</div>
+          <div key={item.label} style={{...s.statCard(false),border:item.highlight?`1px solid rgba(196,98,58,0.35)`:undefined}}>
+            <div style={{...s.statLabel,color:item.highlight?CLAY:MUTED}}>{item.label}</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:item.value?.toString().length>4?22:34,fontWeight:300,color:item.highlight?CLAY:CREAM,lineHeight:1}}>{item.value}</div>
             {item.sub&&<div style={s.statSub}>{item.sub}</div>}
           </div>
         ))}
@@ -332,11 +337,43 @@ export default function Analytics({ orders }) {
         </>
       )}
 
+      {totalOmaggio>0 && <>
+        <div style={s.divider}/>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CLAY,letterSpacing:2,marginBottom:20}}>Articoli in Omaggio</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+          <BarChart data={omaggioByCategory} title="Omaggi per Categoria" colorFn={l=>CAT_COLORS[l]||CLAY}/>
+          <div style={{...s.card,marginBottom:0}}>
+            <div style={s.cardTitle}>Dettaglio Omaggi</div>
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead>
+                <tr>
+                  {['Categoria','Pz Omaggio','% su prodotti'].map(h=><th key={h} style={{...s.th,textAlign:'left'}}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(omaggioByCategory).sort((a,b)=>b[1]-a[1]).map(([cat,om])=>(
+                  <tr key={cat}>
+                    <td style={s.td}><span style={{display:'inline-block',padding:'2px 8px',borderRadius:2,fontSize:9,letterSpacing:2,background:`${CAT_COLORS[cat]||CLAY}22`,color:CAT_COLORS[cat]||CLAY,border:`1px solid ${CAT_COLORS[cat]||CLAY}44`}}>{cat}</span></td>
+                    <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:CLAY}}>{om}</td>
+                    <td style={s.td}><span style={{fontSize:11,color:MUTED}}>{byCategory[cat]>0?Math.round(om/byCategory[cat]*100):0}%</span></td>
+                  </tr>
+                ))}
+                <tr>
+                  <td style={{...s.td,fontWeight:700,fontSize:11,letterSpacing:2,color:MUTED}}>TOTALE</td>
+                  <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CLAY}}>{totalOmaggio}</td>
+                  <td style={{...s.td,fontSize:11,color:MUTED}}>{totalPieces>0?Math.round(totalOmaggio/totalPieces*100):0}% del totale</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </>}
+
       <div style={s.divider}/>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2,marginBottom:20}}>Breakdown per Referenza</div>
       <table style={s.table}>
         <thead>
-          <tr>{['Referenza','Linea','Categoria','Ordini','Pezzi Totali','% sul totale'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
+          <tr>{['Referenza','Linea','Categoria','Ordini','Pezzi Totali','Omaggio','% sul totale'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
         </thead>
         <tbody>
           {(()=>{
@@ -344,9 +381,10 @@ export default function Analytics({ orders }) {
             confirmed.forEach(order=>{
               getAllArticles(order).forEach(art=>{
                 const key=art.description
-                if(!rows[key]) rows[key]={description:art.description,category:art.category,line:art.line,orders:new Set(),pieces:0}
+                if(!rows[key]) rows[key]={description:art.description,category:art.category,line:art.line,orders:new Set(),pieces:0,omaggio:0}
                 rows[key].orders.add(order.id)
                 rows[key].pieces+=artPieceCount(art)
+                rows[key].omaggio+=(art.omaggio||0)
               })
             })
             return Object.values(rows).sort((a,b)=>b.pieces-a.pieces).map(row=>(
@@ -356,6 +394,7 @@ export default function Analytics({ orders }) {
                 <td style={s.td}><span style={{display:'inline-block',padding:'2px 8px',borderRadius:2,fontSize:9,letterSpacing:2,background:`${CAT_COLORS[row.category]||GOLD}22`,color:CAT_COLORS[row.category]||GOLD,border:`1px solid ${CAT_COLORS[row.category]||GOLD}44`}}>{row.category}</span></td>
                 <td style={{...s.td,textAlign:'center'}}>{row.orders.size}</td>
                 <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:GOLD}}>{row.pieces}</td>
+                <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:row.omaggio>0?CLAY:MUTED}}>{row.omaggio>0?row.omaggio:'—'}</td>
                 <td style={s.td}>
                   <div style={{display:'flex',alignItems:'center',gap:10}}>
                     <div style={{flex:1,height:4,background:'rgba(255,255,255,0.06)',borderRadius:2}}>

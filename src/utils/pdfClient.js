@@ -14,11 +14,13 @@ export function generateClientPDF(order) {
       return order.kits.map(kit => {
         const qty      = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
         const kitTotal = (parseFloat(kit.price) || 0) * qty
+        const omaggioInKit = kit.articles.filter(a=>(a.omaggio||0)>0).map(a=>`${a.description} (${a.omaggio} pz)`).join(', ')
         return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${kit.name}</div>
               <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${kit.articles.map(a=>a.description).join(' + ')}</div>
+              ${omaggioInKit?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ${omaggioInKit}</div>`:''}
             </div>
             <div style="text-align:right;">
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° PERSONE</div>
@@ -36,6 +38,7 @@ export function generateClientPDF(order) {
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${a.description}</div>
               <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${a.category} · ${a.line} · ${a.color}</div>
+              ${(a.omaggio||0)>0?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">${a.omaggio} pz in omaggio</div>`:''}
             </div>
             <div style="text-align:right;">
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO UNITARIO</div>
@@ -96,6 +99,7 @@ export function generateClientPDF(order) {
         </table>
         <div style="text-align:right;margin-top:6px;font-size:11px;color:#8a9ab5;">
           Totale pezzi: <strong style="color:#1a2744;">${adultTotal+kidsTotal}</strong>
+          ${(art.omaggio||0)>0?`&nbsp;&nbsp;<span style="color:#c4623a;font-weight:700;">di cui ${art.omaggio} pz in omaggio</span>`:''}
         </div>
       </div>`
   }).join('')
