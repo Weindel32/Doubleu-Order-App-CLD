@@ -191,8 +191,9 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
 
   const handleStatusChange = (newStatus) => {
     setStatus(newStatus)
-    const isDelivered = newStatus === 'CONSEGNA PARZIALE' || newStatus === 'CONSEGNATO'
-    if (isDelivered && !actualDeliveryDate) {
+    if (newStatus === 'CONSEGNATO') {
+      setActualDelivery(new Date().toISOString().split('T')[0])
+    } else if (newStatus === 'CONSEGNA PARZIALE' && !actualDeliveryDate) {
       setActualDelivery(new Date().toISOString().split('T')[0])
     }
   }

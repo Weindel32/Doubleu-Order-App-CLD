@@ -23,7 +23,9 @@ function StatusSelector({ order, onStatusChange }) {
     if (newStatus === order.status) { setOpen(false); return }
     setSaving(true)
     const isDelivered = newStatus === 'CONSEGNA PARZIALE' || newStatus === 'CONSEGNATO'
-    const autoDate = (isDelivered && !order.actualDeliveryDate) ? todayItalian() : null
+    const autoDate = newStatus === 'CONSEGNATO'
+      ? todayItalian()
+      : (newStatus === 'CONSEGNA PARZIALE' && !order.actualDeliveryDate) ? todayItalian() : null
     const extraFields = autoDate ? { actual_delivery_date: autoDate } : {}
     const ok = await quickUpdateStatus(order.id, newStatus, extraFields)
     if (ok) onStatusChange(order.id, newStatus, autoDate)
