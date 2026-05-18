@@ -219,6 +219,30 @@ export default function Analytics({ orders }) {
   const pctIst            = totalRevenue>0 ? Math.round(istituzionale/totalRevenue*100) : 0
   const pctSoci           = totalRevenue>0 ? Math.round(sociShop/totalRevenue*100) : 0
 
+  const parseItalianDate = str => {
+    if (!str) return null
+    const [d, m, y] = str.split('/')
+    if (!d || !m || !y) return null
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+  }
+
+  const deliveryPerf = (() => {
+    const consegnati = orders.filter(o => o.status === 'CONSEGNATO' && o.deliveryDate && o.actualDeliveryDate)
+    if (consegnati.length === 0) return null
+    const delays = consegnati.map(o => {
+      const prevista = parseItalianDate(o.deliveryDate)
+      const reale    = parseItalianDate(o.actualDeliveryDate)
+      if (!prevista || !reale) return null
+      return Math.round((reale - prevista) / 86400000)
+    }).filter(d => d !== null)
+    if (delays.length === 0) return null
+    const avg       = Math.round(delays.reduce((s, d) => s + d, 0) / delays.length)
+    const onTime    = delays.filter(d => d <= 0).length
+    const mild      = delays.filter(d => d > 0 && d <= 10).length
+    const severe    = delays.filter(d => d > 10).length
+    return { avg, onTime, mild, severe, total: delays.length }
+  })()
+
   const byClientSplit = {}
   confirmed.forEach(o => {
     const tot = orderTotal(o)
@@ -261,6 +285,40 @@ export default function Analytics({ orders }) {
           </div>
         ))}
       </div>
+
+      {deliveryPerf && (() => {
+        const perfColor = deliveryPerf.avg <= 0 ? GREEN : deliveryPerf.avg <= 10 ? CLAY : '#ef4444'
+        const avgLabel  = deliveryPerf.avg < 0 ? `${Math.abs(deliveryPerf.avg)}gg anticipo` : deliveryPerf.avg === 0 ? 'puntuale' : `+${deliveryPerf.avg}gg ritardo`
+        return (
+          <div style={{ ...s.card, border: `1px solid ${perfColor}33`, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 6 }}>PERFORMANCE CONSEGNE</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 42, fontWeight: 300, color: perfColor, lineHeight: 1 }}>
+                    {avgLabel}
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: MUTED, marginTop: 6 }}>media su {deliveryPerf.total} ordini consegnati</div>
+              </div>
+              <div style={{ display: 'flex', gap: 24 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, color: GREEN, lineHeight: 1 }}>{deliveryPerf.onTime}</div>
+                  <div style={{ fontSize: 9, letterSpacing: 1, color: MUTED, marginTop: 4 }}>✓ puntuali</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, color: CLAY, lineHeight: 1 }}>{deliveryPerf.mild}</div>
+                  <div style={{ fontSize: 9, letterSpacing: 1, color: MUTED, marginTop: 4 }}>1–10gg ritardo</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, color: '#ef4444', lineHeight: 1 }}>{deliveryPerf.severe}</div>
+                  <div style={{ fontSize: 9, letterSpacing: 1, color: MUTED, marginTop: 4 }}>+10gg ritardo</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       <div style={s.divider}/>
 
