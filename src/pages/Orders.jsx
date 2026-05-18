@@ -11,14 +11,22 @@ import { quickUpdateStatus, quickTogglePayment } from '../lib/dataService.js'
 import { BORDER } from '../tokens.js'
 import { STATUS_COLORS, ORDER_STATUSES } from '../tokens.js'
 
+const todayItalian = () => {
+  const t = new Date()
+  return `${String(t.getDate()).padStart(2,'0')}/${String(t.getMonth()+1).padStart(2,'0')}/${t.getFullYear()}`
+}
+
 function StatusSelector({ order, onStatusChange }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const handleSelect = async (newStatus) => {
     if (newStatus === order.status) { setOpen(false); return }
     setSaving(true)
-    const ok = await quickUpdateStatus(order.id, newStatus)
-    if (ok) onStatusChange(order.id, newStatus)
+    const isDelivered = newStatus === 'CONSEGNA PARZIALE' || newStatus === 'CONSEGNATO'
+    const autoDate = (isDelivered && !order.actualDeliveryDate) ? todayItalian() : null
+    const extraFields = autoDate ? { actual_delivery_date: autoDate } : {}
+    const ok = await quickUpdateStatus(order.id, newStatus, extraFields)
+    if (ok) onStatusChange(order.id, newStatus, autoDate)
     setSaving(false); setOpen(false)
   }
   return (
@@ -113,7 +121,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
     const h=gen(order); const w=window.open('','_blank'); w.document.write(h); w.document.close()
   }
 
-  const handleStatusChange   = (orderId, newStatus) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus}:o))
+  const handleStatusChange   = (orderId, newStatus, autoDate) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(autoDate?{actualDeliveryDate:autoDate}:{})}:o))
   const handlePaymentToggle  = (orderId, paymentId, newPaid) => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid}:p)}))
 
   const thStyle = (col) => ({
@@ -179,6 +187,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
                   <td style={{...s.td,fontSize:11,color:days!==null&&days<=7&&o.status!=='CONSEGNATO'?CLAY:MUTED}}>
                     {o.deliveryDate||'—'}
                     {days!==null&&o.status!=='CONSEGNATO'&&<div style={{fontSize:9,marginTop:2}}>{days<0?`scad.${Math.abs(days)}gg`:days===0?'oggi':`${days}gg`}</div>}
+                    {o.actualDeliveryDate&&<div style={{fontSize:9,marginTop:3,color:GREEN}}>✓ {o.actualDeliveryDate}</div>}
                   </td>
                   <td style={s.td}><StatusSelector order={o} onStatusChange={handleStatusChange}/></td>
                   <td style={{...s.td,textAlign:'center'}}>{o.pieces}</td>

@@ -101,7 +101,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
   const [clientCountry,setCountry] = useState(prefillClient?.country || editOrder?.clientCountry || 'Italia')
   const [clientContact,setContact] = useState(prefillClient?.contact || editOrder?.clientContact || '')
   const [orderDate,setOrderDate]   = useState(editOrder ? fromItalianDate(editOrder.date) : new Date().toISOString().split('T')[0])
-  const [deliveryDate,setDelivery] = useState(editOrder ? fromItalianDate(editOrder.deliveryDate)||'' : '')
+  const [deliveryDate,setDelivery]       = useState(editOrder ? fromItalianDate(editOrder.deliveryDate)||'' : '')
+  const [actualDeliveryDate,setActualDelivery] = useState(editOrder ? fromItalianDate(editOrder.actualDeliveryDate)||'' : '')
   const [alertDays,setAlertDays]   = useState(editOrder?.alertDays ?? 7)
   const [status,setStatus]         = useState(editOrder?.status || 'PREVENTIVO')
   const [clientNotes,setCN]        = useState(editOrder?.notes || '')
@@ -131,6 +132,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
     client: club||'—', clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
     deliveryDate: toItalianDate(deliveryDate),
+    actualDeliveryDate: toItalianDate(actualDeliveryDate) || null,
     alertDays, status, pieces: totalPieces, orderType,
     notes: clientNotes, productionNotes, pricingMode,
     kitQuantity: null,
@@ -185,6 +187,14 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
         ...k.articles.slice(ai + 1),
       ]
     }))
+  }
+
+  const handleStatusChange = (newStatus) => {
+    setStatus(newStatus)
+    const isDelivered = newStatus === 'CONSEGNA PARZIALE' || newStatus === 'CONSEGNATO'
+    if (isDelivered && !actualDeliveryDate) {
+      setActualDelivery(new Date().toISOString().split('T')[0])
+    }
   }
 
   const openPDF = (gen) => { const h=gen(currentOrder); const w=window.open('','_blank'); w.document.write(h); w.document.close() }
@@ -294,13 +304,16 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
                 {[3,5,7,10,14,21,30].map(d=><option key={d} value={d}>{d} giorni prima</option>)}
               </select>
             </div>
+            {showDelivery && (
+              <DatePicker label="Data Consegna Reale" value={actualDeliveryDate} onChange={setActualDelivery}/>
+            )}
           </div>
         </div>
         <div style={s.card}>
           <div style={s.cardTitle}>Stato Ordine</div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {ORDER_STATUSES.map(st=>(
-              <button key={st} onClick={()=>setStatus(st)} style={{ padding:'8px 16px', borderRadius:3, border:'none', cursor:'pointer', fontFamily:"'Josefin Sans',sans-serif", fontSize:9, letterSpacing:2, textTransform:'uppercase', background:status===st?'rgba(184,150,90,0.2)':'rgba(255,255,255,0.05)', color:status===st?GOLD:MUTED, outline:status===st?`1px solid ${GOLD}`:'none' }}>{st}</button>
+              <button key={st} onClick={()=>handleStatusChange(st)} style={{ padding:'8px 16px', borderRadius:3, border:'none', cursor:'pointer', fontFamily:"'Josefin Sans',sans-serif", fontSize:9, letterSpacing:2, textTransform:'uppercase', background:status===st?'rgba(184,150,90,0.2)':'rgba(255,255,255,0.05)', color:status===st?GOLD:MUTED, outline:status===st?`1px solid ${GOLD}`:'none' }}>{st}</button>
             ))}
           </div>
           <div style={{marginTop:12}}><span style={badgeStyle(status)}>{status}</span></div>
