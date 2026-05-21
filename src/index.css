@@ -41,6 +41,11 @@ input, select, textarea {
   line-height: 1.5;
 }
 
+select option {
+  background-color: #1a2744;
+  color: #f5f0e8;
+}
+
 button {
   font-family: 'Josefin Sans', sans-serif;
   cursor: pointer;
