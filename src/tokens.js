@@ -68,7 +68,7 @@ export const s = {
   input: {
     background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4,
     padding: '10px 14px', color: CREAM, fontSize: 12, letterSpacing: 0.5,
-    outline: 'none', width: '100%',
+    outline: 'none', width: '100%', colorScheme: 'dark',
   },
   label: { fontSize: 11, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' },
 }
