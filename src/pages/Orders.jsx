@@ -98,6 +98,8 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
 
   const sortIcon = (col) => sortBy===col ? (sortDir==='asc'?'↑':'↓') : '↕'
 
+  const parseDate = (s) => { if (!s) return 0; const [d,m,y] = s.split('/'); return new Date(+y, +m-1, +d).getTime() }
+
   const filtered = orders
     .filter(o => {
       if (o.status === 'PREVENTIVO') return false
@@ -108,12 +110,11 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
     })
     .sort((a, b) => {
       let av, bv
-      if (sortBy==='client')   { av=a.client||''; bv=b.client||'' }
-      else if (sortBy==='date')     { av=a.date||''; bv=b.date||'' }
-      else if (sortBy==='delivery') { av=a.deliveryDate||''; bv=b.deliveryDate||'' }
+      if (sortBy==='client')        { av=a.client||''; bv=b.client||'' }
+      else if (sortBy==='date')     { av=parseDate(a.date); bv=parseDate(b.date) }
+      else if (sortBy==='delivery') { av=parseDate(a.deliveryDate); bv=parseDate(b.deliveryDate) }
       else if (sortBy==='total')    { av=orderTotal(a); bv=orderTotal(b) }
-      else if (sortBy==='pieces')   { av=a.pieces||0; bv=b.pieces||0 }
-      else { av=a.date||''; bv=b.date||'' }
+      else                          { av=parseDate(a.date); bv=parseDate(b.date) }
       if (av<bv) return sortDir==='asc'?-1:1
       if (av>bv) return sortDir==='asc'?1:-1
       return 0
@@ -165,10 +166,10 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
           <thead>
             <tr>
               <th style={thStyle('client')} onClick={()=>handleSort('client')}>Cliente {sortIcon('client')}</th>
+              <th style={thStyle('date')} onClick={()=>handleSort('date')}>Data {sortIcon('date')}</th>
               <th style={s.th}>Codice</th>
               <th style={thStyle('delivery')} onClick={()=>handleSort('delivery')}>Consegna {sortIcon('delivery')}</th>
               <th style={s.th}>Stato</th>
-              <th style={thStyle('pieces')} onClick={()=>handleSort('pieces')}>Pezzi {sortIcon('pieces')}</th>
               <th style={thStyle('total')} onClick={()=>handleSort('total')}>Totale € {sortIcon('total')}</th>
               <th style={s.th}>Pagamenti</th>
               <th style={s.th}>PDF</th>
@@ -185,6 +186,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
                     {alert&&<span style={{color:CLAY,marginRight:6}}>⚠</span>}
                     <span style={{cursor:'pointer'}} onClick={()=>{setEditOrder(o);setView('new')}}>{o.client}</span>
                   </td>
+                  <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.date||'—'}</td>
                   <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.id}</td>
                   <td style={{...s.td,fontSize:11,color:days!==null&&days<=7&&o.status!=='CONSEGNATO'?CLAY:MUTED}}>
                     {o.deliveryDate||'—'}
@@ -192,7 +194,6 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
                     {o.actualDeliveryDate&&<div style={{fontSize:9,marginTop:3,color:GREEN}}>✓ {o.actualDeliveryDate}</div>}
                   </td>
                   <td style={s.td}><StatusSelector order={o} onStatusChange={handleStatusChange}/></td>
-                  <td style={{...s.td,textAlign:'center'}}>{o.pieces}</td>
                   <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:GOLD}}>
                     {tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €
                   </td>
