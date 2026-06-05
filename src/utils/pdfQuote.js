@@ -159,7 +159,7 @@ export function generateQuotePDF(order) {
     + '<meta charset="utf-8">\n'
     + '<title>Preventivo &mdash; ' + order.id + '</title>\n'
     + '<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">\n'
-    + '<style>* { box-sizing: border-box; } body { font-family: \'Josefin Sans\', sans-serif; color: #1a2744; margin: 0; background: #fff; } .print-btn { position:fixed;top:20px;right:20px;z-index:999;background:#1a2744;color:white;border:none;padding:12px 28px;font-family:\'Josefin Sans\',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; } @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm; margin-top:0 } }</style>\n'
+    + '<style>* { box-sizing: border-box; } body { font-family: \'Josefin Sans\', sans-serif; color: #1a2744; margin: 0; background: #fff; } .print-btn { position:fixed;top:20px;right:20px;z-index:999;background:#1a2744;color:white;border:none;padding:12px 28px;font-family:\'Josefin Sans\',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; } @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm; } @page :first { margin-top:0; } }</style>\n'
     + '</head>\n<body>\n'
     + '<button class="print-btn" onclick="window.print()">&darr; Salva / Stampa</button>\n'
 
@@ -188,14 +188,14 @@ export function generateQuotePDF(order) {
     + articleRows
     + '</div>'
 
-    + '<div style="margin:0 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;page-break-inside:avoid;">'
+    + '<div style="margin:28px 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;page-break-inside:avoid;">'
     + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">' + (order.pricingMode === 'kit' ? 'COMPOSIZIONE KIT E PREZZI' : 'PREZZI PER ARTICOLO') + '</div>'
     + pricingBlock
     + totalBlock
     + '<div style="margin-top:12px;font-size:9px;color:#8a9ab5;font-style:italic;">* I prezzi sono indicativi e soggetti a conferma. Le quantit&agrave; finali potrebbero variare.</div>'
     + '</div>'
 
-    + '<div style="margin:0 40px 40px;padding:22px 28px;border:1px solid #e0d8cc;border-radius:10px;page-break-inside:avoid;">'
+    + '<div style="margin:0 40px 40px;padding:22px 28px;border:1px solid #e0d8cc;border-radius:10px;">'
     + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">NOTE E VALIDIT&Agrave;</div>'
     + '<div style="font-size:11px;color:#555;line-height:1.8;">'
     + '<p style="margin-bottom:8px;"><strong>Validit&agrave; del preventivo</strong> &mdash; Il presente preventivo ha validit&agrave; 30 giorni dalla data di emissione.</p>'
