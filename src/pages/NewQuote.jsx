@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderTotal as calcOrderTotal } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import SpAutocomplete from '../components/SpAutocomplete.jsx'
 
-const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Riepilogo']
+const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Taglie', 'Riepilogo']
 
 const emptyArticle = () => ({
   sp: '', category: 'Felpa', line: 'Performance', description: '', color: '', price: '', estimatedQty: '', notes: '',
@@ -125,6 +125,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
   const addArt    = (ki)       => setKits(kits.map((k, i) => i === ki ? { ...k, articles: [...k.articles, emptyArticle()] } : k))
   const removeArt = (ki, ai)   => setKits(kits.map((k, i) => i === ki ? { ...k, articles: k.articles.filter((_, j) => j !== ai) } : k))
   const updateArt = (ki, ai, f, v) => setKits(kits.map((k, i) => i !== ki ? k : { ...k, articles: k.articles.map((a, j) => j !== ai ? a : { ...a, [f]: v }) }))
+  const updateSz  = (ki, ai, type, sz, v) => setKits(kits.map((k, i) => i !== ki ? k : { ...k, articles: k.articles.map((a, j) => j !== ai ? a : { ...a, sizes: { ...a.sizes, [type]: { ...a.sizes[type], [sz]: parseInt(v) || 0 } } }) }))
 
   const duplicateArt = (ki, ai) => {
     const copy = { ...JSON.parse(JSON.stringify(kits[ki].articles[ai])), color: kits[ki].articles[ai].color + ' (copia)' }
@@ -356,8 +357,69 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
         </div>
       )}
 
-      {/* ── STEP 3 ── */}
+      {/* ── STEP 3 ── Taglie (opzionale) */}
       {step === 3 && (
+        <div>
+          <div style={{ ...s.card, background: 'rgba(196,98,58,0.04)', border: `1px solid rgba(196,98,58,0.15)`, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: CLAY, letterSpacing: 1 }}>Opzionale — inserisci le taglie solo se il cliente le ha già indicate. Puoi procedere senza compilarle.</div>
+          </div>
+          {kits.map((kit, ki) => kit.articles.map((art, ai) => {
+            const adT = ADULT_SIZES.reduce((s, sz) => s + (art.sizes.adult?.[sz] || 0), 0)
+            const kiT = KIDS_SIZES.reduce((s, sz) => s + (art.sizes.kids?.[sz] || 0), 0)
+            return (
+              <div key={`${ki}-${ai}`} style={{ ...s.card, marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <span style={{ background: 'rgba(26,39,68,0.9)', color: GOLD, padding: '5px 14px', fontSize: 11, letterSpacing: 2, borderRadius: 2, border: `1px solid ${BORDER}` }}>{art.sp || '—'}</span>
+                    <div>
+                      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: CREAM }}>{art.description}</div>
+                      <div style={{ fontSize: 10, color: CLAY, marginTop: 2 }}>{art.color}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2 }}>TOT.</div>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 30, color: GOLD, lineHeight: 1 }}>{adT + kiT || '—'}</div>
+                  </div>
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 3, color: MUTED, marginBottom: 12 }}>TAGLIE ADULTO</div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    {ADULT_SIZES.map(sz => (
+                      <div key={sz} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, marginBottom: 6 }}>{sz}</div>
+                        <input type="number" min="0" style={{ ...s.input, width: 58, textAlign: 'center', padding: '8px 4px', fontSize: 15 }} value={art.sizes.adult?.[sz] || 0} onChange={e => updateSz(ki, ai, 'adult', sz, e.target.value)}/>
+                      </div>
+                    ))}
+                    <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 14, marginLeft: 4 }}>
+                      <div style={{ fontSize: 9, color: MUTED, marginBottom: 6 }}>TOT</div>
+                      <div style={{ width: 58, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cormorant Garamond',serif", fontSize: 24, color: GOLD }}>{adT}</div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, letterSpacing: 3, color: MUTED, marginBottom: 12 }}>TAGLIE BAMBINO</div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    {KIDS_SIZES.map(sz => (
+                      <div key={sz} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, marginBottom: 6 }}>{sz}</div>
+                        <input type="number" min="0" style={{ ...s.input, width: 58, textAlign: 'center', padding: '8px 4px', fontSize: 15 }} value={art.sizes.kids?.[sz] || 0} onChange={e => updateSz(ki, ai, 'kids', sz, e.target.value)}/>
+                      </div>
+                    ))}
+                    <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 14, marginLeft: 4 }}>
+                      <div style={{ fontSize: 9, color: MUTED, marginBottom: 6 }}>TOT</div>
+                      <div style={{ width: 58, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cormorant Garamond',serif", fontSize: 24, color: GOLD }}>{kiT}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }))}
+          <NavBtns prev={() => setStep(2)} next={() => setStep(4)} nextLabel="Riepilogo →"/>
+        </div>
+      )}
+
+      {/* ── STEP 4 ── */}
+      {step === 4 && (
         <div>
           <div style={s.card}>
             <div style={s.cardTitle}>Riepilogo Preventivo</div>
@@ -381,7 +443,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient })
             )}
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', marginTop: 8 }}>
-            <button style={btnStyle(false)} onClick={() => setStep(2)}>← Indietro</button>
+            <button style={btnStyle(false)} onClick={() => setStep(3)}>← Indietro</button>
             <div style={{ display: 'flex', gap: 10 }}>
               <button style={{ ...btnGoldStyle, borderColor: CLAY, color: CLAY }} onClick={openPDF}>↓ PDF Preventivo</button>
               <button style={{ ...btnStyle(false), opacity: saving ? 0.5 : 1 }} onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</button>
