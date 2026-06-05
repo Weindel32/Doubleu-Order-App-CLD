@@ -199,7 +199,7 @@ export function generateQuotePDF(order) {
     + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">NOTE E VALIDIT&Agrave;</div>'
     + '<div style="font-size:11px;color:#555;line-height:1.8;">'
     + '<p style="margin-bottom:8px;"><strong>Validit&agrave; del preventivo</strong> &mdash; Il presente preventivo ha validit&agrave; 30 giorni dalla data di emissione.</p>'
-    + '<p style="margin-bottom:8px;"><strong>Conferma dell\'ordine</strong> &mdash; L\'ordine si considera confermato solo al ricevimento della conferma scritta, approvazione grafica definitiva e versamento dell\'acconto previsto.</p>'
+    + '<p style="margin-bottom:8px;"><strong>Conferma dell\'ordine</strong> &mdash; L\'ordine si considera confermato solo al ricevimento della conferma scritta, approvazione grafica definitiva e versamento dell\'acconto o saldo concordato.</p>'
     + sizesNote
     + '</div></div>'
 
