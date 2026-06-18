@@ -112,6 +112,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
   const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
   const [shipping,setShipping]     = useState(editOrder?.shipping ?? '')
+  const [invoiceNumber,setInvoiceNumber] = useState(editOrder?.invoiceNumber || '')
   const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
   const [orderType,setOrderType]   = useState(editOrder?.orderType || 'istituzionale')
   const [payments,setPayments]     = useState(editOrder?.payments || [])
@@ -137,7 +138,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
     alertDays, status, pieces: totalPieces, orderType,
     notes: clientNotes, productionNotes, pricingMode,
     kitQuantity: null,
-    ivaEnabled, ivaRate, shipping: parseFloat(shipping) || 0, kits, payments,
+    ivaEnabled, ivaRate, shipping: parseFloat(shipping) || 0, invoiceNumber, kits, payments,
     showTotalInClientPDF: showTotal,
   })
 
@@ -494,7 +495,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
 
       {/* ── STEP 4 ── */}
       {step===4 && <div>
-        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping}/>
+        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber}/>
         <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →"/>
       </div>}
 

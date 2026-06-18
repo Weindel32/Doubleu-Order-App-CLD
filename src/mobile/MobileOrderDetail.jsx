@@ -209,6 +209,11 @@ export default function MobileOrderDetail({ order, onBack }) {
             <span style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale</span>
             <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD }}>{fmt(total)}</span>
           </div>
+          {order.invoiceNumber && (
+            <div style={{ marginTop: 4 }}>
+              <InfoRow label="Numero fattura" value={order.invoiceNumber} />
+            </div>
+          )}
         </div>
 
         {/* Pagamenti */}
