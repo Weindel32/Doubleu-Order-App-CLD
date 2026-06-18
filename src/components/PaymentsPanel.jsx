@@ -18,7 +18,7 @@ const isoToDisplay = (iso) => {
   return `${d}/${m}/${y}`
 }
 
-export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping }) {
+export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber }) {
   const [newP, setNewP] = useState({ type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false })
 
   const totalPaid    = payments.filter(p => p.paid).reduce((s, p)  => s + (parseFloat(p.amount) || 0), 0)
@@ -67,6 +67,22 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
               placeholder="0,00"
             />
           </div>
+        </div>
+      )}
+
+      {/* Invoice reference */}
+      {setInvoiceNumber && (
+        <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '14px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 2 }}>NUMERO FATTURA</div>
+            <div style={{ fontSize: 10, color: MUTED, opacity: 0.8 }}>Riferimento del documento emesso (uso interno).</div>
+          </div>
+          <input
+            style={{ ...inp, width: 200 }}
+            value={invoiceNumber}
+            onChange={e => setInvoiceNumber(e.target.value)}
+            placeholder="Es. FT/2026/152"
+          />
         </div>
       )}
 
