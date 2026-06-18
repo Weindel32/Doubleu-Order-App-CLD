@@ -168,6 +168,7 @@ export function generateClientPDF(order) {
     <div style="display:flex;gap:40px;flex-wrap:wrap;">
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div><div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2744;">${order.client}</div></div>
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA ORDINE</div><div style="font-size:14px;font-weight:600;">${order.date}</div></div>
+      ${order.invoiceNumber?`<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">RIF. FATTURA</div><div style="font-size:14px;font-weight:600;">${order.invoiceNumber}</div></div>`:''}
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PEZZI</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4623a;">${order.pieces}</div></div>
       ${order.pricingMode==='kit'?`<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PERSONE</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#1a2744;">${order.kits.reduce((s,k)=>s+(parseInt(k.quantity)||parseInt(order.kitQuantity)||0),0)}</div></div>`:''}
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;">${order.status}</div></div>
