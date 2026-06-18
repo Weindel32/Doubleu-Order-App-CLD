@@ -187,7 +187,10 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
                     <span style={{cursor:'pointer'}} onClick={()=>{setEditOrder(o);setView('new')}}>{o.client}</span>
                   </td>
                   <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.date||'—'}</td>
-                  <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.id}</td>
+                  <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>
+                    {o.id}
+                    {o.invoiceNumber&&<div style={{fontSize:9,marginTop:2,color:GOLD,opacity:0.75,letterSpacing:0.5}}>Fatt. {o.invoiceNumber}</div>}
+                  </td>
                   <td style={{...s.td,fontSize:11,color:days!==null&&days<=7&&o.status!=='CONSEGNATO'?CLAY:MUTED}}>
                     {o.deliveryDate||'—'}
                     {days!==null&&o.status!=='CONSEGNATO'&&<div style={{fontSize:9,marginTop:2}}>{days<0?`scad.${Math.abs(days)}gg`:days===0?'oggi':`${days}gg`}</div>}

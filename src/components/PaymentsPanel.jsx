@@ -75,7 +75,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
         <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '14px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 2 }}>NUMERO FATTURA</div>
-            <div style={{ fontSize: 10, color: MUTED, opacity: 0.8 }}>Riferimento del documento emesso (uso interno).</div>
+            <div style={{ fontSize: 10, color: MUTED, opacity: 0.8 }}>Riferimento del documento emesso. Se inserito, compare anche sul PDF cliente.</div>
           </div>
           <input
             style={{ ...inp, width: 200 }}
