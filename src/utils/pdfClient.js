@@ -1,11 +1,12 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderTotal } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderTotal } from '../utils/helpers.js'
 
 export function generateClientPDF(order) {
   const articles = getAllArticles(order)
   const hasKids  = articles.some(a => KIDS_SIZES.some(sz => (a.sizes.kids?.[sz] || 0) > 0))
   const hasAdult = articles.some(a => ADULT_SIZES.some(sz => (a.sizes.adult?.[sz] || 0) > 0))
   const subtotal = orderSubtotal(order)
+  const shipAmt  = orderShipping(order)
   const ivaAmt   = orderIVA(order)
   const total    = orderTotal(order)
 
@@ -123,6 +124,11 @@ export function generateClientPDF(order) {
         <div style="display:flex;justify-content:space-between;width:280px;">
           <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IVA ${order.ivaRate || 22}%</span>
           <span style="font-size:15px;color:#1a2744;">€ ${ivaAmt.toFixed(2)}</span>
+        </div>` : ''}
+        ${shipAmt > 0 ? `
+        <div style="display:flex;justify-content:space-between;width:280px;">
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">SPEDIZIONE</span>
+          <span style="font-size:15px;color:#1a2744;">€ ${shipAmt.toFixed(2)}</span>
         </div>` : ''}
         <div style="display:flex;justify-content:space-between;width:280px;padding-top:8px;border-top:1px solid #e0d8cc;">
           <span style="font-size:11px;color:#1a2744;font-weight:700;letter-spacing:2px;">TOTALE ${order.ivaEnabled?'IVA INCL.':''}</span>
