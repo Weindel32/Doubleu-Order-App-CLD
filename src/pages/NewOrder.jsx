@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
-import { artPieceCount, orderSubtotal, orderIVA, orderTotal as calcOrderTotal } from '../utils/helpers.js'
+import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderTotal as calcOrderTotal } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -111,6 +111,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
   const [pricingMode,setPM]        = useState(editOrder?.pricingMode || 'singolo')
   const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
+  const [shipping,setShipping]     = useState(editOrder?.shipping ?? '')
   const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
   const [orderType,setOrderType]   = useState(editOrder?.orderType || 'istituzionale')
   const [payments,setPayments]     = useState(editOrder?.payments || [])
@@ -136,12 +137,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
     alertDays, status, pieces: totalPieces, orderType,
     notes: clientNotes, productionNotes, pricingMode,
     kitQuantity: null,
-    ivaEnabled, ivaRate, kits, payments,
+    ivaEnabled, ivaRate, shipping: parseFloat(shipping) || 0, kits, payments,
     showTotalInClientPDF: showTotal,
   })
 
   const currentOrder = orderObj()
   const subtotal  = orderSubtotal(currentOrder)
+  const shipAmount = orderShipping(currentOrder)
   const ivaAmount = orderIVA(currentOrder)
   const total     = calcOrderTotal(currentOrder)
   const totalPaid = payments.filter(p=>p.paid).reduce((s,p)=>s+(parseFloat(p.amount)||0),0)
@@ -247,6 +249,12 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
             <span>IVA {ivaRate}%</span>
             <span style={{ color:CREAM }}>€ {ivaAmount.toFixed(2)}</span>
+          </div>
+        )}
+        {shipAmount > 0 && (
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
+            <span>Spese di spedizione</span>
+            <span style={{ color:CREAM }}>€ {shipAmount.toFixed(2)}</span>
           </div>
         )}
         <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:`1px solid ${BORDER}` }}>
@@ -486,7 +494,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
 
       {/* ── STEP 4 ── */}
       {step===4 && <div>
-        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total}/>
+        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping}/>
         <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →"/>
       </div>}
 

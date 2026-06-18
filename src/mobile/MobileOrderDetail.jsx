@@ -1,6 +1,6 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderTotal, paymentSummary, daysUntilDelivery } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderTotal, paymentSummary, daysUntilDelivery } from '../utils/helpers.js'
 
 function fmt(n) {
   return '€' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -40,6 +40,7 @@ export default function MobileOrderDetail({ order, onBack }) {
   const { total, paid, pending, residual } = paymentSummary(order)
   const days = daysUntilDelivery(order)
   const subtotal = orderSubtotal(order)
+  const shipping = orderShipping(order)
   const iva = orderIVA(order)
   const isOverdue = days !== null && days < 0 && order.status !== 'CONSEGNATO'
   const isUrgent = days !== null && days >= 0 && days <= (order.alertDays || 7) && order.status !== 'CONSEGNATO'
@@ -200,6 +201,9 @@ export default function MobileOrderDetail({ order, onBack }) {
           <InfoRow label="Subtotale" value={fmt(subtotal)} />
           {order.ivaEnabled && (
             <InfoRow label={`IVA ${order.ivaRate || 22}%`} value={fmt(iva)} />
+          )}
+          {shipping > 0 && (
+            <InfoRow label="Spese di spedizione" value={fmt(shipping)} />
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(184,150,90,0.2)', marginTop: 4 }}>
             <span style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale</span>

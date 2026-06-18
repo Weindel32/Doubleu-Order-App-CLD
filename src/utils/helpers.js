@@ -25,13 +25,18 @@ export function orderSubtotal(order) {
   }, 0)
 }
 
+// ── Shipping is a flat cost added to the total (net, not subject to IVA)
+export function orderShipping(order) {
+  return parseFloat(order.shipping) || 0
+}
+
 export function orderIVA(order) {
   if (!order.ivaEnabled) return 0
   return orderSubtotal(order) * ((parseFloat(order.ivaRate) || 22) / 100)
 }
 
 export function orderTotal(order) {
-  return orderSubtotal(order) + orderIVA(order)
+  return orderSubtotal(order) + orderIVA(order) + orderShipping(order)
 }
 
 export function paymentSummary(order) {

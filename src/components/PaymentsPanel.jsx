@@ -18,7 +18,7 @@ const isoToDisplay = (iso) => {
   return `${d}/${m}/${y}`
 }
 
-export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
+export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping }) {
   const [newP, setNewP] = useState({ type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false })
 
   const totalPaid    = payments.filter(p => p.paid).reduce((s, p)  => s + (parseFloat(p.amount) || 0), 0)
@@ -49,6 +49,26 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal }) {
   return (
     <div style={{ ...s.card }}>
       <div style={s.cardTitle}>Pagamenti</div>
+
+      {/* Shipping cost */}
+      {setShipping && (
+        <div style={{ background: 'rgba(184,150,90,0.06)', border: `1px solid rgba(184,150,90,0.2)`, borderRadius: 8, padding: '14px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 2 }}>SPESE DI SPEDIZIONE</div>
+            <div style={{ fontSize: 10, color: MUTED, opacity: 0.8 }}>Si sommano al totale. Lascia vuoto o 0 per spedizione gratuita.</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16, color: GOLD }}>€</span>
+            <input
+              type="number" min="0" step="0.01"
+              style={{ ...inp, width: 120, textAlign: 'right' }}
+              value={shipping}
+              onChange={e => setShipping(e.target.value)}
+              placeholder="0,00"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Summary bar */}
       {orderTotal > 0 && (
