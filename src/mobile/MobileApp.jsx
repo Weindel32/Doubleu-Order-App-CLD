@@ -45,11 +45,11 @@ export default function MobileApp({ orders, clients, onLogout, onUpsertClient })
       }}>
         <div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: CREAM, letterSpacing: 4, lineHeight: 1 }}>DOUBLEU</div>
-          <div style={{ fontSize: 8, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
+          <div style={{ fontSize: 10, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
         </div>
         <button onClick={onLogout} style={{
           background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.3)',
-          borderRadius: 4, color: CLAY, fontSize: 9, letterSpacing: 2,
+          borderRadius: 4, color: CLAY, fontSize: 11, letterSpacing: 2,
           textTransform: 'uppercase', padding: '8px 14px', cursor: 'pointer',
           fontFamily: "'Josefin Sans', sans-serif",
         }}>Esci</button>
@@ -82,7 +82,7 @@ export default function MobileApp({ orders, clients, onLogout, onUpsertClient })
             WebkitTapHighlightColor: 'transparent',
           }}>
             <span style={{ fontSize: t.key === 'quotes' ? 18 : 22, lineHeight: 1 }}>{t.icon}</span>
-            <span style={{ fontSize: 8, letterSpacing: 1.5, textTransform: 'uppercase' }}>{t.label}</span>
+            <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase' }}>{t.label}</span>
             {tab === t.key && (
               <span style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 56px)', width: 24, height: 2, background: GOLD, borderRadius: 1 }} />
             )}

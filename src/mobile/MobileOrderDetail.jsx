@@ -8,7 +8,7 @@ function fmt(n) {
 
 function SectionTitle({ children }) {
   return (
-    <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
+    <div style={{ fontSize: 11, letterSpacing: 2.5, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
       {children}
     </div>
   )
@@ -75,8 +75,8 @@ export default function MobileOrderDetail({ order, onBack }) {
           WebkitTapHighlightColor: 'transparent',
         }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.client}</div>
-          <div style={{ fontSize: 9, color: GOLD, letterSpacing: 2 }}>{order.id}</div>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.client}</div>
+          <div style={{ fontSize: 11, color: GOLD, letterSpacing: 2 }}>{order.id}</div>
         </div>
         <span style={badgeStyle(order.status)}>{order.status}</span>
       </div>
@@ -155,9 +155,9 @@ export default function MobileOrderDetail({ order, onBack }) {
                     <div style={{ fontSize: 13, color: CREAM }}>
                       {art.category}{art.line ? ` · ${art.line}` : ''}
                     </div>
-                    {art.color && <div style={{ fontSize: 10, color: MUTED, marginTop: 3 }}>{art.color}</div>}
-                    {art.sp && <div style={{ fontSize: 9, color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
-                    {art.notes && <div style={{ fontSize: 10, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
+                    {art.color && <div style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>{art.color}</div>}
+                    {art.sp && <div style={{ fontSize: 11, color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
+                    {art.notes && <div style={{ fontSize: 12, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
                     {(() => {
                       const adultEntries = ADULT_SIZES.filter(sz => (art.sizes?.adult?.[sz] || 0) > 0)
                       const kidsEntries  = KIDS_SIZES.filter(sz  => (art.sizes?.kids?.[sz]  || 0) > 0)
@@ -184,11 +184,11 @@ export default function MobileOrderDetail({ order, onBack }) {
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: GOLD, lineHeight: 1 }}>{artPieceCount(art)}</div>
-                    <div style={{ fontSize: 8, color: MUTED, letterSpacing: 1, marginTop: 2 }}>pezzi</div>
+                    <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1, marginTop: 2 }}>pezzi</div>
                   </div>
                 </div>
                 {art.delivered && (
-                  <div style={{ marginTop: 8, fontSize: 9, color: GREEN, letterSpacing: 2, textTransform: 'uppercase' }}>✓ Consegnato</div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: GREEN, letterSpacing: 2, textTransform: 'uppercase' }}>✓ Consegnato</div>
                 )}
               </div>
             ))}
@@ -206,7 +206,7 @@ export default function MobileOrderDetail({ order, onBack }) {
             <InfoRow label="Spese di spedizione" value={fmt(shipping)} />
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(184,150,90,0.2)', marginTop: 4 }}>
-            <span style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale</span>
+            <span style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale</span>
             <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD }}>{fmt(total)}</span>
           </div>
           {order.invoiceNumber && (
@@ -231,11 +231,11 @@ export default function MobileOrderDetail({ order, onBack }) {
                   borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
                 }}>
                   <div>
-                    <div style={{ fontSize: 10, color: p.paid ? GREEN : MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    <div style={{ fontSize: 12, color: p.paid ? GREEN : MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>
                       {p.paid ? '✓' : '○'} {p.type}
                     </div>
-                    {p.date && <div style={{ fontSize: 9, color: MUTED, marginTop: 2 }}>{p.date}</div>}
-                    {p.method && <div style={{ fontSize: 9, color: MUTED }}>{p.method}</div>}
+                    {p.date && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{p.date}</div>}
+                    {p.method && <div style={{ fontSize: 11, color: MUTED }}>{p.method}</div>}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 14, color: p.paid ? GREEN : CREAM, fontFamily: "'Cormorant Garamond', serif" }}>
@@ -246,9 +246,9 @@ export default function MobileOrderDetail({ order, onBack }) {
               )
             })}
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(184,150,90,0.15)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <span style={{ fontSize: 10, color: GREEN }}>Pagato: {fmt(paid)}</span>
-              {pending > 0 && <span style={{ fontSize: 10, color: GOLD }}>Atteso: {fmt(pending)}</span>}
-              {residual > 0 && <span style={{ fontSize: 10, color: CLAY }}>Residuo: {fmt(residual)}</span>}
+              <span style={{ fontSize: 12, color: GREEN }}>Pagato: {fmt(paid)}</span>
+              {pending > 0 && <span style={{ fontSize: 12, color: GOLD }}>Atteso: {fmt(pending)}</span>}
+              {residual > 0 && <span style={{ fontSize: 12, color: CLAY }}>Residuo: {fmt(residual)}</span>}
             </div>
           </div>
         )}
