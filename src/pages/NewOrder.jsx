@@ -219,10 +219,16 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
     setSaving(false)
   }
 
-  const NavBtns = ({prev,next,nextLabel='Continua →',nextDisabled=false}) => (
-    <div style={{display:'flex',justifyContent:'space-between',marginTop:8}}>
-      <button style={btnStyle(false)} onClick={prev}>← Indietro</button>
-      <button style={{...btnStyle(true),opacity:nextDisabled?0.4:1}} onClick={()=>!nextDisabled&&next()}>{nextLabel}</button>
+  const NavBtns = ({prev,next,nextLabel='Continua →',nextDisabled=false,withSave=false}) => (
+    <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
+      {withSave && saveError && <div style={{padding:'10px 16px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:6,color:'#ef4444',fontSize:12}}>{saveError}</div>}
+      <div style={{display:'flex',justifyContent:'space-between'}}>
+        <button style={btnStyle(false)} onClick={prev}>← Indietro</button>
+        <div style={{display:'flex',gap:10}}>
+          {withSave && <button style={{...btnStyle(false),opacity:saving?0.5:1}} onClick={()=>handleSave(false)} disabled={saving}>{saving?'Salvataggio...':'Salva'}</button>}
+          <button style={{...btnStyle(true),opacity:nextDisabled?0.4:1}} onClick={()=>!nextDisabled&&next()}>{nextLabel}</button>
+        </div>
+      </div>
     </div>
   )
 
@@ -490,13 +496,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
             </div>
           )
         }))}
-        <NavBtns prev={()=>setStep(2)} next={()=>setStep(4)} nextLabel="Pagamenti →"/>
+        <NavBtns prev={()=>setStep(2)} next={()=>setStep(4)} nextLabel="Pagamenti →" withSave/>
       </div>}
 
       {/* ── STEP 4 ── */}
       {step===4 && <div>
         <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber}/>
-        <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →"/>
+        <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →" withSave/>
       </div>}
 
       {/* ── STEP 5 ── */}
