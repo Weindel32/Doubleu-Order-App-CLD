@@ -40,7 +40,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
               border: `1px solid ${active ? GOLD : BORDER}`,
               background: active ? 'rgba(184,150,90,0.12)' : 'transparent',
               color: active ? GOLD : MUTED,
-              fontSize: 9,
+              fontSize: 10,
               letterSpacing: 2,
               textTransform: 'uppercase',
               cursor: 'pointer',
@@ -52,7 +52,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
         })}
       </div>
 
-      <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
+      <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
         {filtered.length} ordini
       </div>
 
@@ -70,23 +70,23 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
             WebkitTapHighlightColor: 'transparent',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM, flex: 1, marginRight: 10, lineHeight: 1.2 }}>{o.client}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM, flex: 1, marginRight: 10, lineHeight: 1.2 }}>{o.client}</div>
               <span style={badgeStyle(o.status)}>{o.status}</span>
             </div>
 
-            <div style={{ fontSize: 10, color: MUTED, marginBottom: 8 }}>{o.id} · {o.date}</div>
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 8 }}>{o.id} · {o.date}</div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               {o.deliveryDate ? (
-                <span style={{ fontSize: 10, color: days !== null && days <= 3 ? CLAY : MUTED }}>
+                <span style={{ fontSize: 12, color: days !== null && days <= 3 ? CLAY : MUTED }}>
                   Consegna {o.deliveryDate}
                   {days !== null && ` · ${days < 0 ? `-${Math.abs(days)}g` : `+${days}g`}`}
                 </span>
               ) : <span />}
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                {pending > 0 && <span style={{ fontSize: 10, color: GOLD }}>Atteso {fmt(pending)}</span>}
-                {residual > 0 && <span style={{ fontSize: 10, color: CLAY }}>Residuo {fmt(residual)}</span>}
+                {pending > 0 && <span style={{ fontSize: 12, color: GOLD }}>Atteso {fmt(pending)}</span>}
+                {residual > 0 && <span style={{ fontSize: 12, color: CLAY }}>Residuo {fmt(residual)}</span>}
               </div>
             </div>
           </div>
