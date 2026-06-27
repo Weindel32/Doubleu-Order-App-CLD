@@ -245,6 +245,25 @@ export default function Analytics({ orders }) {
     quoteMonthlyByYear[p.year][p.month]++
   })
 
+  const currentYear = new Date().getFullYear()
+  const prevYear    = currentYear - 1
+
+  const revenueThisYear = confirmed.filter(o => {
+    const p = parseItalianMonth(o.date); return p?.year === currentYear
+  }).reduce((s,o) => s + orderTotal(o), 0)
+
+  const revenuePrevYear = confirmed.filter(o => {
+    const p = parseItalianMonth(o.date); return p?.year === prevYear
+  }).reduce((s,o) => s + orderTotal(o), 0)
+
+  const revenueYoY = revenuePrevYear > 0
+    ? Math.round((revenueThisYear - revenuePrevYear) / revenuePrevYear * 100)
+    : null
+
+  const ordersThisYear = confirmed.filter(o => {
+    const p = parseItalianMonth(o.date); return p?.year === currentYear
+  }).length
+
   const totalRevenue      = confirmed.reduce((s,o)=>s+orderTotal(o),0)
   const istituzionale     = confirmed.filter(o=>o.orderType!=='soci').reduce((s,o)=>s+orderTotal(o),0)
   const sociShop          = confirmed.filter(o=>o.orderType==='soci').reduce((s,o)=>s+orderTotal(o),0)
@@ -304,18 +323,51 @@ export default function Analytics({ orders }) {
       <div style={s.pageSub}>Produzione · pezzi e referenze</div>
 
       <div style={s.grid4}>
-        {[
-          {label:'Pezzi Totali Prodotti',value:totalPieces,sub:'Ordini confermati+'},
-          {label:'Pezzi in Omaggio',value:totalOmaggio,sub:totalPieces>0?`${Math.round(totalOmaggio/totalPieces*100)}% sul totale`:'—',highlight:totalOmaggio>0},
-          {label:'Categorie Attive',value:Object.keys(byCategory).length},
-          {label:'Categoria Top',value:Object.entries(byCategory).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—',sub:`${Object.entries(byCategory).sort((a,b)=>b[1]-a[1])[0]?.[1]||0} pz`},
-        ].map(item=>(
-          <div key={item.label} style={{...s.statCard(false),border:item.highlight?`1px solid rgba(196,98,58,0.35)`:undefined}}>
-            <div style={{...s.statLabel,color:item.highlight?CLAY:MUTED}}>{item.label}</div>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:item.value?.toString().length>4?22:34,fontWeight:300,color:item.highlight?CLAY:CREAM,lineHeight:1}}>{item.value}</div>
-            {item.sub&&<div style={s.statSub}>{item.sub}</div>}
+        {/* Card 1 — Fatturato anno corrente */}
+        <div style={{...s.statCard(false), border:`1px solid rgba(184,150,90,0.25)`}}>
+          <div style={{...s.statLabel, color:MUTED}}>Fatturato {currentYear}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:revenueThisYear>=100000?22:28,fontWeight:300,color:GOLD,lineHeight:1}}>
+            € {revenueThisYear.toLocaleString('it-IT',{maximumFractionDigits:0})}
           </div>
-        ))}
+          {revenueYoY !== null && (
+            <div style={{...s.statSub, color: revenueYoY >= 0 ? GREEN : '#ef4444'}}>
+              {revenueYoY >= 0 ? `+${revenueYoY}%` : `${revenueYoY}%`} vs {prevYear}
+            </div>
+          )}
+          {revenueYoY === null && revenuePrevYear === 0 && (
+            <div style={s.statSub}>Primo anno</div>
+          )}
+        </div>
+
+        {/* Card 2 — Ordini confermati anno corrente */}
+        <div style={s.statCard(false)}>
+          <div style={s.statLabel}>Ordini {currentYear}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:300,color:CREAM,lineHeight:1}}>
+            {ordersThisYear}
+          </div>
+          <div style={s.statSub}>{confirmed.length} totali in archivio</div>
+        </div>
+
+        {/* Card 3 — Tasso conversione preventivi */}
+        <div style={{...s.statCard(false), border: totalQuotes > 0 ? `1px solid rgba(74,158,110,0.2)` : undefined}}>
+          <div style={s.statLabel}>Conversione Preventivi</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:300,color:conversionRate>=50?GREEN:CLAY,lineHeight:1}}>
+            {totalQuotes > 0 ? `${conversionRate}%` : '—'}
+          </div>
+          {totalQuotes > 0
+            ? <div style={s.statSub}>{convertedCount}/{totalQuotes} convertiti</div>
+            : <div style={s.statSub}>Nessun preventivo</div>
+          }
+        </div>
+
+        {/* Card 4 — Pezzi prodotti */}
+        <div style={s.statCard(false)}>
+          <div style={s.statLabel}>Pezzi Prodotti</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:300,color:CREAM,lineHeight:1}}>
+            {totalPieces}
+          </div>
+          <div style={s.statSub}>{Object.entries(byCategory).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—'} top categoria</div>
+        </div>
       </div>
 
       {deliveryPerf && (() => {
