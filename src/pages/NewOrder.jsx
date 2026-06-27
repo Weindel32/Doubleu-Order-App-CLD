@@ -91,7 +91,43 @@ function DatePicker({ value, onChange, label }) {
   )
 }
 
-export default function NewOrder({ editOrder, setView, onSaved, prefillClient }) {
+function ClientSearch({ clients, onSelect, inputStyle }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen]   = useState(false)
+
+  const filtered = query.length >= 1
+    ? clients.filter(c => c.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+    : []
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <label style={s.label}>Cerca cliente in anagrafica</label>
+      <input
+        style={inputStyle}
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Digita per cercare..."
+      />
+      {open && filtered.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#1e2d50', border: `1px solid ${BORDER}`, borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', maxHeight: 240, overflowY: 'auto' }}>
+          {filtered.map(c => (
+            <div key={c.name} onMouseDown={() => { onSelect(c); setQuery(''); setOpen(false) }}
+              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: `1px solid rgba(255,255,255,0.05)` }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(184,150,90,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <div style={{ fontSize: 13, color: CREAM }}>{c.name}</div>
+              {(c.city || c.email) && <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{[c.city, c.email].filter(Boolean).join(' · ')}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function NewOrder({ editOrder, setView, onSaved, prefillClient, clients = [], onUpsertClient }) {
   const [step,setStep]             = useState(prefillClient ? 2 : 1)
   const [club,setClub]             = useState(prefillClient?.name || editOrder?.client || '')
   const [clientEmail,setEmail]     = useState(prefillClient?.email || editOrder?.clientEmail || '')
@@ -214,7 +250,16 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
       const finalStatus = confirmOrder ? 'CONFERMATO' : status
       const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces }
       const ok = editOrder ? await updateOrder(order) : await createOrder(order)
-      if (ok) { onSaved() } else { setSaveError('Errore nel salvataggio. Riprova.') }
+      if (ok) {
+        if (onUpsertClient && club.trim()) {
+          await onUpsertClient(club.trim(), {
+            email: clientEmail, phone: clientPhone,
+            address: clientAddress, city: clientCity,
+            country: clientCountry, contact: clientContact,
+          })
+        }
+        onSaved()
+      } else { setSaveError('Errore nel salvataggio. Riprova.') }
     } catch (e) { setSaveError('Errore: ' + e.message) }
     setSaving(false)
   }
@@ -296,6 +341,21 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient })
 
       {/* ── STEP 1 ── */}
       {step===1 && <div>
+        {!editOrder && clients.length > 0 && (
+          <div style={s.card}>
+            <div style={s.cardTitle}>Cliente esistente</div>
+            <ClientSearch clients={clients} inputStyle={inp} onSelect={c => {
+              setClub(c.name)
+              setContact(c.contact || '')
+              setEmail(c.email || '')
+              setPhone(c.phone || '')
+              setAddress(c.address || '')
+              setCity(c.city || '')
+              setCountry(c.country || 'Italia')
+            }}/>
+            <div style={{fontSize:10,color:MUTED,marginTop:8}}>Seleziona un cliente per pre-compilare i campi — puoi modificarli prima di salvare</div>
+          </div>
+        )}
         <div style={s.card}>
           <div style={s.cardTitle}>Dati Club / Cliente</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>

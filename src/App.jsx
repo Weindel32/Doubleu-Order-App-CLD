@@ -140,6 +140,12 @@ export default function App() {
     navigate('new')
   }
 
+  const handleNewQuoteFromClient = (clientData) => {
+    setEditOrder(null)
+    setPrefill(clientData)
+    navigate('newQuote')
+  }
+
   const handleConvertToOrder = (quote) => {
     setEditOrder({ ...quote, status: 'CONFERMATO' })
     setPrefill(null)
@@ -191,10 +197,10 @@ export default function App() {
         {view === 'dashboard'  && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders} onNavigateToQuotes={() => navigate('quotes')}/>}
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
-        {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient}/>}
+        {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient}/>}
         {view === 'analytics'  && <Analytics orders={orders}/>}
-        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} setView={navigate} onSaved={handleSavedOrder}/>}
-        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} setView={navigate} onSaved={handleSavedQuote}/>}
+        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
+        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}
       </main>
     </div>
   )

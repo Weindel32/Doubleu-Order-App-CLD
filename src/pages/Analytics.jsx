@@ -175,6 +175,7 @@ function DonutChart({ data, title }) {
 }
 
 export default function Analytics({ orders }) {
+  const quotes    = orders.filter(o => o.status === 'PREVENTIVO')
   const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
 
   const byCategory={}, byLine={}, byStatus={}, omaggioByCategory={}
@@ -211,6 +212,37 @@ export default function Analytics({ orders }) {
     if (month < 0 || month > 11 || isNaN(year) || year < 2000 || year > 2100) return
     if (!monthlyByYear[year]) monthlyByYear[year] = Array(12).fill(0)
     monthlyByYear[year][month] += orderTotal(o)
+  })
+
+  const totalQuotes       = quotes.length
+  const convertedQuotes   = orders.filter(o => o.status !== 'PREVENTIVO' && o._convertedFrom).length
+
+  const quotesByMonth = {}
+  const ordersFromQuotesByMonth = {}
+  const MONTH_KEYS = Array.from({length:12},(_,i)=>i)
+  const parseItalianMonth = (dateStr) => {
+    if (!dateStr) return null
+    const parts = dateStr.split('/')
+    if (parts.length < 3) return null
+    return { month: parseInt(parts[1]) - 1, year: parseInt(parts[2]) }
+  }
+
+  const confirmedClientsSet = new Set(confirmed.map(o => o.client))
+  const convertedCount = quotes.filter(q => confirmedClientsSet.has(q.client)).length
+  const conversionRate = totalQuotes > 0 ? Math.round(convertedCount / totalQuotes * 100) : 0
+  const openQuotes     = totalQuotes - convertedCount
+
+  const avgQuoteValue  = totalQuotes > 0
+    ? quotes.reduce((s,o) => s + orderTotal(o), 0) / totalQuotes
+    : 0
+
+  const quoteMonthlyByYear = {}
+  quotes.forEach(o => {
+    if (!o.date) return
+    const p = parseItalianMonth(o.date)
+    if (!p) return
+    if (!quoteMonthlyByYear[p.year]) quoteMonthlyByYear[p.year] = Array(12).fill(0)
+    quoteMonthlyByYear[p.year][p.month]++
   })
 
   const totalRevenue      = confirmed.reduce((s,o)=>s+orderTotal(o),0)
@@ -425,6 +457,41 @@ export default function Analytics({ orders }) {
             </table>
           </div>
         </div>
+      </>}
+
+      {totalQuotes > 0 && <>
+        <div style={s.divider}/>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CLAY,letterSpacing:2,marginBottom:20}}>Preventivi</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:16,marginBottom:24}}>
+          {[
+            {label:'Preventivi Totali',    value:totalQuotes,                    color:CREAM},
+            {label:'Convertiti in Ordine', value:convertedCount,                 color:GREEN, sub:`${conversionRate}% tasso di conversione`},
+            {label:'Ancora Aperti',        value:openQuotes,                     color:CLAY},
+            {label:'Valore Medio',         value:`€ ${avgQuoteValue.toLocaleString('it-IT',{maximumFractionDigits:0})}`, color:GOLD},
+          ].map(item=>(
+            <div key={item.label} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'16px 20px'}}>
+              <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:6}}>{item.label}</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,color:item.color,lineHeight:1}}>{item.value}</div>
+              {item.sub && <div style={{fontSize:10,color:MUTED,marginTop:4}}>{item.sub}</div>}
+            </div>
+          ))}
+        </div>
+        {totalQuotes > 0 && (
+          <div style={{...s.card,marginBottom:20}}>
+            <div style={s.cardTitle}>Tasso di Conversione</div>
+            <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:8}}>
+              <div style={{flex:1,height:10,background:'rgba(255,255,255,0.06)',borderRadius:5,overflow:'hidden',display:'flex'}}>
+                <div style={{width:`${conversionRate}%`,background:GREEN,borderRadius:5,transition:'width 0.5s'}}/>
+                <div style={{width:`${100-conversionRate}%`,background:'rgba(196,98,58,0.3)',transition:'width 0.5s'}}/>
+              </div>
+              <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:conversionRate>=50?GREEN:CLAY,minWidth:50}}>{conversionRate}%</span>
+            </div>
+            <div style={{display:'flex',gap:24,fontSize:10,color:MUTED}}>
+              <span><span style={{color:GREEN}}>■</span> {convertedCount} convertiti</span>
+              <span><span style={{color:CLAY}}>■</span> {openQuotes} aperti</span>
+            </div>
+          </div>
+        )}
       </>}
 
       <div style={s.divider}/>

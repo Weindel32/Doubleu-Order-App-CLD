@@ -33,7 +33,7 @@ function Field({ label, value }) {
   )
 }
 
-export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onUpsertClient, onRenameClient }) {
+export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpsertClient, onRenameClient }) {
   const [selectedClient, setSelectedClient] = useState(null)
   const [saving, setSaving] = useState(false)
   const [editForm, setEditForm] = useState(null)
@@ -237,6 +237,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                 </div>
               </div>
               <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                <button style={{...btnStyle(false),borderColor:CLAY,color:CLAY}} onClick={()=>{
+                  setSelectedClient(null)
+                  onNewQuoteFromClient({
+                    name:selected.name, email:selected.email, phone:selected.phone,
+                    address:selected.address, city:selected.city,
+                    country:selected.country, contact:selected.contact,
+                  })
+                }}>+ Nuovo Preventivo</button>
                 <button style={btnStyle(true)} onClick={()=>{
                   setSelectedClient(null)
                   onNewOrderFromClient({
