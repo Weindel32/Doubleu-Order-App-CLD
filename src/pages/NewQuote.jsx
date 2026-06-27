@@ -378,7 +378,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
                     <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e => updateArt(ki, ai, 'line', e.target.value)}>{LINES.map(l => <option key={l}>{l}</option>)}</select></div>
                   </div>
                   {pricingMode === 'singolo' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '140px 100px 100px', gap: 10, marginBottom: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '140px 100px 100px', gap: 10, marginBottom: 10, alignItems: 'end' }}>
                       <div><label style={s.label}>Prezzo unitario €</label><input type="number" style={inp} value={art.price} onChange={e => updateArt(ki, ai, 'price', e.target.value)} placeholder="28"/></div>
                       <div><label style={s.label}>Quantità stimata</label><input type="number" min="1" style={inp} value={art.estimatedQty || ''} onChange={e => updateArt(ki, ai, 'estimatedQty', e.target.value)} placeholder="10"/></div>
                       <div>
