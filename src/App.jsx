@@ -129,6 +129,32 @@ export default function App() {
 
   const [ordersFilter, setOrdersFilter] = useState('Tutti')
 
+  // Derived full client list: merge clients from orders + clients table
+  const allClientsForSearch = (() => {
+    const map = {}
+    orders.filter(o => o.client).forEach(o => {
+      if (!map[o.client]) {
+        map[o.client] = {
+          name: o.client, email: o.clientEmail || '', phone: o.clientPhone || '',
+          address: o.clientAddress || '', city: o.clientCity || '',
+          country: o.clientCountry || 'Italia', contact: o.clientContact || '',
+        }
+      }
+    })
+    clients.forEach(c => {
+      if (!map[c.name]) map[c.name] = { name: c.name, email: '', phone: '', address: '', city: '', country: 'Italia', contact: '' }
+      Object.assign(map[c.name], {
+        email: c.email || map[c.name].email,
+        phone: c.phone || map[c.name].phone,
+        address: c.address || map[c.name].address,
+        city: c.city || map[c.name].city,
+        country: c.country || map[c.name].country,
+        contact: c.contact || map[c.name].contact,
+      })
+    })
+    return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
+  })()
+
   const navigate  = (v) => { if (v === 'orders') setOrdersFilter('Tutti'); setView(v); window.scrollTo(0, 0) }
   const goToOrder = (order) => { setEditOrder(order); setPrefill(null); navigate('new') }
   const goToQuote = (quote) => { setEditOrder(quote); setPrefill(null); navigate('newQuote') }
@@ -199,8 +225,8 @@ export default function App() {
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient}/>}
         {view === 'analytics'  && <Analytics orders={orders}/>}
-        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
-        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}
+        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={allClientsForSearch} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
+        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={allClientsForSearch} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}
       </main>
     </div>
   )
