@@ -14,6 +14,16 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
   const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
   const quote     = orders.filter(o => o.status === 'PREVENTIVO')
   const inProd    = orders.filter(o => o.status === 'IN PRODUZIONE')
+
+  const parseDate = d => {
+    if (!d) return 0
+    const [dd,mm,yyyy] = d.split('/')
+    return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0
+  }
+  const fullyPaid = confirmed
+    .filter(o => { const ps = paymentSummary(o); return ps.total > 0 && ps.residual === 0 && ps.pending === 0 })
+    .sort((a,b) => parseDate(b.date) - parseDate(a.date))
+    .slice(0, 5)
   const totalRev  = confirmed.reduce((a, o) => a + orderTotal(o), 0)
   const totalPending = orders.filter(o=>o.status!=='PREVENTIVO').reduce((s,o)=>s+paymentSummary(o).pending,0)
 
@@ -163,6 +173,43 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
             })}
           </tbody>
         </table>
+      )}
+
+      {/* ── Ultimi 5 ordini incassati ─────────────────────────── */}
+      {fullyPaid.length > 0 && (
+        <>
+          <div style={s.divider}/>
+          <div style={{display:'flex',alignItems:'baseline',gap:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2}}>Ultimi Ordini Incassati</div>
+            <div style={{fontSize:11,color:MUTED,letterSpacing:1}}>
+              Totale: <span style={{color:GREEN,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>
+                {fullyPaid.reduce((a,o)=>a+orderTotal(o),0).toLocaleString('it-IT',{minimumFractionDigits:2})} €
+              </span>
+            </div>
+          </div>
+          <table style={s.table}>
+            <thead>
+              <tr>{['Cliente','Codice','Data','Stato','Pezzi','Incassato'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {fullyPaid.map(o=>{
+                const tot=orderTotal(o)
+                return (
+                  <tr key={o.id} style={{cursor:'pointer'}} onClick={()=>{setEditOrder(o);setView('new')}}>
+                    <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>{o.client}</td>
+                    <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.id}</td>
+                    <td style={{...s.td,fontSize:11,color:MUTED}}>{o.date||'—'}</td>
+                    <td style={s.td}><span style={badgeStyle(o.status)}>{o.status}</span></td>
+                    <td style={{...s.td,textAlign:'center',color:MUTED}}>{o.pieces||'—'}</td>
+                    <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:GREEN}}>
+                      ✓ {tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
       )}
 
       {/* ── Preventivi in attesa ───────────────────────────────── */}
