@@ -62,7 +62,7 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
   }
   const fullyPaid = orders
     .filter(o => o.status !== 'PREVENTIVO')
-    .filter(o => { const ps = paymentSummary(o); return ps.total > 0 && ps.residual === 0 && ps.pending === 0 })
+    .filter(o => { const ps = paymentSummary(o); return ps.total > 0 && ps.residual < 0.01 && ps.pending === 0 })
     .sort((a,b) => parseDate(b.date) - parseDate(a.date))
     .slice(0, 5)
 

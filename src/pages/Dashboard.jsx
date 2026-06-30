@@ -21,7 +21,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0
   }
   const fullyPaid = confirmed
-    .filter(o => { const ps = paymentSummary(o); return ps.total > 0 && ps.residual === 0 && ps.pending === 0 })
+    .filter(o => { const ps = paymentSummary(o); return ps.total > 0 && ps.residual < 0.01 && ps.pending === 0 })
     .sort((a,b) => parseDate(b.date) - parseDate(a.date))
     .slice(0, 5)
   const totalRev  = confirmed.reduce((a, o) => a + orderTotal(o), 0)
