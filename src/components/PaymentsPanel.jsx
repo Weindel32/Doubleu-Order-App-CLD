@@ -18,8 +18,16 @@ const isoToDisplay = (iso) => {
   return `${d}/${m}/${y}`
 }
 
+const displayToIso = (display) => {
+  if (!display) return ''
+  const [d, m, y] = display.split('/')
+  return `${y}-${m}-${d}`
+}
+
 export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber }) {
   const [newP, setNewP] = useState({ type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false })
+  const [editingId, setEditingId] = useState(null)
+  const [editP, setEditP] = useState(null)
 
   const totalPaid    = payments.filter(p => p.paid).reduce((s, p)  => s + (parseFloat(p.amount) || 0), 0)
   const totalPending = payments.filter(p => !p.paid).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
@@ -43,6 +51,26 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
 
   const removePayment = (id) =>
     setPayments(payments.filter(p => p.id !== id))
+
+  const startEdit = (p) => {
+    setEditingId(p.id)
+    setEditP({ ...p, date: displayToIso(p.date) })
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditP(null)
+  }
+
+  const saveEdit = () => {
+    if (!editP.amount || !editP.date) return
+    setPayments(payments.map(p =>
+      p.id === editingId
+        ? { ...editP, amount: parseFloat(editP.amount), date: isoToDisplay(editP.date) }
+        : p
+    ))
+    cancelEdit()
+  }
 
   const inp = { ...s.input }
 
@@ -121,6 +149,50 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             return parse(a.date) - parse(b.date)
           }).map(p => {
             const tc = TYPE_COLORS[p.type] || TYPE_COLORS.acconto
+
+            if (editingId === p.id && editP) {
+              return (
+                <div key={p.id} style={{ padding: '12px 0', borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
+                  <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 10 }}>MODIFICA PAGAMENTO</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <label style={s.label}>Tipo</label>
+                      <select style={inp} value={editP.type} onChange={e => setEditP({ ...editP, type: e.target.value })}>
+                        {PAYMENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={s.label}>Importo €</label>
+                      <input type="number" style={inp} value={editP.amount} onChange={e => setEditP({ ...editP, amount: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={s.label}>Metodo</label>
+                      <select style={inp} value={editP.method} onChange={e => setEditP({ ...editP, method: e.target.value })}>
+                        {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={s.label}>Data</label>
+                    <input type="date" style={{ ...inp, colorScheme: 'dark' }} value={editP.date} onChange={e => setEditP({ ...editP, date: e.target.value })} />
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={s.label}>Nota</label>
+                    <input style={inp} value={editP.note} onChange={e => setEditP({ ...editP, note: e.target.value })} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11, color: MUTED }}>
+                      <input type="checkbox" checked={editP.paid} onChange={e => setEditP({ ...editP, paid: e.target.checked })}
+                        style={{ accentColor: GREEN }} />
+                      Già pagato
+                    </label>
+                    <button style={{ ...btnGoldStyle, padding: '7px 18px', fontSize: 9 }} onClick={saveEdit}>Salva</button>
+                    <button style={{ ...btnStyle, padding: '7px 18px', fontSize: 9 }} onClick={cancelEdit}>Annulla</button>
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div key={p.id} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -155,6 +227,11 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: p.paid ? GREEN : GOLD }}>
                     € {p.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                   </span>
+                  <button onClick={() => startEdit(p)}
+                    style={{ background: 'none', border: 'none', color: GOLD, cursor: 'pointer', fontSize: 12, opacity: 0.7, padding: '0 4px' }}
+                    title="Modifica pagamento">
+                    ✎
+                  </button>
                   <button onClick={() => removePayment(p.id)}
                     style={{ background: 'none', border: 'none', color: CLAY, cursor: 'pointer', fontSize: 14, opacity: 0.6, padding: '0 4px' }}>
                     ×
