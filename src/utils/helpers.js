@@ -65,3 +65,20 @@ export function needsAlert(order) {
   if (days === null) return false
   return days <= (order.alertDays || 7)
 }
+
+export function daysUntilPayment(payment) {
+  if (payment.paid) return null
+  const d = parseDate(payment.date)
+  if (!d) return null
+  const today = new Date(); today.setHours(0,0,0,0)
+  return Math.round((d - today) / 86400000)
+}
+
+export function pendingPaymentsNeedingAlert(order) {
+  if (order.status === 'PREVENTIVO') return []
+  return (order.payments || []).filter(p => {
+    if (p.paid) return false
+    const days = daysUntilPayment(p)
+    return days !== null && days <= 7
+  })
+}

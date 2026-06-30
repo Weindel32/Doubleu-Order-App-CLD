@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
+import { daysUntilPayment } from '../utils/helpers.js'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
 const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Carta di Credito', 'Assegno', 'PayPal', 'Altro']
@@ -217,7 +218,16 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                       <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, letterSpacing: 2, background: tc.bg, color: tc.color, border: `1px solid ${tc.border}` }}>
                         {TYPE_LABELS[p.type]}
                       </span>
-                      <span style={{ fontSize: 11, color: MUTED }}>{p.date}</span>
+                      {(() => {
+                        const days = daysUntilPayment(p)
+                        const dateColor = p.paid ? MUTED : days === null ? MUTED : days < 0 ? '#ef4444' : days <= 3 ? CLAY : days <= 7 ? '#e8c96e' : MUTED
+                        const dateLabel = !p.paid && days !== null && days < 0 ? ` · scaduto da ${Math.abs(days)}g` : !p.paid && days === 0 ? ' · oggi' : !p.paid && days === 1 ? ' · domani' : ''
+                        return (
+                          <span style={{ fontSize: 11, color: dateColor, fontWeight: days !== null && days <= 3 && !p.paid ? 600 : 400 }}>
+                            {p.date}{dateLabel}
+                          </span>
+                        )
+                      })()}
                       {p.method && <span style={{ fontSize: 10, color: MUTED, opacity: 0.7 }}>{p.method}</span>}
                     </div>
                     {p.note && <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>{p.note}</div>}

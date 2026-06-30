@@ -1,5 +1,5 @@
-import { GOLD, MUTED, CREAM, CLAY } from '../tokens.js'
-import { daysUntilDelivery, needsAlert, paymentSummary } from '../utils/helpers.js'
+import { GOLD, MUTED, CREAM, CLAY, GREEN } from '../tokens.js'
+import { daysUntilDelivery, needsAlert, paymentSummary, daysUntilPayment, pendingPaymentsNeedingAlert } from '../utils/helpers.js'
 
 export default function AlertsPanel({ orders, setView, setEditOrder }) {
   const alerts = (orders||[]).filter(o => needsAlert(o))
@@ -9,7 +9,16 @@ export default function AlertsPanel({ orders, setView, setEditOrder }) {
     o.status !== 'PREVENTIVO' && (o.payments || []).some(p => !p.paid)
   )
 
-  if (alerts.length === 0 && pendingPayments.length === 0) return null
+  // Orders with unpaid payments scaduti o entro 7 giorni
+  const paymentAlertOrders = (orders||[])
+    .map(o => ({ order: o, alerts: pendingPaymentsNeedingAlert(o) }))
+    .filter(x => x.alerts.length > 0)
+    .sort((a, b) => {
+      const minDays = arr => Math.min(...arr.map(p => daysUntilPayment(p) ?? 999))
+      return minDays(a.alerts) - minDays(b.alerts)
+    })
+
+  if (alerts.length === 0 && pendingPayments.length === 0 && paymentAlertOrders.length === 0) return null
 
   const urgencyColor = (days) => {
     if (days < 0)  return '#ef4444'
@@ -24,6 +33,15 @@ export default function AlertsPanel({ orders, setView, setEditOrder }) {
     if (days === 1) return 'Consegna domani'
     return `${days} giorni alla consegna`
   }
+
+  const paymentUrgencyLabel = (days) => {
+    if (days < 0)   return `Scaduto da ${Math.abs(days)} giorni`
+    if (days === 0) return 'Scade oggi'
+    if (days === 1) return 'Scade domani'
+    return `Scade in ${days} giorni`
+  }
+
+  const TYPE_LABELS = { acconto: 'Acconto', intermedio: 'Intermedio', saldo: 'Saldo' }
 
   return (
     <div style={{ marginBottom: 28 }}>
@@ -52,6 +70,43 @@ export default function AlertsPanel({ orders, setView, setEditOrder }) {
                   <div style={{ textAlign:'right' }}>
                     <div style={{ fontSize:11, fontWeight:700, color }}>{urgencyLabel(days)}</div>
                     <div style={{ fontSize:10, color:MUTED, marginTop:2 }}>{order.pieces} pz · {order.status}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {paymentAlertOrders.length > 0 && (
+        <div style={{ background:'rgba(196,98,58,0.06)', border:`1px solid rgba(196,98,58,0.2)`, borderRadius:10, padding:'18px 22px', marginBottom:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+            <span>⏰</span>
+            <span style={{ fontSize:9, letterSpacing:3, color:CLAY, textTransform:'uppercase', fontWeight:700 }}>
+              Scadenze Pagamento · {paymentAlertOrders.length} ordini
+            </span>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {paymentAlertOrders.map(({ order, alerts: pAlerts }) => {
+              const firstDays = daysUntilPayment(pAlerts[0])
+              const color = urgencyColor(firstDays)
+              return (
+                <div key={order.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.03)', borderRadius:6, padding:'10px 14px', cursor:'pointer' }}
+                  onClick={() => { setEditOrder(order); setView('new') }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                    <div style={{ width:3, borderRadius:2, background:color, alignSelf:'stretch', minHeight:36 }} />
+                    <div>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:16, color:CREAM }}>{order.client}</div>
+                      <div style={{ fontSize:10, color:MUTED, marginTop:1 }}>
+                        {order.id} · {pAlerts.map(p => `${TYPE_LABELS[p.type] || p.type} ${p.date}`).join(', ')}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <div style={{ fontSize:11, fontWeight:700, color }}>{paymentUrgencyLabel(firstDays)}</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:16, color, marginTop:2 }}>
+                      € {pAlerts.reduce((s, p) => s + (parseFloat(p.amount)||0), 0).toLocaleString('it-IT', { minimumFractionDigits:2 })}
+                    </div>
                   </div>
                 </div>
               )
