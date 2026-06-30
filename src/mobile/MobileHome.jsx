@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, STATUS_COLORS } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, STATUS_COLORS, GREEN } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
-import { needsAlert, daysUntilDelivery, paymentSummary } from '../utils/helpers.js'
+import { needsAlert, daysUntilDelivery, paymentSummary, orderTotal } from '../utils/helpers.js'
 
 function fmt(n) {
   return '€' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -54,6 +54,17 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
       pendingByClient[o.client].order = o
     })
   const pendingClients = Object.entries(pendingByClient).sort((a, b) => b[1].total - a[1].total)
+
+  const parseDate = d => {
+    if (!d) return 0
+    const [dd,mm,yyyy] = d.split('/')
+    return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0
+  }
+  const fullyPaid = orders
+    .filter(o => o.status !== 'PREVENTIVO')
+    .filter(o => { const ps = paymentSummary(o); return ps.total > 0 && ps.residual === 0 && ps.pending === 0 })
+    .sort((a,b) => parseDate(b.date) - parseDate(a.date))
+    .slice(0, 5)
 
   return (
     <div style={{ padding: '20px 16px' }}>
@@ -183,6 +194,38 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
           )}
         </div>
       </div>
+
+      {/* Ultimi 5 ordini incassati */}
+      {fullyPaid.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionTitle color={GREEN}>Ultimi Ordini Incassati</SectionTitle>
+          {fullyPaid.map(o => {
+            const tot = orderTotal(o)
+            return (
+              <div key={o.id} onClick={() => onSelectOrder(o)} style={{
+                background: SURFACE,
+                border: `1px solid rgba(74,158,110,0.25)`,
+                borderRadius: 10,
+                padding: '14px 16px',
+                marginBottom: 10,
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM }}>{o.client}</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GREEN }}>
+                    ✓ {fmt(tot)}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: MUTED }}>{o.id}</span>
+                  <span style={{ fontSize: 11, color: MUTED }}>{o.date || '—'}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Ordini attivi */}
       {activeOrders.length > 0 && (
