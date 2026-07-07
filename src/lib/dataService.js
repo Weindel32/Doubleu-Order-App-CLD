@@ -210,6 +210,73 @@ export async function deleteOrder(orderId) {
   return true
 }
 
+// ─── PROSPECTS ───────────────────────────────────────────────────
+
+export async function fetchProspects() {
+  const { data, error } = await supabase
+    .from('prospects')
+    .select('*, prospect_activities(*)')
+    .order('updated_at', { ascending: false })
+  if (error) { console.error('fetchProspects:', error); return [] }
+  return data || []
+}
+
+const PROSPECT_FIELDS = [
+  'name','category','country','province','channel_origin','stage',
+  'deal_value_est','contact_name','contact_email','contact_phone',
+  'language','next_action_date','notes','client_id',
+  'contact_type','referred_by','vincolo_altro_brand','relazione_pregressa',
+]
+
+export async function upsertProspect(prospect) {
+  const { id, prospect_activities, ...rest } = prospect
+
+  const row = {}
+  PROSPECT_FIELDS.forEach(k => { if (rest[k] !== undefined) row[k] = rest[k] || null })
+  row.vincolo_altro_brand = rest.vincolo_altro_brand || false
+  row.stage = rest.stage || 'contatto'
+  row.contact_type = rest.contact_type || 'cliente'
+
+  // Auto-create client only when won + contact_type='cliente'
+  if (row.stage === 'won' && row.contact_type === 'cliente' && !row.client_id) {
+    const { data: existing } = await supabase.from('clients').select('id').eq('name', row.name).maybeSingle()
+    if (existing) {
+      row.client_id = existing.id
+    } else {
+      const { data: newClient } = await supabase.from('clients').insert({
+        name: row.name,
+        email: row.contact_email || null,
+        phone: row.contact_phone || null,
+        country: row.country || 'Italia',
+        province: row.province || null,
+      }).select().single()
+      if (newClient) row.client_id = newClient.id
+    }
+  }
+
+  if (id) {
+    const { error } = await supabase.from('prospects').update(row).eq('id', id)
+    if (error) { console.error('upsertProspect update:', error); return null }
+    return { id, ...row }
+  } else {
+    const { data, error } = await supabase.from('prospects').insert(row).select().single()
+    if (error) { console.error('upsertProspect insert:', error); return null }
+    return data
+  }
+}
+
+export async function addProspectActivity(prospectId, activity) {
+  const { data, error } = await supabase.from('prospect_activities').insert({
+    prospect_id:  prospectId,
+    type:         activity.type || 'note',
+    content:      activity.content  || null,
+    reward_type:  activity.reward_type  || null,
+    reward_value: activity.reward_value ? parseFloat(activity.reward_value) : null,
+  }).select().single()
+  if (error) { console.error('addProspectActivity:', error); return null }
+  return data
+}
+
 export async function generateOrderId(orderDate) {
   const year = orderDate ? parseInt(orderDate.split('-')[0]) : new Date().getFullYear()
   const BASE = 1600
