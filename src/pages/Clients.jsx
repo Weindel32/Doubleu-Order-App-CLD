@@ -318,6 +318,13 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                         Nessun dato anagrafico — clicca Modifica per aggiungere
                       </div>
                     )}
+                    <div style={{ gridColumn:'span 2', display:'flex', alignItems:'center', gap:12, paddingTop:4, borderTop:`1px solid ${BORDER}`, marginTop:4 }}>
+                      <div onClick={() => onUpdateClient(selected.id, { shop_attivo: !selected.shop_attivo })}
+                        style={{ width:40, height:22, borderRadius:11, position:'relative', cursor:'pointer', background: selected.shop_attivo ? GREEN : 'rgba(255,255,255,0.12)', transition:'background 0.2s', flexShrink:0 }}>
+                        <div style={{ position:'absolute', top:3, left: selected.shop_attivo ? 21 : 3, width:16, height:16, borderRadius:'50%', background:'white', transition:'left 0.2s' }}/>
+                      </div>
+                      <span style={{ fontSize:12, color: selected.shop_attivo ? GREEN : MUTED }}>Shop Online Attivo</span>
+                    </div>
                   </div>
                 )}
               </div>
