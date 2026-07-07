@@ -19,7 +19,7 @@ const CT_CFG = {
   segnalatore: { color: GREEN,    border: 'rgba(74,158,110,0.3)',  bg: 'rgba(74,158,110,0.15)'  },
 }
 const CONTACT_TYPES   = ['cliente','ambassador','segnalatore']
-const CHANNELS        = ['linkedin','wfox','referral','fiera','outbound']
+const CHANNELS        = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
 const LANGUAGES       = ['it','de','es','en']
 const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','note']
 const REWARD_TYPES    = ['prodotto','provvigione']
@@ -33,7 +33,7 @@ const ACT_LABELS = {
 }
 
 const EMPTY_PROSPECT = () => ({
-  name:'', category:'', country:'', province:'', channel_origin:'',
+  name:'', category:'', city:'', province:'', country:'', channel_origin:'',
   stage:'contatto', deal_value_est:'', contact_name:'', contact_email:'',
   contact_phone:'', language:'', next_action_date:'', notes:'',
   contact_type:'cliente', referred_by:'', vincolo_altro_brand:false,
@@ -133,6 +133,10 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
             <input style={inp} type="number" placeholder="es. 2500" value={form.deal_value_est} onChange={e => setForm(f => ({ ...f, deal_value_est:e.target.value }))}/>
           </div>
 
+          <div>
+            <label style={s.label}>Città</label>
+            <input style={inp} value={form.city||''} onChange={e => setForm(f => ({ ...f, city:e.target.value }))}/>
+          </div>
           <div>
             <label style={s.label}>Provincia</label>
             <input style={inp} value={form.province} onChange={e => setForm(f => ({ ...f, province:e.target.value }))} placeholder="es. MI"/>
@@ -317,7 +321,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity }) {
                 <td style={s.td}><StageBadge stage={p.stage}/></td>
                 <td style={{ ...s.td, fontSize:11, color:MUTED }}>{p.channel_origin || '—'}</td>
                 <td style={{ ...s.td, fontSize:12, color:MUTED }}>
-                  {[p.province, p.country].filter(Boolean).join(', ') || '—'}
+                  {[p.city, p.province, p.country].filter(Boolean).join(', ') || '—'}
                 </td>
                 <td style={{ ...s.td, fontSize:12 }}>
                   {p.next_action_date
@@ -394,7 +398,9 @@ export default function Prospects({ prospects, onUpsert, onAddActivity }) {
                     {selected.contact_email && <InfoRow label="EMAIL"         value={selected.contact_email}/>}
                     {selected.contact_phone && <InfoRow label="TELEFONO"      value={selected.contact_phone}/>}
                     {selected.language      && <InfoRow label="LINGUA"        value={selected.language}/>}
-                    {(selected.province || selected.country) && <InfoRow label="ZONA" value={[selected.province, selected.country].filter(Boolean).join(', ')}/>}
+                    {selected.city     && <InfoRow label="CITTÀ"    value={selected.city}/>}
+                    {selected.province && <InfoRow label="PROVINCIA" value={selected.province}/>}
+                    {selected.country  && <InfoRow label="PAESE"     value={selected.country}/>}
                     {selected.deal_value_est && <InfoRow label="VALORE EST."  value={`€ ${parseFloat(selected.deal_value_est).toLocaleString('it-IT',{minimumFractionDigits:2})}`}/>}
                     {selected.next_action_date && (
                       <InfoRow label="PROSSIMA AZIONE"

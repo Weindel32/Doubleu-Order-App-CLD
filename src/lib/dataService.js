@@ -222,7 +222,7 @@ export async function fetchProspects() {
 }
 
 const PROSPECT_FIELDS = [
-  'name','category','country','province','channel_origin','stage',
+  'name','category','city','province','country','channel_origin','stage',
   'deal_value_est','contact_name','contact_email','contact_phone',
   'language','next_action_date','notes','client_id',
   'contact_type','referred_by','vincolo_altro_brand','relazione_pregressa',
