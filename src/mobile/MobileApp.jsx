@@ -7,6 +7,7 @@ import MobileOrderDetail from './MobileOrderDetail.jsx'
 import MobileAnalytics   from './MobileAnalytics.jsx'
 import MobileQuotes      from './MobileQuotes.jsx'
 import MobileQuoteDetail from './MobileQuoteDetail.jsx'
+import MobileProspects   from './MobileProspects.jsx'
 import NavIcon           from '../components/NavIcon.jsx'
 
 const TABS = [
@@ -14,10 +15,11 @@ const TABS = [
   { key: 'orders',    label: 'Ordini',     icon: 'orders' },
   { key: 'quotes',    label: 'Preventivi', icon: 'quotes' },
   { key: 'clients',   label: 'Clienti',    icon: 'clients' },
+  { key: 'prospects', label: 'Prospects',  icon: 'prospects' },
   { key: 'analytics', label: 'Stats',      icon: 'analytics' },
 ]
 
-export default function MobileApp({ orders, clients, onLogout, onUpsertClient }) {
+export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onUpdateActivity, onDeleteActivity, onDeleteProspect }) {
   const [tab, setTab]                   = useState('home')
   const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -62,6 +64,7 @@ export default function MobileApp({ orders, clients, onLogout, onUpsertClient })
         {tab === 'orders'    && <MobileOrders    orders={activeOrders} onSelectOrder={setSelectedOrder} filter={ordersFilter} onFilterChange={setOrdersFilter} />}
         {tab === 'quotes'    && <MobileQuotes    quotes={quotes} onSelectQuote={setSelectedQuote} />}
         {tab === 'clients'   && <MobileClients   clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
+        {tab === 'prospects' && <MobileProspects prospects={prospects} onUpsert={onUpsertProspect} onAddActivity={onAddActivity} onUpdateActivity={onUpdateActivity} onDeleteActivity={onDeleteActivity} onDelete={onDeleteProspect} />}
         {tab === 'analytics' && <MobileAnalytics orders={orders} />}
       </div>
 
@@ -82,8 +85,8 @@ export default function MobileApp({ orders, clients, onLogout, onUpsertClient })
             fontFamily: "'Josefin Sans', sans-serif",
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name={t.icon} size={20}/></span>
-            <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase' }}>{t.label}</span>
+            <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name={t.icon} size={19}/></span>
+            <span style={{ fontSize: 8.5, letterSpacing: 1, textTransform: 'uppercase' }}>{t.label}</span>
             {tab === t.key && (
               <span style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 56px)', width: 24, height: 2, background: GOLD, borderRadius: 1 }} />
             )}
