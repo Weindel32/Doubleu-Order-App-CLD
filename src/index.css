@@ -51,9 +51,10 @@ button {
   cursor: pointer;
 }
 
-table.du-hover tbody tr {
-  transition: background 0.15s;
+.du-card {
+  transition: background 0.15s, border-color 0.15s;
 }
-table.du-hover tbody tr:hover {
-  background: rgba(255,255,255,0.03);
+.du-card:hover {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(184,150,90,0.4) !important;
 }
