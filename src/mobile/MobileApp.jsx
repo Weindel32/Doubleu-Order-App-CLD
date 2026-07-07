@@ -7,13 +7,14 @@ import MobileOrderDetail from './MobileOrderDetail.jsx'
 import MobileAnalytics   from './MobileAnalytics.jsx'
 import MobileQuotes      from './MobileQuotes.jsx'
 import MobileQuoteDetail from './MobileQuoteDetail.jsx'
+import NavIcon           from '../components/NavIcon.jsx'
 
 const TABS = [
-  { key: 'home',      label: 'Home',       icon: '◈' },
-  { key: 'orders',    label: 'Ordini',     icon: '≡' },
-  { key: 'quotes',    label: 'Preventivi', icon: '◇' },
-  { key: 'clients',   label: 'Clienti',    icon: '◎' },
-  { key: 'analytics', label: 'Stats',      icon: '◫' },
+  { key: 'home',      label: 'Home',       icon: 'home' },
+  { key: 'orders',    label: 'Ordini',     icon: 'orders' },
+  { key: 'quotes',    label: 'Preventivi', icon: 'quotes' },
+  { key: 'clients',   label: 'Clienti',    icon: 'clients' },
+  { key: 'analytics', label: 'Stats',      icon: 'analytics' },
 ]
 
 export default function MobileApp({ orders, clients, onLogout, onUpsertClient }) {
@@ -81,7 +82,7 @@ export default function MobileApp({ orders, clients, onLogout, onUpsertClient })
             fontFamily: "'Josefin Sans', sans-serif",
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ fontSize: t.key === 'quotes' ? 18 : 22, lineHeight: 1 }}>{t.icon}</span>
+            <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name={t.icon} size={20}/></span>
             <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase' }}>{t.label}</span>
             {tab === t.key && (
               <span style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 56px)', width: 24, height: 2, background: GOLD, borderRadius: 1 }} />
