@@ -5,12 +5,13 @@ import { s } from './tokens.js'
 import Dashboard from './pages/Dashboard.jsx'
 import Orders    from './pages/Orders.jsx'
 import Quotes    from './pages/Quotes.jsx'
-import Clients   from './pages/Clients.jsx'
+import Clients    from './pages/Clients.jsx'
+import Prospects  from './pages/Prospects.jsx'
 import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity } from './lib/dataService.js'
 import { needsAlert } from './utils/helpers.js'
 import { supabase } from './lib/supabase.js'
 
@@ -36,6 +37,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
     { key: 'quotes',     label: 'Preventivi',         icon: '◇', badge: quoteCount > 0 ? quoteCount : null, badgeColor: CLAY },
     { key: 'orders',     label: 'Archivio Ordini',    icon: '≡', badge: pendingCount > 0 ? pendingCount : null },
     { key: 'clients',    label: 'Clienti',            icon: '◎' },
+    { key: 'prospects',  label: 'Prospects',          icon: '◬' },
     { key: 'analytics',  label: 'Analytics',          icon: '◉' },
     { key: 'newQuote',   label: '+ Nuovo Preventivo', icon: '+', accent: CLAY },
     { key: 'new',        label: '+ Nuovo Ordine',     icon: '+' },
@@ -80,6 +82,7 @@ export default function App() {
   const [prefillClient, setPrefill]   = useState(null)
   const [orders, setOrders]           = useState([])
   const [clients, setClients]         = useState([])
+  const [prospects, setProspects]     = useState([])
   const [loading, setLoading]         = useState(true)
   const [session, setSession]         = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -98,9 +101,10 @@ export default function App() {
 
   const loadOrders = async () => {
     setLoading(true)
-    const [data, clientData] = await Promise.all([fetchOrders(), fetchClients()])
+    const [data, clientData, prospectData] = await Promise.all([fetchOrders(), fetchClients(), fetchProspects()])
     setOrders(data)
     setClients(clientData)
+    setProspects(prospectData)
     setLoading(false)
   }
 
@@ -138,6 +142,22 @@ export default function App() {
     const ok = await linkOrderToClient(orderId, clientId)
     if (ok) { await loadOrders() }
     return ok
+  }
+
+  const handleUpsertProspect = async (prospect) => {
+    const result = await upsertProspect(prospect)
+    if (result) {
+      const [prospectData, clientData] = await Promise.all([fetchProspects(), fetchClients()])
+      setProspects(prospectData)
+      setClients(clientData)
+    }
+    return result
+  }
+
+  const handleAddActivity = async (prospectId, activity) => {
+    const result = await addProspectActivity(prospectId, activity)
+    if (result) { setProspects(await fetchProspects()) }
+    return result
   }
 
   const handleLogout = async () => {
@@ -216,6 +236,7 @@ export default function App() {
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder}/>}
+        {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity}/>}
         {view === 'analytics'  && <Analytics orders={orders}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
         {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}
