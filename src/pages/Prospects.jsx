@@ -313,45 +313,68 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
           </div>
         </div>
       ) : (
-        <table style={s.table}>
+        <table className="du-hover" style={{ ...s.table, tableLayout:'fixed' }}>
+          <colgroup>
+            <col style={{ width:'23%' }}/>
+            <col style={{ width:'10%' }}/>
+            <col style={{ width:'11%' }}/>
+            <col style={{ width:'9%'  }}/>
+            <col style={{ width:'13%' }}/>
+            <col style={{ width:'11%' }}/>
+            <col style={{ width:'9%'  }}/>
+            <col style={{ width:'14%' }}/>
+          </colgroup>
           <thead>
-            <tr>{['Nome','Tipo','Stage','Canale','Zona','Prossima azione','Valore est.',''].map(h => (
-              <th key={h} style={s.th}>{h}</th>
-            ))}</tr>
+            <tr>
+              {['Nome','Tipo','Stage','Canale','Zona','Prossima azione'].map(h => (
+                <th key={h} style={{ ...s.th, padding:'12px 16px' }}>{h}</th>
+              ))}
+              <th style={{ ...s.th, padding:'12px 16px', textAlign:'right' }}>Valore est.</th>
+              <th style={{ ...s.th, padding:'12px 16px' }}/>
+            </tr>
           </thead>
           <tbody>
-            {filtered.map(p => (
-              <tr key={p.id} style={{ cursor:'pointer' }} onClick={() => setSelectedId(p.id)}>
-                <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18 }}>
-                  {p.name}
-                  {p.contact_name && <div style={{ fontSize:10, color:MUTED, fontFamily:'inherit', marginTop:1 }}>{p.contact_name}</div>}
-                </td>
-                <td style={s.td}><CTChip ct={p.contact_type}/></td>
-                <td style={s.td}><StageBadge stage={p.stage}/></td>
-                <td style={{ ...s.td, fontSize:11, color:MUTED }}>{p.channel_origin || '—'}</td>
-                <td style={{ ...s.td, fontSize:12, color:MUTED }}>
-                  {[p.city, p.province, p.country].filter(Boolean).join(', ') || '—'}
-                </td>
-                <td style={{ ...s.td, fontSize:12 }}>
-                  {p.next_action_date
-                    ? <span style={{ color: p.next_action_date <= today ? CLAY : CREAM }}>{p.next_action_date}</span>
-                    : <span style={{ color:MUTED }}>—</span>}
-                </td>
-                <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:16, color:GOLD }}>
-                  {p.deal_value_est ? `€ ${parseFloat(p.deal_value_est).toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'}
-                </td>
-                <td style={s.td} onClick={e => e.stopPropagation()}>
-                  <div style={{ display:'flex', gap:6 }}>
-                    <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }} onClick={() => setSelectedId(p.id)}>Apri</button>
-                    <button disabled={deleting}
-                      style={{ padding:'4px 12px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:'1px solid rgba(196,98,58,0.35)', color:CLAY }}
-                      onClick={() => handleDelete(p)}>
-                      Elimina
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map(p => {
+              const zona = [p.city, p.province, p.country].filter(Boolean).join(', ')
+              return (
+                <tr key={p.id} style={{ cursor:'pointer' }} onClick={() => setSelectedId(p.id)}>
+                  <td style={{ ...s.td, padding:'16px', fontFamily:"'Cormorant Garamond',serif", fontSize:18 }}>
+                    <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={p.name}>{p.name}</div>
+                    {p.contact_name && (
+                      <div style={{ fontSize:10, color:MUTED, fontFamily:'inherit', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {p.contact_name}
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ ...s.td, padding:'16px' }}><CTChip ct={p.contact_type}/></td>
+                  <td style={{ ...s.td, padding:'16px' }}><StageBadge stage={p.stage}/></td>
+                  <td style={{ ...s.td, padding:'16px', fontSize:11, color:MUTED, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {p.channel_origin || '—'}
+                  </td>
+                  <td style={{ ...s.td, padding:'16px', fontSize:12, color:MUTED, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={zona || undefined}>
+                    {zona || '—'}
+                  </td>
+                  <td style={{ ...s.td, padding:'16px', fontSize:12, whiteSpace:'nowrap' }}>
+                    {p.next_action_date
+                      ? <span style={{ color: p.next_action_date <= today ? CLAY : CREAM }}>{p.next_action_date}</span>
+                      : <span style={{ color:MUTED }}>—</span>}
+                  </td>
+                  <td style={{ ...s.td, padding:'16px', fontFamily:"'Cormorant Garamond',serif", fontSize:16, color:GOLD, textAlign:'right', whiteSpace:'nowrap' }}>
+                    {p.deal_value_est ? `€ ${parseFloat(p.deal_value_est).toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'}
+                  </td>
+                  <td style={{ ...s.td, padding:'16px' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display:'flex', gap:6, justifyContent:'flex-end', whiteSpace:'nowrap' }}>
+                      <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }} onClick={() => setSelectedId(p.id)}>Apri</button>
+                      <button disabled={deleting}
+                        style={{ padding:'4px 12px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:'1px solid rgba(196,98,58,0.35)', color:CLAY }}
+                        onClick={() => handleDelete(p)}>
+                        Elimina
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       )}

@@ -50,3 +50,10 @@ button {
   font-family: 'Josefin Sans', sans-serif;
   cursor: pointer;
 }
+
+table.du-hover tbody tr {
+  transition: background 0.15s;
+}
+table.du-hover tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
