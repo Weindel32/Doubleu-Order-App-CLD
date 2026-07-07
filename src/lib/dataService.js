@@ -1,24 +1,50 @@
 import { supabase } from './supabase.js'
 
 export async function fetchClients() {
-  const { data, error } = await supabase.from('clients').select('*')
+  const { data, error } = await supabase.from('clients').select('*').order('name')
   if (error) { console.error('fetchClients:', error); return [] }
   return data || []
 }
 
+const CLIENT_FIELDS = ['category', 'province', 'country', 'vat_number', 'email', 'phone']
+
 export async function upsertClient(name, fields) {
+  const safe = {}
+  CLIENT_FIELDS.forEach(k => { if (fields[k] !== undefined) safe[k] = fields[k] })
   const { error } = await supabase.from('clients').upsert(
-    { name, ...fields },
+    { name, ...safe },
     { onConflict: 'name' }
   )
   if (error) { console.error('upsertClient:', error); return false }
   return true
 }
 
+export async function updateClient(id, fields) {
+  const safe = {}
+  ;['name', ...CLIENT_FIELDS].forEach(k => { if (fields[k] !== undefined) safe[k] = fields[k] })
+  const { error } = await supabase.from('clients').update(safe).eq('id', id)
+  if (error) { console.error('updateClient:', error); return false }
+  return true
+}
+
+export async function createClient(fields) {
+  const { data, error } = await supabase.from('clients').insert(fields).select().single()
+  if (error) { console.error('createClient:', error); return null }
+  return data
+}
+
+export async function linkOrderToClient(orderId, clientId) {
+  const { error } = await supabase.from('orders').update({ client_id: clientId }).eq('id', orderId)
+  if (error) { console.error('linkOrderToClient:', error); return false }
+  return true
+}
+
 export async function renameClient(oldName, newName, fields) {
   const { error: e1 } = await supabase.from('orders').update({ client: newName }).eq('client', oldName)
   if (e1) { console.error('renameClient orders:', e1); return false }
-  const { error: e2 } = await supabase.from('clients').upsert({ name: newName, ...fields }, { onConflict: 'name' })
+  const safe = {}
+  CLIENT_FIELDS.forEach(k => { if (fields[k] !== undefined) safe[k] = fields[k] })
+  const { error: e2 } = await supabase.from('clients').upsert({ name: newName, ...safe }, { onConflict: 'name' })
   if (e2) { console.error('renameClient upsert:', e2); return false }
   if (oldName !== newName) {
     await supabase.from('clients').delete().eq('name', oldName)
@@ -51,7 +77,7 @@ export async function fetchOrders() {
     const { data: payments } = await supabase
       .from('payments').select('*').eq('order_id', order.id)
     return {
-      id: order.id, client: order.client,
+      id: order.id, client: order.client, clientId: order.client_id || null,
       clientEmail: order.client_email || '', clientPhone: order.client_phone || '',
       clientAddress: order.client_address || '', clientCity: order.client_city || '',
       clientCountry: order.client_country || 'Italia', clientContact: order.client_contact || '',
