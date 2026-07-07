@@ -265,6 +265,15 @@ export async function upsertProspect(prospect) {
   }
 }
 
+export async function deleteProspect(prospectId) {
+  // Scollega eventuali prospect segnalati da questo (FK referred_by)
+  await supabase.from('prospects').update({ referred_by: null }).eq('referred_by', prospectId)
+  await supabase.from('prospect_activities').delete().eq('prospect_id', prospectId)
+  const { error } = await supabase.from('prospects').delete().eq('id', prospectId)
+  if (error) { console.error('deleteProspect:', error); return false }
+  return true
+}
+
 export async function addProspectActivity(prospectId, activity) {
   const { data, error } = await supabase.from('prospect_activities').insert({
     prospect_id:  prospectId,
