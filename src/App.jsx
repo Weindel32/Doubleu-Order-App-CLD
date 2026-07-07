@@ -7,6 +7,7 @@ import Orders    from './pages/Orders.jsx'
 import Quotes    from './pages/Quotes.jsx'
 import Clients    from './pages/Clients.jsx'
 import Prospects  from './pages/Prospects.jsx'
+import NavIcon    from './components/NavIcon.jsx'
 import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
@@ -33,28 +34,28 @@ function Sidebar({ view, setView, orders, onLogout }) {
   const quoteCount   = orders.filter(o => o.status === 'PREVENTIVO').length
 
   const items = [
-    { key: 'dashboard',  label: 'Dashboard',         icon: '◈', badge: alertCount > 0 ? alertCount : null },
-    { key: 'quotes',     label: 'Preventivi',         icon: '◇', badge: quoteCount > 0 ? quoteCount : null, badgeColor: CLAY },
-    { key: 'orders',     label: 'Archivio Ordini',    icon: '≡', badge: pendingCount > 0 ? pendingCount : null },
-    { key: 'clients',    label: 'Clienti',            icon: '◎' },
-    { key: 'prospects',  label: 'Prospects',          icon: '◬' },
-    { key: 'analytics',  label: 'Analytics',          icon: '◉' },
-    { key: 'newQuote',   label: '+ Nuovo Preventivo', icon: '+', accent: CLAY },
-    { key: 'new',        label: '+ Nuovo Ordine',     icon: '+' },
+    { key: 'dashboard',  label: 'Dashboard',          icon: 'dashboard', badge: alertCount > 0 ? alertCount : null },
+    { key: 'quotes',     label: 'Preventivi',         icon: 'quotes',    badge: quoteCount > 0 ? quoteCount : null, badgeColor: CLAY },
+    { key: 'orders',     label: 'Archivio Ordini',    icon: 'orders',    badge: pendingCount > 0 ? pendingCount : null },
+    { key: 'clients',    label: 'Clienti',            icon: 'clients' },
+    { key: 'prospects',  label: 'Prospects',          icon: 'prospects' },
+    { key: 'analytics',  label: 'Analytics',          icon: 'analytics' },
+    { key: 'newQuote',   label: '+ Nuovo Preventivo', icon: 'plus', accent: CLAY },
+    { key: 'new',        label: '+ Nuovo Ordine',     icon: 'plus' },
   ]
 
   return (
     <div style={s.sidebar}>
       <div style={s.logo}>
         <div style={s.logoMark}>DOUBLEU</div>
-        <div style={s.logoSub}>Order App · v15</div>
+        <div style={s.logoSub}>Order App · v16</div>
       </div>
       <nav style={{ marginTop: 16 }}>
         {items.map(item => (
           <div key={item.key} style={s.navItem(view === item.key)}
             onClick={() => setView(item.key)} role="button" tabIndex={0}
             onKeyDown={e => e.key === 'Enter' && setView(item.key)}>
-            <span style={{ fontSize: 13, opacity: 0.6, color: item.accent || undefined }}>{item.icon}</span>
+            <span style={{ opacity: 0.65, color: item.accent || undefined, display: 'inline-flex' }}><NavIcon name={item.icon}/></span>
             <span style={{ flex: 1, color: item.accent && view !== item.key ? item.accent : undefined }}>{item.label}</span>
             {item.badge && (
               <span style={{ background: item.badgeColor || CLAY, color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -66,7 +67,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
       </nav>
       <div style={{ marginTop: 'auto', padding: '0 24px', borderTop: `1px solid ${BORDER}`, paddingTop: 20 }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>BUILD</div>
-        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v15 · Supabase</div>
+        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v16 · Supabase</div>
         <button onClick={onLogout} style={{ marginTop: 16, width: '100%', padding: '8px', background: 'rgba(196,98,58,0.1)', border: `1px solid rgba(196,98,58,0.3)`, borderRadius: 4, color: CLAY, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif" }}>
           Esci
         </button>
