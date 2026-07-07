@@ -214,7 +214,8 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
   const rete  = prospects.filter(p => p.contact_type !== 'cliente')
 
   const referredBy   = (id) => prospects.filter(x => x.referred_by === id)
-  const rewardsTotal = (p)  => (p.prospect_activities || []).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
+  const rewardsOf    = (p, type) => (p.prospect_activities || []).filter(a => a.reward_type === type).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
+  const rewardsTotal = (p)  => rewardsOf(p,'provvigione') + rewardsOf(p,'prodotto')
 
   const filtered = (isRete ? rete : clubs).filter(p => {
     const q = search.toLowerCase()
@@ -227,7 +228,9 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
   const pipeline     = clubs.filter(p => !['won','lost'].includes(p.stage)).reduce((s,p) => s + (parseFloat(p.deal_value_est)||0), 0)
   const overdueCount = clubs.filter(p => p.next_action_date && p.next_action_date <= today && !['won','lost'].includes(p.stage)).length
   const totalReferrals = rete.reduce((s,m) => s + referredBy(m.id).length, 0)
-  const totalRewards   = rete.reduce((s,m) => s + rewardsTotal(m), 0)
+  const totalProvv     = rete.reduce((s,m) => s + rewardsOf(m,'provvigione'), 0)
+  const totalProd      = rete.reduce((s,m) => s + rewardsOf(m,'prodotto'), 0)
+  const totalRewards   = totalProvv + totalProd
   const reteOverdue    = rete.filter(p => p.next_action_date && p.next_action_date <= today).length
 
   const closeModal = () => { setSelectedId(null); setEditForm(null); setActForm(null) }
@@ -299,7 +302,10 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
         <div style={s.grid4}>
           <StatCard label="Contatti"       value={rete.length} sub="Ambassador e referral"/>
           <StatCard label="Segnalazioni"   value={totalReferrals} sub="Club presentati"/>
-          <StatCard label="Riconoscimenti" value={totalRewards > 0 ? `€ ${totalRewards.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'} accent/>
+          <StatCard label="Riconoscimenti" value={totalRewards > 0 ? `€ ${totalRewards.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'} accent
+            sub={totalRewards > 0
+              ? [totalProvv > 0 && `€ ${totalProvv.toLocaleString('it-IT',{maximumFractionDigits:0})} provvigioni`, totalProd > 0 && `€ ${totalProd.toLocaleString('it-IT',{maximumFractionDigits:0})} prodotto`].filter(Boolean).join(' · ')
+              : 'Provvigioni e prodotto'}/>
           <StatCard label="Azioni Scadute" value={reteOverdue} sub="Da completare"/>
         </div>
       ) : (
@@ -355,8 +361,9 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
             const zona    = [p.city, p.province, p.country].filter(Boolean).join(', ')
             const sub     = [p.contact_name, p.channel_origin, zona].filter(Boolean).join('  ·  ')
             const overdue = p.next_action_date && p.next_action_date <= today
-            const nRef    = isRete ? referredBy(p.id).length : 0
-            const rewards = isRete ? rewardsTotal(p) : 0
+            const nRef     = isRete ? referredBy(p.id).length : 0
+            const rewProvv = isRete ? rewardsOf(p,'provvigione') : 0
+            const rewProd  = isRete ? rewardsOf(p,'prodotto') : 0
             return (
               <div key={p.id} className="du-card" onClick={() => setSelectedId(p.id)}
                 style={{ display:'flex', alignItems:'center', gap:20, padding:'16px 22px', background:'rgba(255,255,255,0.03)', border:`1px solid ${BORDER}`, borderRadius:10, cursor:'pointer', flexWrap:'wrap' }}>
@@ -389,12 +396,20 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
                       <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>SEGNALAZIONI</div>
                       <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color: nRef > 0 ? GREEN : MUTED }}>{nRef}</div>
                     </div>
-                    {/* Riconoscimenti — solo se presenti */}
-                    {rewards > 0 && (
+                    {/* Riconoscimenti — solo se presenti, distinti per tipo */}
+                    {rewProvv > 0 && (
                       <div style={{ textAlign:'right', flexShrink:0, minWidth:90 }}>
-                        <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>RICONOSCIMENTI</div>
+                        <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>PROVVIGIONI</div>
                         <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
-                          € {rewards.toLocaleString('it-IT',{maximumFractionDigits:0})}
+                          € {rewProvv.toLocaleString('it-IT',{maximumFractionDigits:0})}
+                        </div>
+                      </div>
+                    )}
+                    {rewProd > 0 && (
+                      <div style={{ textAlign:'right', flexShrink:0, minWidth:90 }}>
+                        <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>PRODOTTO</div>
+                        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:'#7aaee8' }}>
+                          € {rewProd.toLocaleString('it-IT',{maximumFractionDigits:0})}
                         </div>
                       </div>
                     )}
@@ -584,7 +599,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
                           </div>
                           {actForm.reward_type && (
                             <div>
-                              <label style={s.label}>Valore</label>
+                              <label style={s.label}>{actForm.reward_type === 'prodotto' ? 'Valore Prodotto (€)' : 'Provvigione (€)'}</label>
                               <input style={inp} type="number" placeholder="es. 50" value={actForm.reward_value} onChange={e => setActForm(f => ({ ...f, reward_value:e.target.value }))}/>
                             </div>
                           )}
@@ -614,7 +629,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
                           {act.content && <div style={{ fontSize:12, color:CREAM, lineHeight:1.6 }}>{act.content}</div>}
                           {act.reward_type && (
                             <div style={{ marginTop:6, fontSize:10, color:GREEN }}>
-                              Riconoscimento: {act.reward_type}{act.reward_value != null ? ` · ${act.reward_value}` : ''}
+                              Riconoscimento: {act.reward_type}{act.reward_value != null ? ` · € ${parseFloat(act.reward_value).toLocaleString('it-IT',{maximumFractionDigits:0})}` : ''}
                             </div>
                           )}
                         </div>
