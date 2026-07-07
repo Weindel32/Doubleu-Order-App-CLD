@@ -19,6 +19,8 @@ const CT_CFG = {
   segnalatore: { color: GREEN,    border: 'rgba(74,158,110,0.3)',  bg: 'rgba(74,158,110,0.15)'  },
 }
 const CONTACT_TYPES   = ['cliente','ambassador','segnalatore']
+// Etichette mostrate in UI (il valore 'segnalatore' resta invariato nel database)
+const CT_LABELS       = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
 const CHANNELS        = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
 const LANGUAGES       = ['it','de','es','en']
 const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','note']
@@ -55,7 +57,7 @@ function CTChip({ ct }) {
   const c = CT_CFG[ct] || CT_CFG.cliente
   return (
     <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:2, fontSize:9, letterSpacing:1, background:c.bg, color:c.color, border:`1px solid ${c.border}` }}>
-      {ct}
+      {CT_LABELS[ct] || ct}
     </span>
   )
 }
@@ -91,7 +93,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
           <div>
             <label style={s.label}>Tipo Contatto</label>
             <select style={{ ...inp, cursor:'pointer' }} value={form.contact_type} onChange={e => setForm(f => ({ ...f, contact_type:e.target.value }))}>
-              {CONTACT_TYPES.map(ct => <option key={ct} value={ct}>{ct}</option>)}
+              {CONTACT_TYPES.map(ct => <option key={ct} value={ct}>{CT_LABELS[ct] || ct}</option>)}
             </select>
           </div>
           <div>
@@ -159,7 +161,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
             <label style={s.label}>Segnalato da</label>
             <select style={{ ...inp, cursor:'pointer' }} value={form.referred_by} onChange={e => setForm(f => ({ ...f, referred_by:e.target.value }))}>
               <option value="">— nessuno —</option>
-              {others.map(p => <option key={p.id} value={p.id}>{p.name} ({p.contact_type})</option>)}
+              {others.map(p => <option key={p.id} value={p.id}>{p.name} ({CT_LABELS[p.contact_type] || p.contact_type})</option>)}
             </select>
           </div>
 
@@ -322,7 +324,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
             {['all','ambassador','segnalatore'].map(ct => (
               <button key={ct} onClick={() => setFilterCT(ct)}
                 style={{ padding:'5px 12px', borderRadius:3, fontSize:9, letterSpacing:1.5, cursor:'pointer', border:`1px solid ${filterCT===ct ? (CT_CFG[ct]?.border||GOLD) : BORDER}`, background: filterCT===ct ? (CT_CFG[ct]?.bg||'rgba(184,150,90,0.12)') : 'transparent', color: filterCT===ct ? (CT_CFG[ct]?.color||GOLD) : MUTED }}>
-                {ct === 'all' ? 'Tutti' : ct}
+                {ct === 'all' ? 'Tutti' : (CT_LABELS[ct] || ct)}
               </button>
             ))}
           </div>
