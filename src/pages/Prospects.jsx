@@ -313,70 +313,60 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
           </div>
         </div>
       ) : (
-        <table className="du-hover" style={{ ...s.table, tableLayout:'fixed' }}>
-          <colgroup>
-            <col style={{ width:'23%' }}/>
-            <col style={{ width:'10%' }}/>
-            <col style={{ width:'11%' }}/>
-            <col style={{ width:'9%'  }}/>
-            <col style={{ width:'13%' }}/>
-            <col style={{ width:'11%' }}/>
-            <col style={{ width:'9%'  }}/>
-            <col style={{ width:'14%' }}/>
-          </colgroup>
-          <thead>
-            <tr>
-              {['Nome','Tipo','Stage','Canale','Zona','Prossima azione'].map(h => (
-                <th key={h} style={{ ...s.th, padding:'12px 16px' }}>{h}</th>
-              ))}
-              <th style={{ ...s.th, padding:'12px 16px', textAlign:'right' }}>Valore est.</th>
-              <th style={{ ...s.th, padding:'12px 16px' }}/>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(p => {
-              const zona = [p.city, p.province, p.country].filter(Boolean).join(', ')
-              return (
-                <tr key={p.id} style={{ cursor:'pointer' }} onClick={() => setSelectedId(p.id)}>
-                  <td style={{ ...s.td, padding:'16px', fontFamily:"'Cormorant Garamond',serif", fontSize:18 }}>
-                    <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={p.name}>{p.name}</div>
-                    {p.contact_name && (
-                      <div style={{ fontSize:10, color:MUTED, fontFamily:'inherit', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {p.contact_name}
-                      </div>
-                    )}
-                  </td>
-                  <td style={{ ...s.td, padding:'16px' }}><CTChip ct={p.contact_type}/></td>
-                  <td style={{ ...s.td, padding:'16px' }}><StageBadge stage={p.stage}/></td>
-                  <td style={{ ...s.td, padding:'16px', fontSize:11, color:MUTED, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {p.channel_origin || '—'}
-                  </td>
-                  <td style={{ ...s.td, padding:'16px', fontSize:12, color:MUTED, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={zona || undefined}>
-                    {zona || '—'}
-                  </td>
-                  <td style={{ ...s.td, padding:'16px', fontSize:12, whiteSpace:'nowrap' }}>
-                    {p.next_action_date
-                      ? <span style={{ color: p.next_action_date <= today ? CLAY : CREAM }}>{p.next_action_date}</span>
-                      : <span style={{ color:MUTED }}>—</span>}
-                  </td>
-                  <td style={{ ...s.td, padding:'16px', fontFamily:"'Cormorant Garamond',serif", fontSize:16, color:GOLD, textAlign:'right', whiteSpace:'nowrap' }}>
-                    {p.deal_value_est ? `€ ${parseFloat(p.deal_value_est).toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'}
-                  </td>
-                  <td style={{ ...s.td, padding:'16px' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display:'flex', gap:6, justifyContent:'flex-end', whiteSpace:'nowrap' }}>
-                      <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }} onClick={() => setSelectedId(p.id)}>Apri</button>
-                      <button disabled={deleting}
-                        style={{ padding:'4px 12px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:'1px solid rgba(196,98,58,0.35)', color:CLAY }}
-                        onClick={() => handleDelete(p)}>
-                        Elimina
-                      </button>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {filtered.map(p => {
+            const zona    = [p.city, p.province, p.country].filter(Boolean).join(', ')
+            const sub     = [p.contact_name, p.channel_origin, zona].filter(Boolean).join('  ·  ')
+            const overdue = p.next_action_date && p.next_action_date <= today
+            return (
+              <div key={p.id} className="du-card" onClick={() => setSelectedId(p.id)}
+                style={{ display:'flex', alignItems:'center', gap:20, padding:'16px 22px', background:'rgba(255,255,255,0.03)', border:`1px solid ${BORDER}`, borderRadius:10, cursor:'pointer', flexWrap:'wrap' }}>
+
+                {/* Nome + badge + dettagli */}
+                <div style={{ flex:'1 1 260px', minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                    <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:CREAM, letterSpacing:0.5 }}>{p.name}</span>
+                    <CTChip ct={p.contact_type}/>
+                    <StageBadge stage={p.stage}/>
+                  </div>
+                  {sub && (
+                    <div style={{ fontSize:11, color:MUTED, marginTop:5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {sub}
                     </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                  )}
+                </div>
+
+                {/* Prossima azione — solo se presente */}
+                {p.next_action_date && (
+                  <div style={{ textAlign:'right', flexShrink:0 }}>
+                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>PROSSIMA AZIONE</div>
+                    <div style={{ fontSize:12, color: overdue ? CLAY : CREAM }}>{p.next_action_date}</div>
+                  </div>
+                )}
+
+                {/* Valore stimato — solo se presente */}
+                {p.deal_value_est && (
+                  <div style={{ textAlign:'right', flexShrink:0, minWidth:80 }}>
+                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>VALORE EST.</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
+                      € {parseFloat(p.deal_value_est).toLocaleString('it-IT',{maximumFractionDigits:0})}
+                    </div>
+                  </div>
+                )}
+
+                {/* Azioni */}
+                <div onClick={e => e.stopPropagation()} style={{ display:'flex', gap:6, flexShrink:0, marginLeft:'auto' }}>
+                  <button style={{ ...btnGoldStyle, padding:'6px 16px', fontSize:9 }} onClick={() => setSelectedId(p.id)}>Apri</button>
+                  <button disabled={deleting}
+                    style={{ padding:'6px 16px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:'1px solid rgba(196,98,58,0.35)', color:CLAY }}
+                    onClick={() => handleDelete(p)}>
+                    Elimina
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
 
       {/* ── Detail modal ── */}
