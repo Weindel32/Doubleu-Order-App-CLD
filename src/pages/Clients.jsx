@@ -12,12 +12,13 @@ const TIER_COLORS = {
 const getTier = (total) => total >= 4000 ? 'ANCHOR' : total >= 1000 ? 'ALLIED' : 'SCOUT'
 
 const CAT_COLORS = {
-  circolo:     { bg: 'rgba(90,130,184,0.15)', color: '#7aaee8', border: 'rgba(90,130,184,0.3)' },
-  scuola:      { bg: 'rgba(74,158,110,0.15)', color: GREEN,     border: 'rgba(74,158,110,0.3)' },
-  negozio:     { bg: 'rgba(184,150,90,0.15)', color: GOLD,      border: 'rgba(184,150,90,0.3)' },
-  rivenditore: { bg: 'rgba(196,98,58,0.15)',  color: CLAY,      border: 'rgba(196,98,58,0.3)'  },
+  club:          { bg: 'rgba(90,130,184,0.15)', color: '#7aaee8', border: 'rgba(90,130,184,0.3)' },
+  retailer:      { bg: 'rgba(184,150,90,0.15)', color: GOLD,      border: 'rgba(184,150,90,0.3)' },
+  distributor:   { bg: 'rgba(74,158,110,0.15)', color: GREEN,     border: 'rgba(74,158,110,0.3)' },
+  private_label: { bg: 'rgba(180,140,50,0.15)', color: '#e8c96e', border: 'rgba(180,140,50,0.3)' },
+  partnership:   { bg: 'rgba(196,98,58,0.15)',  color: CLAY,      border: 'rgba(196,98,58,0.3)'  },
 }
-const DB_CATEGORIES = ['circolo', 'scuola', 'negozio', 'rivenditore']
+const DB_CATEGORIES = ['club', 'retailer', 'distributor', 'private_label', 'partnership']
 
 function TierBadge({ tier }) {
   const tc = TIER_COLORS[tier] || TIER_COLORS.SCOUT
@@ -82,6 +83,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     setEditForm({
       name:        selected.name,
       category:    selected.category   || '',
+      city:        selected.city       || '',
       province:    selected.province   || '',
       country:     selected.country    || 'Italia',
       vat_number:  selected.vat_number || '',
@@ -97,6 +99,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     await onUpdateClient(selected.id, {
       name:        editForm.name.trim(),
       category:    editForm.category   || null,
+      city:        editForm.city       || null,
       province:    editForm.province   || null,
       country:     editForm.country    || 'Italia',
       vat_number:  editForm.vat_number || null,
@@ -128,6 +131,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     await onCreateClient({
       name:       newForm.name.trim(),
       category:   newForm.category   || null,
+      city:       newForm.city       || null,
       province:   newForm.province   || null,
       country:    newForm.country    || 'Italia',
       vat_number: newForm.vat_number || null,
@@ -146,7 +150,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
           <div style={s.pageSub}>Anagrafica e storico commerciale</div>
         </div>
         <button style={{ ...btnGoldStyle, marginTop:8 }}
-          onClick={() => setNewForm({ name:'', category:'', province:'', country:'Italia', vat_number:'', email:'', phone:'' })}>
+          onClick={() => setNewForm({ name:'', category:'', city:'', province:'', country:'Italia', vat_number:'', email:'', phone:'' })}>
           + Nuovo Cliente
         </button>
       </div>
@@ -219,7 +223,11 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                 <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8, flexWrap:'wrap' }}>
                   <TierBadge tier={selected.tier}/>
                   {selected.category && <CatChip cat={selected.category}/>}
-                  {selected.province && <span style={{ fontSize:11, color:MUTED }}>{selected.province}</span>}
+                  {(selected.city || selected.province) && (
+                    <span style={{ fontSize:11, color:MUTED }}>
+                      {[selected.city, selected.province].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
                   {selected.country && selected.country !== 'Italia' && (
                     <span style={{ fontSize:11, color:MUTED }}>{selected.country}</span>
                   )}
@@ -279,6 +287,10 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                         <input style={inp} value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone:e.target.value }))}/>
                       </div>
                       <div>
+                        <label style={s.label}>Città</label>
+                        <input style={inp} value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city:e.target.value }))}/>
+                      </div>
+                      <div>
                         <label style={s.label}>Provincia</label>
                         <input style={inp} value={editForm.province} onChange={e => setEditForm(f => ({ ...f, province:e.target.value }))} placeholder="es. MI"/>
                       </div>
@@ -306,6 +318,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                     {selected.email      && <InfoField label="EMAIL"    value={selected.email}/>}
                     {selected.phone      && <InfoField label="TELEFONO" value={selected.phone}/>}
                     {selected.vat_number && <InfoField label="P.IVA"    value={selected.vat_number}/>}
+                    {selected.city       && <InfoField label="CITTÀ"     value={selected.city}/>}
                     {selected.province   && <InfoField label="PROVINCIA" value={selected.province}/>}
                     {selected.country    && <InfoField label="PAESE"     value={selected.country}/>}
                     {!selected.email && !selected.phone && !selected.vat_number && (
@@ -463,6 +476,10 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
               <div>
                 <label style={s.label}>Telefono</label>
                 <input style={inp} value={newForm.phone} onChange={e => setNewForm(f => ({ ...f, phone:e.target.value }))}/>
+              </div>
+              <div>
+                <label style={s.label}>Città</label>
+                <input style={inp} value={newForm.city} onChange={e => setNewForm(f => ({ ...f, city:e.target.value }))}/>
               </div>
               <div>
                 <label style={s.label}>Provincia</label>
