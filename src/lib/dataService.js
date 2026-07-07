@@ -286,6 +286,23 @@ export async function addProspectActivity(prospectId, activity) {
   return data
 }
 
+export async function updateProspectActivity(activityId, activity) {
+  const { error } = await supabase.from('prospect_activities').update({
+    type:         activity.type || 'note',
+    content:      activity.content  || null,
+    reward_type:  activity.reward_type  || null,
+    reward_value: activity.reward_value ? parseFloat(activity.reward_value) : null,
+  }).eq('id', activityId)
+  if (error) { console.error('updateProspectActivity:', error); return false }
+  return true
+}
+
+export async function deleteProspectActivity(activityId) {
+  const { error } = await supabase.from('prospect_activities').delete().eq('id', activityId)
+  if (error) { console.error('deleteProspectActivity:', error); return false }
+  return true
+}
+
 export async function generateOrderId(orderDate) {
   const year = orderDate ? parseInt(orderDate.split('-')[0]) : new Date().getFullYear()
   const BASE = 1600

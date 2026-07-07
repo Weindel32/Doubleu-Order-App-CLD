@@ -11,7 +11,7 @@ import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, deleteProspect } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect } from './lib/dataService.js'
 import { needsAlert } from './utils/helpers.js'
 import { supabase } from './lib/supabase.js'
 
@@ -47,7 +47,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
     <div style={s.sidebar}>
       <div style={s.logo}>
         <div style={s.logoMark}>DOUBLEU</div>
-        <div style={s.logoSub}>Order App · v13</div>
+        <div style={s.logoSub}>Order App · v14</div>
       </div>
       <nav style={{ marginTop: 16 }}>
         {items.map(item => (
@@ -66,7 +66,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
       </nav>
       <div style={{ marginTop: 'auto', padding: '0 24px', borderTop: `1px solid ${BORDER}`, paddingTop: 20 }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>BUILD</div>
-        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v13 · Supabase</div>
+        <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v14 · Supabase</div>
         <button onClick={onLogout} style={{ marginTop: 16, width: '100%', padding: '8px', background: 'rgba(196,98,58,0.1)', border: `1px solid rgba(196,98,58,0.3)`, borderRadius: 4, color: CLAY, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif" }}>
           Esci
         </button>
@@ -166,6 +166,18 @@ export default function App() {
     return ok
   }
 
+  const handleUpdateActivity = async (activityId, activity) => {
+    const ok = await updateProspectActivity(activityId, activity)
+    if (ok) setProspects(await fetchProspects())
+    return ok
+  }
+
+  const handleDeleteActivity = async (activityId) => {
+    const ok = await deleteProspectActivity(activityId)
+    if (ok) setProspects(await fetchProspects())
+    return ok
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     setOrders([]); setView('dashboard')
@@ -242,7 +254,7 @@ export default function App() {
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder}/>}
-        {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onDelete={handleDeleteProspect}/>}
+        {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect}/>}
         {view === 'analytics'  && <Analytics orders={orders}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
         {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}

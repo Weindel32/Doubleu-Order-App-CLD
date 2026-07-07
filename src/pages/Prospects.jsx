@@ -193,7 +193,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete }) {
+export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
@@ -257,12 +257,28 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
     await onUpsert({ ...rest, stage })
   }
 
-  const handleAddAct = async () => {
+  const handleSaveAct = async () => {
     if (!actForm || !selectedId) return
     setActSaving(true)
-    await onAddActivity(selectedId, actForm)
+    if (actForm.id) await onUpdateActivity(actForm.id, actForm)
+    else            await onAddActivity(selectedId, actForm)
     setActForm(null)
     setActSaving(false)
+  }
+
+  const handleEditAct = (act) => {
+    setActForm({
+      id:           act.id,
+      type:         act.type || 'note',
+      content:      act.content || '',
+      reward_type:  act.reward_type || '',
+      reward_value: act.reward_value != null ? String(act.reward_value) : '',
+    })
+  }
+
+  const handleDeleteAct = async (act) => {
+    if (!confirm('Eliminare questa attività? L\'operazione non è reversibile.')) return
+    await onDeleteActivity(act.id)
   }
 
   const handleDelete = async (p) => {
@@ -578,6 +594,9 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
 
                   {actForm && (
                     <div style={{ marginBottom:16, padding:14, background:'rgba(255,255,255,0.03)', borderRadius:8, border:`1px solid ${BORDER}` }}>
+                      {actForm.id && (
+                        <div style={{ fontSize:9, color:GOLD, letterSpacing:2, marginBottom:10 }}>MODIFICA ATTIVITÀ</div>
+                      )}
                       <div style={{ marginBottom:10 }}>
                         <label style={s.label}>Tipo</label>
                         <select style={{ ...inp, cursor:'pointer' }} value={actForm.type} onChange={e => setActForm(f => ({ ...f, type:e.target.value }))}>
@@ -606,7 +625,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
                         </div>
                       )}
                       <div style={{ display:'flex', gap:8 }}>
-                        <button style={{ ...btnGoldStyle, padding:'6px 18px', fontSize:9 }} onClick={handleAddAct} disabled={actSaving}>
+                        <button style={{ ...btnGoldStyle, padding:'6px 18px', fontSize:9 }} onClick={handleSaveAct} disabled={actSaving}>
                           {actSaving ? 'Salvataggio…' : 'Salva'}
                         </button>
                         <button style={{ ...btnStyle(false), padding:'6px 14px', fontSize:9 }} onClick={() => setActForm(null)}>Annulla</button>
@@ -624,7 +643,13 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
                         <div key={act.id} style={{ padding:12, background:'rgba(255,255,255,0.02)', borderRadius:6, borderLeft:`3px solid ${STAGE_CFG.contatto.border}` }}>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
                             <span style={{ fontSize:11, color:GOLD, letterSpacing:1 }}>{ACT_LABELS[act.type] || act.type}</span>
-                            <span style={{ fontSize:10, color:MUTED }}>{act.created_at?.slice(0,10)}</span>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <span style={{ fontSize:10, color:MUTED }}>{act.created_at?.slice(0,10)}</span>
+                              <button title="Modifica attività" onClick={() => handleEditAct(act)}
+                                style={{ background:'none', border:'none', color:MUTED, fontSize:13, cursor:'pointer', lineHeight:1, padding:'2px 4px' }}>✎</button>
+                              <button title="Elimina attività" onClick={() => handleDeleteAct(act)}
+                                style={{ background:'none', border:'none', color:CLAY, fontSize:15, cursor:'pointer', lineHeight:1, padding:'2px 4px' }}>×</button>
+                            </div>
                           </div>
                           {act.content && <div style={{ fontSize:12, color:CREAM, lineHeight:1.6 }}>{act.content}</div>}
                           {act.reward_type && (
