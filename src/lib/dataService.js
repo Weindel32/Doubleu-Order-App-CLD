@@ -6,7 +6,7 @@ export async function fetchClients() {
   return data || []
 }
 
-const CLIENT_FIELDS = ['category', 'province', 'country', 'vat_number', 'email', 'phone']
+const CLIENT_FIELDS = ['category', 'province', 'country', 'vat_number', 'email', 'phone', 'shop_attivo']
 
 export async function upsertClient(name, fields) {
   const safe = {}

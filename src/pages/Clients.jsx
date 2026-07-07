@@ -80,13 +80,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
   const openEdit = () => {
     if (!selected) return
     setEditForm({
-      name:       selected.name,
-      category:   selected.category   || '',
-      province:   selected.province   || '',
-      country:    selected.country    || 'Italia',
-      vat_number: selected.vat_number || '',
-      email:      selected.email      || '',
-      phone:      selected.phone      || '',
+      name:        selected.name,
+      category:    selected.category   || '',
+      province:    selected.province   || '',
+      country:     selected.country    || 'Italia',
+      vat_number:  selected.vat_number || '',
+      email:       selected.email      || '',
+      phone:       selected.phone      || '',
+      shop_attivo: selected.shop_attivo || false,
     })
   }
 
@@ -94,13 +95,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     if (!editForm || !selected || !editForm.name.trim()) return
     setEditSaving(true)
     await onUpdateClient(selected.id, {
-      name:       editForm.name.trim(),
-      category:   editForm.category   || null,
-      province:   editForm.province   || null,
-      country:    editForm.country    || 'Italia',
-      vat_number: editForm.vat_number || null,
-      email:      editForm.email      || null,
-      phone:      editForm.phone      || null,
+      name:        editForm.name.trim(),
+      category:    editForm.category   || null,
+      province:    editForm.province   || null,
+      country:     editForm.country    || 'Italia',
+      vat_number:  editForm.vat_number || null,
+      email:       editForm.email      || null,
+      phone:       editForm.phone      || null,
+      shop_attivo: editForm.shop_attivo || false,
     })
     setEditForm(null)
     setEditSaving(false)
@@ -167,7 +169,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
         <table style={s.table}>
           <thead>
             <tr>
-              {['Cliente','Cat.','Paese','Ordini','Fatturato','Tier',''].map(h => (
+              {['Cliente','Cat.','Paese','Ordini','Fatturato','Tier','Shop',''].map(h => (
                 <th key={h} style={s.th}>{h}</th>
               ))}
             </tr>
@@ -190,6 +192,9 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                   {c.total > 0 ? `${c.total.toLocaleString('it-IT',{minimumFractionDigits:2})} €` : '—'}
                 </td>
                 <td style={s.td}><TierBadge tier={c.tier}/></td>
+                <td style={s.td}>
+                  <div style={{ width:10, height:10, borderRadius:'50%', background: c.shop_attivo ? GREEN : 'rgba(255,255,255,0.15)', display:'inline-block' }}/>
+                </td>
                 <td style={s.td} onClick={e => e.stopPropagation()}>
                   <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }}
                     onClick={() => setSelectedId(c.id)}>Apri</button>
@@ -217,6 +222,9 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                   {selected.province && <span style={{ fontSize:11, color:MUTED }}>{selected.province}</span>}
                   {selected.country && selected.country !== 'Italia' && (
                     <span style={{ fontSize:11, color:MUTED }}>{selected.country}</span>
+                  )}
+                  {selected.shop_attivo && (
+                    <span style={{ fontSize:9, letterSpacing:2, color:GREEN, background:'rgba(74,158,110,0.12)', border:'1px solid rgba(74,158,110,0.3)', padding:'2px 8px', borderRadius:2 }}>SHOP ATTIVO</span>
                   )}
                 </div>
               </div>
@@ -277,6 +285,13 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                       <div>
                         <label style={s.label}>Paese</label>
                         <input style={inp} value={editForm.country} onChange={e => setEditForm(f => ({ ...f, country:e.target.value }))}/>
+                      </div>
+                      <div style={{ gridColumn:'span 2', display:'flex', alignItems:'center', gap:12, paddingTop:4 }}>
+                        <div onClick={() => setEditForm(f => ({ ...f, shop_attivo: !f.shop_attivo }))}
+                          style={{ width:40, height:22, borderRadius:11, position:'relative', cursor:'pointer', background: editForm.shop_attivo ? GREEN : 'rgba(255,255,255,0.12)', transition:'background 0.2s', flexShrink:0 }}>
+                          <div style={{ position:'absolute', top:3, left: editForm.shop_attivo ? 21 : 3, width:16, height:16, borderRadius:'50%', background:'white', transition:'left 0.2s' }}/>
+                        </div>
+                        <span style={{ fontSize:12, color: editForm.shop_attivo ? GREEN : MUTED }}>Shop Online Attivo</span>
                       </div>
                     </div>
                     <div style={{ display:'flex', gap:8 }}>
