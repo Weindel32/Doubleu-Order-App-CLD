@@ -192,6 +192,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 
 // ─── Main component ───────────────────────────────────────────────
 export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete }) {
+  const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
   const [filterStage, setFilterStage] = useState('all')
@@ -203,19 +204,29 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
   const [actSaving,   setActSaving]   = useState(false)
   const [deleting,    setDeleting]    = useState(false)
 
+  const isRete   = tab === 'rete'
   const today    = new Date().toISOString().slice(0,10)
   const selected = selectedId ? prospects.find(p => p.id === selectedId) : null
 
-  const filtered = prospects.filter(p => {
+  const clubs = prospects.filter(p => p.contact_type === 'cliente')
+  const rete  = prospects.filter(p => p.contact_type !== 'cliente')
+
+  const referredBy   = (id) => prospects.filter(x => x.referred_by === id)
+  const rewardsTotal = (p)  => (p.prospect_activities || []).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
+
+  const filtered = (isRete ? rete : clubs).filter(p => {
     const q = search.toLowerCase()
     if (q && !p.name.toLowerCase().includes(q) && !(p.contact_email||'').toLowerCase().includes(q)) return false
-    if (filterCT    !== 'all' && p.contact_type !== filterCT)    return false
-    if (filterStage !== 'all' && p.stage        !== filterStage) return false
+    if (!isRete && filterStage !== 'all' && p.stage        !== filterStage) return false
+    if (isRete  && filterCT    !== 'all' && p.contact_type !== filterCT)    return false
     return true
   })
 
-  const pipeline    = prospects.filter(p => !['won','lost'].includes(p.stage)).reduce((s,p) => s + (parseFloat(p.deal_value_est)||0), 0)
-  const overdueCount = prospects.filter(p => p.next_action_date && p.next_action_date <= today && !['won','lost'].includes(p.stage)).length
+  const pipeline     = clubs.filter(p => !['won','lost'].includes(p.stage)).reduce((s,p) => s + (parseFloat(p.deal_value_est)||0), 0)
+  const overdueCount = clubs.filter(p => p.next_action_date && p.next_action_date <= today && !['won','lost'].includes(p.stage)).length
+  const totalReferrals = rete.reduce((s,m) => s + referredBy(m.id).length, 0)
+  const totalRewards   = rete.reduce((s,m) => s + rewardsTotal(m), 0)
+  const reteOverdue    = rete.filter(p => p.next_action_date && p.next_action_date <= today).length
 
   const closeModal = () => { setSelectedId(null); setEditForm(null); setActForm(null) }
 
@@ -265,18 +276,38 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
           <div style={s.pageTitle}>Prospects</div>
           <div style={s.pageSub}>Pipeline commerciale e segnalatori</div>
         </div>
-        <button style={{ ...btnGoldStyle, marginTop:8 }} onClick={() => setNewForm(EMPTY_PROSPECT())}>
-          + Nuovo Prospect
+        <button style={{ ...btnGoldStyle, marginTop:8 }}
+          onClick={() => setNewForm({ ...EMPTY_PROSPECT(), contact_type: isRete ? 'segnalatore' : 'cliente' })}>
+          {isRete ? '+ Nuovo Contatto' : '+ Nuovo Club'}
         </button>
       </div>
 
-      {/* Stats */}
-      <div style={s.grid4}>
-        <StatCard label="Totale"       value={prospects.length}/>
-        <StatCard label="Won"          value={prospects.filter(p => p.stage==='won').length} sub="Convertiti"/>
-        <StatCard label="Pipeline Est." value={pipeline > 0 ? `€ ${pipeline.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'} accent/>
-        <StatCard label="Azioni Scadute" value={overdueCount} sub="Da completare"/>
+      {/* Tabs */}
+      <div style={{ display:'flex', borderBottom:`1px solid ${BORDER}`, marginBottom:24 }}>
+        {[{ k:'club', label:`Pipeline Club (${clubs.length})` }, { k:'rete', label:`Ambassador / Referral (${rete.length})` }].map(t => (
+          <button key={t.k} onClick={() => { setTab(t.k); setFilterStage('all'); setFilterCT('all') }}
+            style={{ padding:'12px 24px', background:'transparent', border:'none', borderBottom: tab===t.k ? `2px solid ${GOLD}` : '2px solid transparent', color: tab===t.k ? GOLD : MUTED, fontSize:11, letterSpacing:2, textTransform:'uppercase', cursor:'pointer', marginBottom:-1 }}>
+            {t.label}
+          </button>
+        ))}
       </div>
+
+      {/* Stats */}
+      {isRete ? (
+        <div style={s.grid4}>
+          <StatCard label="Contatti"       value={rete.length} sub="Ambassador e referral"/>
+          <StatCard label="Segnalazioni"   value={totalReferrals} sub="Club presentati"/>
+          <StatCard label="Riconoscimenti" value={totalRewards > 0 ? `€ ${totalRewards.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'} accent/>
+          <StatCard label="Azioni Scadute" value={reteOverdue} sub="Da completare"/>
+        </div>
+      ) : (
+        <div style={s.grid4}>
+          <StatCard label="Club"           value={clubs.length}/>
+          <StatCard label="Won"            value={clubs.filter(p => p.stage==='won').length} sub="Convertiti"/>
+          <StatCard label="Pipeline Est."  value={pipeline > 0 ? `€ ${pipeline.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'} accent/>
+          <StatCard label="Azioni Scadute" value={overdueCount} sub="Da completare"/>
+        </div>
+      )}
 
       <div style={s.divider}/>
 
@@ -286,30 +317,34 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
           placeholder="Cerca per nome o email…"
           value={search} onChange={e => setSearch(e.target.value)}/>
 
-        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-          {['all',...CONTACT_TYPES].map(ct => (
-            <button key={ct} onClick={() => setFilterCT(ct)}
-              style={{ padding:'5px 12px', borderRadius:3, fontSize:9, letterSpacing:1.5, cursor:'pointer', border:`1px solid ${filterCT===ct ? (CT_CFG[ct]?.border||GOLD) : BORDER}`, background: filterCT===ct ? (CT_CFG[ct]?.bg||'rgba(184,150,90,0.12)') : 'transparent', color: filterCT===ct ? (CT_CFG[ct]?.color||GOLD) : MUTED }}>
-              {ct === 'all' ? 'Tutti' : ct}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-          {['all',...STAGES].map(st => (
-            <button key={st} onClick={() => setFilterStage(st)}
-              style={{ padding:'5px 12px', borderRadius:3, fontSize:9, letterSpacing:1.5, cursor:'pointer', border:`1px solid ${filterStage===st ? (STAGE_CFG[st]?.border||GOLD) : BORDER}`, background: filterStage===st ? (STAGE_CFG[st]?.bg||'rgba(184,150,90,0.12)') : 'transparent', color: filterStage===st ? (STAGE_CFG[st]?.color||GOLD) : MUTED }}>
-              {st === 'all' ? 'Tutti' : st}
-            </button>
-          ))}
-        </div>
+        {isRete ? (
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+            {['all','ambassador','segnalatore'].map(ct => (
+              <button key={ct} onClick={() => setFilterCT(ct)}
+                style={{ padding:'5px 12px', borderRadius:3, fontSize:9, letterSpacing:1.5, cursor:'pointer', border:`1px solid ${filterCT===ct ? (CT_CFG[ct]?.border||GOLD) : BORDER}`, background: filterCT===ct ? (CT_CFG[ct]?.bg||'rgba(184,150,90,0.12)') : 'transparent', color: filterCT===ct ? (CT_CFG[ct]?.color||GOLD) : MUTED }}>
+                {ct === 'all' ? 'Tutti' : ct}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+            {['all',...STAGES].map(st => (
+              <button key={st} onClick={() => setFilterStage(st)}
+                style={{ padding:'5px 12px', borderRadius:3, fontSize:9, letterSpacing:1.5, cursor:'pointer', border:`1px solid ${filterStage===st ? (STAGE_CFG[st]?.border||GOLD) : BORDER}`, background: filterStage===st ? (STAGE_CFG[st]?.bg||'rgba(184,150,90,0.12)') : 'transparent', color: filterStage===st ? (STAGE_CFG[st]?.color||GOLD) : MUTED }}>
+                {st === 'all' ? 'Tutti' : st}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}
       {filtered.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px 0', color:MUTED }}>
           <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:24 }}>
-            {prospects.length === 0 ? 'Nessun prospect ancora' : 'Nessun risultato per i filtri attivi'}
+            {(isRete ? rete : clubs).length === 0
+              ? (isRete ? 'Nessun contatto ancora' : 'Nessun club in pipeline')
+              : 'Nessun risultato per i filtri attivi'}
           </div>
         </div>
       ) : (
@@ -318,6 +353,8 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
             const zona    = [p.city, p.province, p.country].filter(Boolean).join(', ')
             const sub     = [p.contact_name, p.channel_origin, zona].filter(Boolean).join('  ·  ')
             const overdue = p.next_action_date && p.next_action_date <= today
+            const nRef    = isRete ? referredBy(p.id).length : 0
+            const rewards = isRete ? rewardsTotal(p) : 0
             return (
               <div key={p.id} className="du-card" onClick={() => setSelectedId(p.id)}
                 style={{ display:'flex', alignItems:'center', gap:20, padding:'16px 22px', background:'rgba(255,255,255,0.03)', border:`1px solid ${BORDER}`, borderRadius:10, cursor:'pointer', flexWrap:'wrap' }}>
@@ -326,8 +363,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
                 <div style={{ flex:'1 1 260px', minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                     <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:CREAM, letterSpacing:0.5 }}>{p.name}</span>
-                    <CTChip ct={p.contact_type}/>
-                    <StageBadge stage={p.stage}/>
+                    {isRete ? <CTChip ct={p.contact_type}/> : <StageBadge stage={p.stage}/>}
                   </div>
                   {sub && (
                     <div style={{ fontSize:11, color:MUTED, marginTop:5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -344,14 +380,33 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
                   </div>
                 )}
 
-                {/* Valore stimato — solo se presente */}
-                {p.deal_value_est && (
-                  <div style={{ textAlign:'right', flexShrink:0, minWidth:80 }}>
-                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>VALORE EST.</div>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
-                      € {parseFloat(p.deal_value_est).toLocaleString('it-IT',{maximumFractionDigits:0})}
+                {isRete ? (
+                  <>
+                    {/* Segnalazioni */}
+                    <div style={{ textAlign:'right', flexShrink:0, minWidth:80 }}>
+                      <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>SEGNALAZIONI</div>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color: nRef > 0 ? GREEN : MUTED }}>{nRef}</div>
                     </div>
-                  </div>
+                    {/* Riconoscimenti — solo se presenti */}
+                    {rewards > 0 && (
+                      <div style={{ textAlign:'right', flexShrink:0, minWidth:90 }}>
+                        <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>RICONOSCIMENTI</div>
+                        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
+                          € {rewards.toLocaleString('it-IT',{maximumFractionDigits:0})}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* Valore stimato — solo se presente */
+                  p.deal_value_est && (
+                    <div style={{ textAlign:'right', flexShrink:0, minWidth:80 }}>
+                      <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>VALORE EST.</div>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
+                        € {parseFloat(p.deal_value_est).toLocaleString('it-IT',{maximumFractionDigits:0})}
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {/* Azioni */}
@@ -381,7 +436,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
               <div>
                 <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:28, color:CREAM, letterSpacing:2 }}>{selected.name}</div>
                 <div style={{ display:'flex', gap:10, marginTop:8, flexWrap:'wrap', alignItems:'center' }}>
-                  <StageBadge stage={selected.stage}/>
+                  {selected.contact_type === 'cliente' && <StageBadge stage={selected.stage}/>}
                   <CTChip ct={selected.contact_type}/>
                   {selected.channel_origin && <span style={{ fontSize:11, color:MUTED }}>{selected.channel_origin}</span>}
                   {selected.vincolo_altro_brand && (
@@ -407,22 +462,44 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete
 
               {/* ── Left: info ── */}
               <div>
-                {/* Stage selector */}
-                <div style={{ ...s.card, marginBottom:16 }}>
-                  <div style={s.cardTitle}>Avanza Stage</div>
-                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                    {STAGES.map(st => {
-                      const c = STAGE_CFG[st]
-                      const active = selected.stage === st
-                      return (
-                        <button key={st} onClick={() => handleStageClick(st)}
-                          style={{ padding:'6px 14px', borderRadius:3, border:`1px solid ${active ? c.border : BORDER}`, background: active ? c.bg : 'transparent', color: active ? c.color : MUTED, cursor:'pointer', fontSize:9, letterSpacing:1.5, fontWeight: active ? 700 : 400 }}>
-                          {st}
-                        </button>
-                      )
-                    })}
+                {/* Stage selector — solo per i club */}
+                {selected.contact_type === 'cliente' && (
+                  <div style={{ ...s.card, marginBottom:16 }}>
+                    <div style={s.cardTitle}>Avanza Stage</div>
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                      {STAGES.map(st => {
+                        const c = STAGE_CFG[st]
+                        const active = selected.stage === st
+                        return (
+                          <button key={st} onClick={() => handleStageClick(st)}
+                            style={{ padding:'6px 14px', borderRadius:3, border:`1px solid ${active ? c.border : BORDER}`, background: active ? c.bg : 'transparent', color: active ? c.color : MUTED, cursor:'pointer', fontSize:9, letterSpacing:1.5, fontWeight: active ? 700 : 400 }}>
+                            {st}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Club segnalati — solo per la rete */}
+                {selected.contact_type !== 'cliente' && (
+                  <div style={{ ...s.card, marginBottom:16 }}>
+                    <div style={s.cardTitle}>Club Segnalati ({referredBy(selected.id).length})</div>
+                    {referredBy(selected.id).length === 0 ? (
+                      <div style={{ fontSize:12, color:MUTED, fontStyle:'italic' }}>Nessuna segnalazione ancora</div>
+                    ) : (
+                      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                        {referredBy(selected.id).map(c => (
+                          <div key={c.id} onClick={() => setSelectedId(c.id)}
+                            style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, padding:'10px 14px', background:'rgba(255,255,255,0.03)', borderRadius:6, border:`1px solid ${BORDER}`, cursor:'pointer' }}>
+                            <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:16, color:CREAM, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
+                            <StageBadge stage={c.stage}/>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Contatto */}
                 <div style={{ ...s.card, marginBottom:16 }}>
