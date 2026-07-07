@@ -192,13 +192,8 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                   {c.total > 0 ? `${c.total.toLocaleString('it-IT',{minimumFractionDigits:2})} €` : '—'}
                 </td>
                 <td style={s.td}><TierBadge tier={c.tier}/></td>
-                <td style={s.td} onClick={e => e.stopPropagation()}>
-                  <div
-                    title={c.shop_attivo ? 'Shop attivo — clicca per disattivare' : 'Shop non attivo — clicca per attivare'}
-                    onClick={() => onUpdateClient(c.id, { shop_attivo: !c.shop_attivo })}
-                    style={{ width:36, height:20, borderRadius:10, position:'relative', cursor:'pointer', background: c.shop_attivo ? GREEN : 'rgba(255,255,255,0.12)', transition:'background 0.2s', flexShrink:0, display:'inline-block' }}>
-                    <div style={{ position:'absolute', top:2, left: c.shop_attivo ? 18 : 2, width:16, height:16, borderRadius:'50%', background:'white', transition:'left 0.2s' }}/>
-                  </div>
+                <td style={s.td}>
+                  <div style={{ width:10, height:10, borderRadius:'50%', background: c.shop_attivo ? GREEN : 'rgba(255,255,255,0.15)', display:'inline-block' }}/>
                 </td>
                 <td style={s.td} onClick={e => e.stopPropagation()}>
                   <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }}
