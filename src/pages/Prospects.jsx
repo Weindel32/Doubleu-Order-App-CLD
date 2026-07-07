@@ -191,7 +191,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, onUpsert, onAddActivity }) {
+export default function Prospects({ prospects, onUpsert, onAddActivity, onDelete }) {
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
   const [filterStage, setFilterStage] = useState('all')
@@ -201,6 +201,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity }) {
   const [newForm,     setNewForm]     = useState(null)
   const [actForm,     setActForm]     = useState(null)
   const [actSaving,   setActSaving]   = useState(false)
+  const [deleting,    setDeleting]    = useState(false)
 
   const today    = new Date().toISOString().slice(0,10)
   const selected = selectedId ? prospects.find(p => p.id === selectedId) : null
@@ -246,6 +247,14 @@ export default function Prospects({ prospects, onUpsert, onAddActivity }) {
     await onAddActivity(selectedId, actForm)
     setActForm(null)
     setActSaving(false)
+  }
+
+  const handleDelete = async (p) => {
+    if (!confirm(`Eliminare "${p.name}"? L'operazione non è reversibile.`)) return
+    setDeleting(true)
+    const ok = await onDelete(p.id)
+    setDeleting(false)
+    if (ok && selectedId === p.id) closeModal()
   }
 
   return (
@@ -332,7 +341,14 @@ export default function Prospects({ prospects, onUpsert, onAddActivity }) {
                   {p.deal_value_est ? `€ ${parseFloat(p.deal_value_est).toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'}
                 </td>
                 <td style={s.td} onClick={e => e.stopPropagation()}>
-                  <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }} onClick={() => setSelectedId(p.id)}>Apri</button>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }} onClick={() => setSelectedId(p.id)}>Apri</button>
+                    <button disabled={deleting}
+                      style={{ padding:'4px 12px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:'1px solid rgba(196,98,58,0.35)', color:CLAY }}
+                      onClick={() => handleDelete(p)}>
+                      Elimina
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -364,6 +380,11 @@ export default function Prospects({ prospects, onUpsert, onAddActivity }) {
                 <button style={{ ...btnStyle(false), padding:'7px 18px', fontSize:9 }}
                   onClick={() => setEditForm({ id:selected.id, ...selected, prospect_activities:undefined, deal_value_est: selected.deal_value_est||'', next_action_date: selected.next_action_date||'', referred_by: selected.referred_by||'' })}>
                   Modifica
+                </button>
+                <button disabled={deleting}
+                  style={{ padding:'7px 18px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:'1px solid rgba(196,98,58,0.35)', color:CLAY }}
+                  onClick={() => handleDelete(selected)}>
+                  {deleting ? 'Eliminazione…' : 'Elimina'}
                 </button>
                 <button onClick={closeModal} style={{ background:'none', border:'none', color:MUTED, fontSize:24, cursor:'pointer', lineHeight:1 }}>×</button>
               </div>
