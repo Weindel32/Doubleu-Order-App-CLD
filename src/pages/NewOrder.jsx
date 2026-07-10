@@ -173,6 +173,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
     actualDeliveryDate: toItalianDate(actualDeliveryDate) || null,
     alertDays, status, pieces: totalPieces, orderType,
     notes: clientNotes, productionNotes, pricingMode,
+    convertedFromQuote: editOrder?.convertedFromQuote || false,
+    lost: editOrder?.lost || false, lostReason: editOrder?.lostReason || null, lostDate: editOrder?.lostDate || null,
     kitQuantity: null,
     ivaEnabled, ivaRate, shipping: parseFloat(shipping) || 0, invoiceNumber, kits, payments,
     showTotalInClientPDF: showTotal,

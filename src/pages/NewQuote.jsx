@@ -145,6 +145,8 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
     deliveryDate: '', alertDays: 7, status: 'PREVENTIVO',
     pieces: 0, orderType: 'istituzionale',
     notes: clientNotes, productionNotes: '', pricingMode,
+    lost: editOrder?.lost || false, lostReason: editOrder?.lostReason || null, lostDate: editOrder?.lostDate || null,
+    convertedFromQuote: editOrder?.convertedFromQuote || false,
     kitQuantity: null,
     ivaEnabled, ivaRate, kits, payments: [],
     showTotalInClientPDF: true,

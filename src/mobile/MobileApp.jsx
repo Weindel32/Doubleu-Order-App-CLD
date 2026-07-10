@@ -25,7 +25,7 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [selectedQuote, setSelectedQuote] = useState(null)
 
-  const quotes = orders.filter(o => o.status === 'PREVENTIVO')
+  const quotes = orders.filter(o => o.status === 'PREVENTIVO' && !o.lost)
   const activeOrders = orders.filter(o => o.status !== 'PREVENTIVO')
 
   const goToOrders = (filter) => { setOrdersFilter(filter); setTab('orders') }

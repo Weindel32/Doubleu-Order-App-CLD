@@ -83,6 +83,8 @@ export async function fetchOrders() {
       clientCountry: order.client_country || 'Italia', clientContact: order.client_contact || '',
       date: order.date, deliveryDate: order.delivery_date, actualDeliveryDate: order.actual_delivery_date || null, alertDays: order.alert_days,
       status: order.status, pieces: order.pieces, pricingMode: order.pricing_mode,
+      lost: order.lost || false, lostReason: order.lost_reason || '', lostDate: order.lost_date || null,
+      convertedFromQuote: order.converted_from_quote || false,
       kitQuantity: order.kit_quantity || null,
       ivaEnabled: order.iva_enabled || false, ivaRate: order.iva_rate || 22,
       shipping: order.shipping || 0,
@@ -111,6 +113,8 @@ export async function createOrder(order) {
     client_country: order.clientCountry || 'Italia', client_contact: order.clientContact || null,
     date: order.date, delivery_date: order.deliveryDate || null, actual_delivery_date: order.actualDeliveryDate || null, alert_days: order.alertDays || 7,
     status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
+    lost: order.lost || false, lost_reason: order.lostReason || null, lost_date: order.lostDate || null,
+    converted_from_quote: order.convertedFromQuote || false,
     kit_quantity: order.kitQuantity || null,
     iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     shipping: order.shipping || 0,
@@ -154,6 +158,8 @@ export async function updateOrder(order) {
     client_country: order.clientCountry || 'Italia', client_contact: order.clientContact || null,
     date: order.date, delivery_date: order.deliveryDate || null, actual_delivery_date: order.actualDeliveryDate || null, alert_days: order.alertDays || 7,
     status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
+    lost: order.lost || false, lost_reason: order.lostReason || null, lost_date: order.lostDate || null,
+    converted_from_quote: order.convertedFromQuote || false,
     kit_quantity: order.kitQuantity || null,
     iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     shipping: order.shipping || 0,
@@ -195,6 +201,25 @@ export async function updateOrder(order) {
 export async function quickUpdateStatus(orderId, status, extraFields = {}) {
   const { error } = await supabase.from('orders').update({ status, ...extraFields }).eq('id', orderId)
   if (error) { console.error('quickUpdateStatus:', error); return false }
+  return true
+}
+
+// Segna un preventivo come "perso" (non diventato ordine) — resta in archivio per le statistiche
+export async function markQuoteLost(orderId, reason) {
+  const today = new Date().toLocaleDateString('it-IT')
+  const { error } = await supabase.from('orders')
+    .update({ lost: true, lost_reason: reason || null, lost_date: today })
+    .eq('id', orderId)
+  if (error) { console.error('markQuoteLost:', error); return false }
+  return true
+}
+
+// Riporta un preventivo perso tra quelli attivi
+export async function restoreQuote(orderId) {
+  const { error } = await supabase.from('orders')
+    .update({ lost: false, lost_reason: null, lost_date: null })
+    .eq('id', orderId)
+  if (error) { console.error('restoreQuote:', error); return false }
   return true
 }
 

@@ -155,6 +155,21 @@ export default function MobileAnalytics({ orders }) {
   const topClients = Object.entries(byClient).sort((a, b) => b[1] - a[1]).slice(0, 4)
   const maxClientVal = topClients[0]?.[1] || 1
 
+  // ── Conversione preventivi ──
+  const quotes = orders.filter(o => o.status === 'PREVENTIVO')
+  const openCount      = quotes.filter(o => !o.lost).length
+  const lostQuotes     = quotes.filter(o => o.lost)
+  const lostCount      = lostQuotes.length
+  const convertedCount = orders.filter(o => o.convertedFromQuote && o.status !== 'PREVENTIVO').length
+  const totalQuotes    = openCount + lostCount + convertedCount
+  const decidedCount   = convertedCount + lostCount
+  const conversionRate = decidedCount > 0 ? Math.round(convertedCount / decidedCount * 100) : 0
+  const lostRate       = decidedCount > 0 ? 100 - conversionRate : 0
+  const lossReasons = {}
+  lostQuotes.forEach(o => { const r = o.lostReason || 'Non specificato'; lossReasons[r] = (lossReasons[r] || 0) + 1 })
+  const lossReasonRows = Object.entries(lossReasons).sort((a, b) => b[1] - a[1])
+  const maxLossReason  = Math.max(...lossReasonRows.map(r => r[1]), 1)
+
   if (orders.length === 0) {
     return (
       <div style={{ padding: '60px 20px', textAlign: 'center' }}>
@@ -211,6 +226,59 @@ export default function MobileAnalytics({ orders }) {
           </div>
         </div>
       </div>
+
+      {/* Conversione preventivi */}
+      {totalQuotes > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <SectionTitle>Conversione Preventivi</SectionTitle>
+          <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px' }}>
+            <div style={{ display: 'flex', marginBottom: 14 }}>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GREEN, lineHeight: 1 }}>{convertedCount}</div>
+                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Convertiti</div>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: '#ef4444', lineHeight: 1 }}>{lostCount}</div>
+                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Persi</div>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: CLAY, lineHeight: 1 }}>{openCount}</div>
+                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Aperti</div>
+              </div>
+            </div>
+            {decidedCount > 0 && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                    <div style={{ width: `${conversionRate}%`, background: GREEN, transition: 'width 0.5s' }} />
+                    <div style={{ width: `${lostRate}%`, background: 'rgba(239,68,68,0.5)', transition: 'width 0.5s' }} />
+                  </div>
+                  <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: conversionRate >= 50 ? GREEN : '#ef4444' }}>{conversionRate}%</span>
+                </div>
+                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, marginTop: 6 }}>tasso di conversione sui preventivi decisi</div>
+              </>
+            )}
+            {lossReasonRows.length > 0 && (
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid rgba(255,255,255,0.06)` }}>
+                <div style={{ fontSize: 8, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 10 }}>Motivi di perdita</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {lossReasonRows.map(([reason, count]) => (
+                    <div key={reason}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <span style={{ fontSize: 10, color: CREAM }}>{reason}</span>
+                        <span style={{ fontSize: 11, color: '#ef4444' }}>{count}</span>
+                      </div>
+                      <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.round((count / maxLossReason) * 100)}%`, background: 'rgba(239,68,68,0.6)', borderRadius: 2 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Top clienti */}
       {topClients.length > 0 && (

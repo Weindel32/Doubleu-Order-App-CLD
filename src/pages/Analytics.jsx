@@ -214,36 +214,31 @@ export default function Analytics({ orders }) {
     monthlyByYear[year][month] += orderTotal(o)
   })
 
-  const totalQuotes       = quotes.length
-  const convertedQuotes   = orders.filter(o => o.status !== 'PREVENTIVO' && o._convertedFrom).length
+  // ── Statistiche conversione preventivi (dati reali) ──
+  // quotes = tutti i record ancora in stato PREVENTIVO (attivi + persi)
+  const activeQuotes       = quotes.filter(o => !o.lost)
+  const lostQuotes         = quotes.filter(o => o.lost)
+  const convertedQuotesArr = orders.filter(o => o.convertedFromQuote && o.status !== 'PREVENTIVO')
 
-  const quotesByMonth = {}
-  const ordersFromQuotesByMonth = {}
-  const MONTH_KEYS = Array.from({length:12},(_,i)=>i)
-  const parseItalianMonth = (dateStr) => {
-    if (!dateStr) return null
-    const parts = dateStr.split('/')
-    if (parts.length < 3) return null
-    return { month: parseInt(parts[1]) - 1, year: parseInt(parts[2]) }
-  }
+  const openCount      = activeQuotes.length
+  const lostCount      = lostQuotes.length
+  const convertedCount = convertedQuotesArr.length
+  const totalQuotes    = openCount + lostCount + convertedCount
+  // Il tasso si calcola solo sui preventivi "decisi" (convertiti o persi), non sugli aperti
+  const decidedCount   = convertedCount + lostCount
+  const conversionRate = decidedCount > 0 ? Math.round(convertedCount / decidedCount * 100) : 0
+  const lostRate       = decidedCount > 0 ? 100 - conversionRate : 0
 
-  const confirmedClientsSet = new Set(confirmed.map(o => o.client))
-  const convertedCount = quotes.filter(q => confirmedClientsSet.has(q.client)).length
-  const conversionRate = totalQuotes > 0 ? Math.round(convertedCount / totalQuotes * 100) : 0
-  const openQuotes     = totalQuotes - convertedCount
+  const convertedValue = convertedQuotesArr.reduce((s, o) => s + orderTotal(o), 0)
+  const lostValue      = lostQuotes.reduce((s, o) => s + orderTotal(o), 0)
 
-  const avgQuoteValue  = totalQuotes > 0
-    ? quotes.reduce((s,o) => s + orderTotal(o), 0) / totalQuotes
-    : 0
-
-  const quoteMonthlyByYear = {}
-  quotes.forEach(o => {
-    if (!o.date) return
-    const p = parseItalianMonth(o.date)
-    if (!p) return
-    if (!quoteMonthlyByYear[p.year]) quoteMonthlyByYear[p.year] = Array(12).fill(0)
-    quoteMonthlyByYear[p.year][p.month]++
+  const lossReasons = {}
+  lostQuotes.forEach(o => {
+    const r = o.lostReason || 'Non specificato'
+    lossReasons[r] = (lossReasons[r] || 0) + 1
   })
+  const lossReasonRows = Object.entries(lossReasons).sort((a, b) => b[1] - a[1])
+  const maxLossReason  = Math.max(...lossReasonRows.map(r => r[1]), 1)
 
   const totalRevenue      = confirmed.reduce((s,o)=>s+orderTotal(o),0)
   const istituzionale     = confirmed.filter(o=>o.orderType!=='soci').reduce((s,o)=>s+orderTotal(o),0)
@@ -461,13 +456,13 @@ export default function Analytics({ orders }) {
 
       {totalQuotes > 0 && <>
         <div style={s.divider}/>
-        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CLAY,letterSpacing:2,marginBottom:20}}>Preventivi</div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CLAY,letterSpacing:2,marginBottom:20}}>Conversione Preventivi</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:16,marginBottom:24}}>
           {[
-            {label:'Preventivi Totali',    value:totalQuotes,                    color:CREAM},
-            {label:'Convertiti in Ordine', value:convertedCount,                 color:GREEN, sub:`${conversionRate}% tasso di conversione`},
-            {label:'Ancora Aperti',        value:openQuotes,                     color:CLAY},
-            {label:'Valore Medio',         value:`€ ${avgQuoteValue.toLocaleString('it-IT',{maximumFractionDigits:0})}`, color:GOLD},
+            {label:'Preventivi Totali',    value:totalQuotes,     color:CREAM,     sub:'Convertiti + persi + aperti'},
+            {label:'Convertiti in Ordine', value:convertedCount,  color:GREEN,     sub:convertedValue>0?`€ ${convertedValue.toLocaleString('it-IT',{maximumFractionDigits:0})} acquisiti`:'—'},
+            {label:'Persi',                value:lostCount,       color:'#ef4444', sub:lostValue>0?`€ ${lostValue.toLocaleString('it-IT',{maximumFractionDigits:0})} sfumati`:'—'},
+            {label:'Ancora Aperti',        value:openCount,       color:CLAY,      sub:'In attesa di esito'},
           ].map(item=>(
             <div key={item.label} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'16px 20px'}}>
               <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:6}}>{item.label}</div>
@@ -476,22 +471,45 @@ export default function Analytics({ orders }) {
             </div>
           ))}
         </div>
-        {totalQuotes > 0 && (
-          <div style={{...s.card,marginBottom:20}}>
+        <div style={{display:'grid',gridTemplateColumns:lossReasonRows.length>0?'1fr 1fr':'1fr',gap:20,marginBottom:20}}>
+          <div style={{...s.card,marginBottom:0}}>
             <div style={s.cardTitle}>Tasso di Conversione</div>
-            <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:8}}>
-              <div style={{flex:1,height:10,background:'rgba(255,255,255,0.06)',borderRadius:5,overflow:'hidden',display:'flex'}}>
-                <div style={{width:`${conversionRate}%`,background:GREEN,borderRadius:5,transition:'width 0.5s'}}/>
-                <div style={{width:`${100-conversionRate}%`,background:'rgba(196,98,58,0.3)',transition:'width 0.5s'}}/>
+            {decidedCount > 0 ? (<>
+              <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:12}}>
+                <div style={{flex:1,height:10,background:'rgba(255,255,255,0.06)',borderRadius:5,overflow:'hidden',display:'flex'}}>
+                  <div style={{width:`${conversionRate}%`,background:GREEN,borderRadius:5,transition:'width 0.5s'}}/>
+                  <div style={{width:`${lostRate}%`,background:'rgba(239,68,68,0.5)',transition:'width 0.5s'}}/>
+                </div>
+                <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:conversionRate>=50?GREEN:'#ef4444',minWidth:50}}>{conversionRate}%</span>
               </div>
-              <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:conversionRate>=50?GREEN:CLAY,minWidth:50}}>{conversionRate}%</span>
-            </div>
-            <div style={{display:'flex',gap:24,fontSize:10,color:MUTED}}>
-              <span><span style={{color:GREEN}}>■</span> {convertedCount} convertiti</span>
-              <span><span style={{color:CLAY}}>■</span> {openQuotes} aperti</span>
-            </div>
+              <div style={{display:'flex',gap:20,fontSize:10,color:MUTED,flexWrap:'wrap'}}>
+                <span><span style={{color:GREEN}}>■</span> {convertedCount} convertiti</span>
+                <span><span style={{color:'#ef4444'}}>■</span> {lostCount} persi</span>
+                <span><span style={{color:CLAY}}>■</span> {openCount} aperti (non conteggiati)</span>
+              </div>
+            </>) : (
+              <div style={{fontSize:11,color:MUTED,padding:'8px 0',lineHeight:1.6}}>Nessun preventivo ancora deciso.<br/>Il tasso apparirà quando avrai convertito in ordine o segnato come perso qualche preventivo.</div>
+            )}
           </div>
-        )}
+          {lossReasonRows.length > 0 && (
+            <div style={{...s.card,marginBottom:0}}>
+              <div style={s.cardTitle}>Motivi di Perdita</div>
+              <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                {lossReasonRows.map(([reason,count])=>(
+                  <div key={reason}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                      <span style={{fontSize:11,color:CREAM,letterSpacing:0.5}}>{reason}</span>
+                      <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:'#ef4444'}}>{count}</span>
+                    </div>
+                    <div style={{height:6,background:'rgba(255,255,255,0.06)',borderRadius:3,overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round((count/maxLossReason)*100)}%`,background:'rgba(239,68,68,0.6)',borderRadius:3,transition:'width 0.6s'}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </>}
 
       <div style={s.divider}/>
