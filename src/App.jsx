@@ -12,7 +12,7 @@ import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, markQuoteLost, restoreQuote } from './lib/dataService.js'
 import { needsAlert } from './utils/helpers.js'
 import { supabase } from './lib/supabase.js'
 
@@ -34,7 +34,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
   const pendingCount = orders.filter(o =>
     o.status !== 'PREVENTIVO' && (o.payments || []).some(p => !p.paid)
   ).length
-  const quoteCount   = orders.filter(o => o.status === 'PREVENTIVO').length
+  const quoteCount   = orders.filter(o => o.status === 'PREVENTIVO' && !o.lost).length
 
   const items = [
     { key: 'dashboard',  label: 'Dashboard',          icon: 'dashboard', badge: alertCount > 0 ? alertCount : null },
@@ -207,7 +207,7 @@ export default function App() {
   }
 
   const handleConvertToOrder = (quote) => {
-    setEditOrder({ ...quote, status: 'CONFERMATO' })
+    setEditOrder({ ...quote, status: 'CONFERMATO', convertedFromQuote: true, lost: false })
     setPrefill(null)
     navigate('new')
   }
@@ -216,6 +216,19 @@ export default function App() {
     if (!confirm('Sei sicuro di voler eliminare questo elemento?')) return
     const ok = await deleteOrder(orderId)
     if (ok) setOrders(orders.filter(o => o.id !== orderId))
+  }
+
+  const handleMarkQuoteLost = async (orderId, reason) => {
+    const ok = await markQuoteLost(orderId, reason)
+    if (ok) {
+      const today = new Date().toLocaleDateString('it-IT')
+      setOrders(orders.map(o => o.id === orderId ? { ...o, lost: true, lostReason: reason, lostDate: today } : o))
+    }
+  }
+
+  const handleRestoreQuote = async (orderId) => {
+    const ok = await restoreQuote(orderId)
+    if (ok) setOrders(orders.map(o => o.id === orderId ? { ...o, lost: false, lostReason: '', lostDate: null } : o))
   }
 
   const handleSavedOrder = () => { loadOrders(); navigate('orders') }
@@ -259,7 +272,7 @@ export default function App() {
       <Sidebar view={view} setView={navigate} orders={orders} onLogout={handleLogout}/>
       <main style={s.main}>
         {view === 'dashboard'  && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders} onNavigateToQuotes={() => navigate('quotes')}/>}
-        {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder}/>}
+        {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder}/>}
         {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect}/>}

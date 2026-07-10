@@ -11,6 +11,16 @@ export const BORDER  = 'rgba(184,150,90,0.18)'
 // ─── ORDER STATUS ─────────────────────────────────────────────────
 export const ORDER_STATUSES = ['PREVENTIVO', 'CONFERMATO', 'IN PRODUZIONE', 'CONSEGNA PARZIALE', 'CONSEGNATO']
 
+// ─── QUOTE LOSS REASONS ──────────────────────────────────────────
+export const LOSS_REASONS = [
+  'Prezzo',
+  'Tempi di consegna',
+  'Cliente non risponde',
+  'Scelto altro fornitore',
+  'Budget annullato',
+  'Altro',
+]
+
 export const STATUS_COLORS = {
   'PREVENTIVO':        { bg: 'rgba(196,98,58,0.18)',  color: '#c4623a', border: 'rgba(196,98,58,0.4)'  },
   'CONFERMATO':        { bg: 'rgba(184,150,90,0.15)', color: '#b8965a', border: 'rgba(184,150,90,0.3)' },

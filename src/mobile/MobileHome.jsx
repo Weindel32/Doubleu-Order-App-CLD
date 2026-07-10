@@ -21,7 +21,7 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
   const alerts = orders.filter(o => needsAlert(o))
 
   const statusCounts = {
-    'PREVENTIVO':        orders.filter(o => o.status === 'PREVENTIVO').length,
+    'PREVENTIVO':        orders.filter(o => o.status === 'PREVENTIVO' && !o.lost).length,
     'CONFERMATO':        orders.filter(o => o.status === 'CONFERMATO').length,
     'IN PRODUZIONE':     orders.filter(o => o.status === 'IN PRODUZIONE').length,
     'CONSEGNA PARZIALE': orders.filter(o => o.status === 'CONSEGNA PARZIALE').length,
