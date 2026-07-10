@@ -165,10 +165,10 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
                   <td style={{ ...s.td, fontSize: 11, color: MUTED }}>{o.date || '—'}</td>
                   {isLostTab ? (
                     <td style={{ ...s.td }}>
-                      <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 3, fontSize: 10, letterSpacing: 0.5, background: 'rgba(239,68,68,0.1)', color: RED, border: '1px solid rgba(239,68,68,0.3)' }}>
+                      <span style={{ display: 'inline-block', padding: '4px 11px', borderRadius: 3, fontSize: 11, letterSpacing: 0.5, background: 'rgba(239,68,68,0.1)', color: RED, border: '1px solid rgba(239,68,68,0.3)' }}>
                         {o.lostReason || 'Non specificato'}
                       </span>
-                      {o.lostDate && <div style={{ fontSize: 9, color: MUTED, marginTop: 4 }}>{o.lostDate}</div>}
+                      {o.lostDate && <div style={{ fontSize: 10, color: MUTED, marginTop: 4 }}>{o.lostDate}</div>}
                     </td>
                   ) : (
                     <td style={{ ...s.td, textAlign: 'center', fontFamily: "'Cormorant Garamond',serif", fontSize: 18, color: GOLD }}>{artCount}</td>
@@ -178,27 +178,27 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
                     {tot > 0 ? `${tot.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €` : <span style={{ color: MUTED, fontSize: 11 }}>—</span>}
                   </td>
                   <td style={s.td}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       {isLostTab ? (
                         <>
-                          <button style={{ padding: '4px 8px', fontSize: 8, border: `1px solid rgba(74,158,110,0.4)`, background: 'rgba(74,158,110,0.08)', color: GREEN, borderRadius: 3, cursor: 'pointer' }}
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(74,158,110,0.4)`, background: 'rgba(74,158,110,0.08)', color: GREEN, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => onRestoreQuote(o.id)}>↩ Ripristina</button>
-                          <button style={{ padding: '4px 8px', fontSize: 8, border: `1px solid rgba(196,98,58,0.4)`, background: 'rgba(196,98,58,0.08)', color: CLAY, borderRadius: 3, cursor: 'pointer' }}
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(196,98,58,0.4)`, background: 'rgba(196,98,58,0.08)', color: CLAY, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => openPDF(o)}>PDF</button>
-                          <button style={{ padding: '4px 8px', fontSize: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: RED, borderRadius: 3, cursor: 'pointer' }}
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: RED, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => onDelete(o.id)} title="Elimina definitivamente">✕</button>
                         </>
                       ) : (
                         <>
-                          <button style={{ ...btnGoldStyle, padding: '4px 8px', fontSize: 8 }}
+                          <button style={{ ...btnGoldStyle, padding: '7px 13px', fontSize: 10 }}
                             onClick={() => { setEditOrder(o); setView('newQuote') }}>Modifica</button>
-                          <button style={{ padding: '4px 8px', fontSize: 8, border: `1px solid rgba(196,98,58,0.4)`, background: 'rgba(196,98,58,0.08)', color: CLAY, borderRadius: 3, cursor: 'pointer' }}
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(196,98,58,0.4)`, background: 'rgba(196,98,58,0.08)', color: CLAY, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => openPDF(o)}>PDF</button>
-                          <button style={{ padding: '4px 8px', fontSize: 8, border: `1px solid rgba(74,158,110,0.4)`, background: 'rgba(74,158,110,0.08)', color: GREEN, borderRadius: 3, cursor: 'pointer' }}
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(74,158,110,0.4)`, background: 'rgba(74,158,110,0.08)', color: GREEN, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => onConvertToOrder(o)}>→ Ordine</button>
-                          <button style={{ padding: '4px 8px', fontSize: 8, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: RED, borderRadius: 3, cursor: 'pointer' }}
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: RED, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => setLostModal(o)} title="Il preventivo non è diventato ordine">Perso</button>
-                          <button style={{ padding: '4px 6px', fontSize: 9, border: 'none', background: 'transparent', color: MUTED, borderRadius: 3, cursor: 'pointer', opacity: 0.5 }}
+                          <button style={{ padding: '6px 9px', fontSize: 13, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: MUTED, borderRadius: 3, cursor: 'pointer', opacity: 0.75 }}
                             onClick={() => onDelete(o.id)} title="Elimina definitivamente">🗑</button>
                         </>
                       )}

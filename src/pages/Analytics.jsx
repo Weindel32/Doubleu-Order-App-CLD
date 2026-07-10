@@ -464,10 +464,10 @@ export default function Analytics({ orders }) {
             {label:'Persi',                value:lostCount,       color:'#ef4444', sub:lostValue>0?`€ ${lostValue.toLocaleString('it-IT',{maximumFractionDigits:0})} sfumati`:'—'},
             {label:'Ancora Aperti',        value:openCount,       color:CLAY,      sub:'In attesa di esito'},
           ].map(item=>(
-            <div key={item.label} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'16px 20px'}}>
-              <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:6}}>{item.label}</div>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,color:item.color,lineHeight:1}}>{item.value}</div>
-              {item.sub && <div style={{fontSize:10,color:MUTED,marginTop:4}}>{item.sub}</div>}
+            <div key={item.label} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'20px 24px'}}>
+              <div style={{fontSize:12,letterSpacing:1,color:MUTED,marginBottom:10,textTransform:'uppercase'}}>{item.label}</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:40,color:item.color,lineHeight:1}}>{item.value}</div>
+              {item.sub && <div style={{fontSize:12,color:MUTED,marginTop:8}}>{item.sub}</div>}
             </div>
           ))}
         </div>
@@ -482,13 +482,13 @@ export default function Analytics({ orders }) {
                 </div>
                 <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:conversionRate>=50?GREEN:'#ef4444',minWidth:50}}>{conversionRate}%</span>
               </div>
-              <div style={{display:'flex',gap:20,fontSize:10,color:MUTED,flexWrap:'wrap'}}>
+              <div style={{display:'flex',gap:24,fontSize:12,color:MUTED,flexWrap:'wrap'}}>
                 <span><span style={{color:GREEN}}>■</span> {convertedCount} convertiti</span>
                 <span><span style={{color:'#ef4444'}}>■</span> {lostCount} persi</span>
                 <span><span style={{color:CLAY}}>■</span> {openCount} aperti (non conteggiati)</span>
               </div>
             </>) : (
-              <div style={{fontSize:11,color:MUTED,padding:'8px 0',lineHeight:1.6}}>Nessun preventivo ancora deciso.<br/>Il tasso apparirà quando avrai convertito in ordine o segnato come perso qualche preventivo.</div>
+              <div style={{fontSize:13,color:MUTED,padding:'8px 0',lineHeight:1.8}}>Nessun preventivo ancora deciso.<br/>Il tasso apparirà quando avrai convertito in ordine o segnato come perso qualche preventivo.</div>
             )}
           </div>
           {lossReasonRows.length > 0 && (
@@ -497,9 +497,9 @@ export default function Analytics({ orders }) {
               <div style={{display:'flex',flexDirection:'column',gap:12}}>
                 {lossReasonRows.map(([reason,count])=>(
                   <div key={reason}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                      <span style={{fontSize:11,color:CREAM,letterSpacing:0.5}}>{reason}</span>
-                      <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:'#ef4444'}}>{count}</span>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                      <span style={{fontSize:13,color:CREAM,letterSpacing:0.5}}>{reason}</span>
+                      <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:'#ef4444'}}>{count}</span>
                     </div>
                     <div style={{height:6,background:'rgba(255,255,255,0.06)',borderRadius:3,overflow:'hidden'}}>
                       <div style={{height:'100%',width:`${Math.round((count/maxLossReason)*100)}%`,background:'rgba(239,68,68,0.6)',borderRadius:3,transition:'width 0.6s'}}/>
