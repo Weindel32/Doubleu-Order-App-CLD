@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
-import { orderTotal, paymentSummary } from '../utils/helpers.js'
+import { orderTotal, paymentSummary, parseDate } from '../utils/helpers.js'
 
 const TIER_COLORS = {
   ANCHOR: { bg: 'rgba(184,150,90,0.18)', color: GOLD,      border: 'rgba(184,150,90,0.35)' },
@@ -10,6 +10,14 @@ const TIER_COLORS = {
   SCOUT:  { bg: 'rgba(196,98,58,0.15)',  color: CLAY,      border: 'rgba(196,98,58,0.3)'  },
 }
 const getTier = (total) => total >= 4000 ? 'ANCHOR' : total >= 1000 ? 'ALLIED' : 'SCOUT'
+
+const chipStyle = (active, tc) => ({
+  padding:'7px 12px', borderRadius:4, fontSize:9, letterSpacing:1.5, textTransform:'uppercase',
+  cursor:'pointer', fontWeight:600, transition:'all 0.15s', whiteSpace:'nowrap',
+  background: active ? (tc?.bg || 'rgba(184,150,90,0.18)') : 'rgba(255,255,255,0.04)',
+  color:      active ? (tc?.color || GOLD) : MUTED,
+  border:     `1px solid ${active ? (tc?.border || 'rgba(184,150,90,0.35)') : BORDER}`,
+})
 
 const CAT_COLORS = {
   club:          { bg: 'rgba(90,130,184,0.15)', color: '#7aaee8', border: 'rgba(90,130,184,0.3)' },
@@ -57,6 +65,12 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
   const [linking,    setLinking]      = useState(false)
   const [newForm,    setNewForm]      = useState(null)
   const [newSaving,  setNewSaving]    = useState(false)
+  const [search,     setSearch]       = useState('')
+  const [tierFilter, setTierFilter]   = useState('ALL')
+  const [catFilter,  setCatFilter]    = useState('ALL')
+  const [shopOnly,   setShopOnly]     = useState(false)
+  const [sortKey,    setSortKey]      = useState('total')
+  const [sortDir,    setSortDir]      = useState('desc')
 
   const enriched = clients.map(c => {
     const linked    = orders.filter(o => o.clientId === c.id)
@@ -68,13 +82,43 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     const totalIst  = confirmed.filter(o => o.orderType !== 'soci').reduce((sum, o) => sum + orderTotal(o), 0)
     const totalSoci = confirmed.filter(o => o.orderType === 'soci').reduce((sum, o)  => sum + orderTotal(o), 0)
     const unlinkable = textMatch.filter(o => o.status !== 'PREVENTIVO')
-    return { ...c, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable }
-  }).sort((a, b) => b.total - a.total)
+    const lastTs    = confirmed.reduce((max, o) => { const d = parseDate(o.date); return d && d.getTime() > max ? d.getTime() : max }, 0)
+    const lastOrder = confirmed.reduce((best, o) => { const d = parseDate(o.date); return d && d.getTime() === lastTs ? o.date : best }, null)
+    return { ...c, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, lastTs, lastOrder }
+  })
 
-  const selected     = selectedId ? enriched.find(c => c.id === selectedId) : null
   const totalRevenue = enriched.reduce((s, c) => s + c.total, 0)
   const anchorCount  = enriched.filter(c => c.tier === 'ANCHOR').length
   const alliedCount  = enriched.filter(c => c.tier === 'ALLIED').length
+
+  const q = search.trim().toLowerCase()
+  const filtered = enriched.filter(c => {
+    if (tierFilter !== 'ALL' && c.tier !== tierFilter) return false
+    if (catFilter  !== 'ALL' && (c.category || '') !== catFilter) return false
+    if (shopOnly && !c.shop_attivo) return false
+    if (q) {
+      const hay = [c.name, c.city, c.province, c.country, c.email, c.vat_number].filter(Boolean).join(' ').toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp
+    if      (sortKey === 'name')   cmp = (a.name || '').localeCompare(b.name || '', 'it')
+    else if (sortKey === 'orders') cmp = a.confirmed.length - b.confirmed.length
+    else if (sortKey === 'last')   cmp = a.lastTs - b.lastTs
+    else                           cmp = a.total - b.total
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  const toggleSort = (key) => {
+    if (sortKey === key) { setSortDir(d => d === 'asc' ? 'desc' : 'asc') }
+    else { setSortKey(key); setSortDir(key === 'name' ? 'asc' : 'desc') }
+  }
+  const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''
+
+  const selected     = selectedId ? enriched.find(c => c.id === selectedId) : null
 
   const closeModal = () => { setSelectedId(null); setEditForm(null) }
 
@@ -170,43 +214,84 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
           <div style={{ fontSize:12, marginTop:8 }}>Clicca "+ Nuovo Cliente" per aggiungerne uno</div>
         </div>
       ) : (
-        <table style={s.table}>
-          <thead>
-            <tr>
-              {['Cliente','Cat.','Paese','Ordini','Fatturato','Tier','Shop',''].map(h => (
-                <th key={h} style={s.th}>{h}</th>
+        <>
+          {/* ── Toolbar: ricerca + filtri ── */}
+          <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', marginBottom:16 }}>
+            <div style={{ position:'relative', flex:'1 1 260px', minWidth:220 }}>
+              <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:MUTED, fontSize:13, pointerEvents:'none' }}>⌕</span>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca per nome, città, email, P.IVA…"
+                style={{ ...inp, paddingLeft:32, paddingRight:28 }}/>
+              {search && (
+                <span onClick={() => setSearch('')} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:MUTED, fontSize:16, cursor:'pointer', lineHeight:1 }}>×</span>
+              )}
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              {['ALL','ANCHOR','ALLIED','SCOUT'].map(t => (
+                <button key={t} onClick={() => setTierFilter(t)} style={chipStyle(tierFilter === t, t === 'ALL' ? null : TIER_COLORS[t])}>
+                  {t === 'ALL' ? 'Tutti' : t}
+                </button>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {enriched.map(c => (
-              <tr key={c.id} style={{ cursor:'pointer' }} onClick={() => setSelectedId(c.id)}>
-                <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18 }}>
-                  {c.name}
-                  {c.unlinkable.length > 0 && (
-                    <span style={{ marginLeft:8, fontSize:9, letterSpacing:1, color:CLAY, background:'rgba(196,98,58,0.1)', border:'1px solid rgba(196,98,58,0.3)', padding:'2px 6px', borderRadius:2, verticalAlign:'middle' }}>
-                      {c.unlinkable.length} da collegare
-                    </span>
-                  )}
-                </td>
-                <td style={s.td}><CatChip cat={c.category}/></td>
-                <td style={{ ...s.td, fontSize:12, color:MUTED }}>{c.country || '—'}</td>
-                <td style={{ ...s.td, textAlign:'center' }}>{c.confirmed.length}</td>
-                <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
-                  {c.total > 0 ? `${c.total.toLocaleString('it-IT',{minimumFractionDigits:2})} €` : '—'}
-                </td>
-                <td style={s.td}><TierBadge tier={c.tier}/></td>
-                <td style={s.td}>
-                  <div style={{ width:10, height:10, borderRadius:'50%', background: c.shop_attivo ? GREEN : 'rgba(255,255,255,0.15)', display:'inline-block' }}/>
-                </td>
-                <td style={s.td} onClick={e => e.stopPropagation()}>
-                  <button style={{ ...btnGoldStyle, padding:'4px 12px', fontSize:9 }}
-                    onClick={() => setSelectedId(c.id)}>Apri</button>
-                </td>
+            </div>
+            <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ ...inp, width:'auto', cursor:'pointer' }}>
+              <option value="ALL">Tutte le categorie</option>
+              {DB_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button onClick={() => setShopOnly(v => !v)} style={chipStyle(shopOnly, { bg:'rgba(74,158,110,0.18)', color:GREEN, border:'rgba(74,158,110,0.35)' })}>
+              ● Shop attivo
+            </button>
+          </div>
+
+          <div style={{ fontSize:11, letterSpacing:1, color:MUTED, marginBottom:10 }}>
+            {sorted.length} {sorted.length === 1 ? 'cliente' : 'clienti'}{sorted.length !== enriched.length ? ` di ${enriched.length}` : ''}
+          </div>
+
+          <table style={s.table}>
+            <thead>
+              <tr>
+                <th style={{ ...s.th, cursor:'pointer' }} onClick={() => toggleSort('name')}>Cliente{sortArrow('name')}</th>
+                <th style={s.th}>Cat.</th>
+                <th style={{ ...s.th, cursor:'pointer', textAlign:'center' }} onClick={() => toggleSort('orders')}>Ordini{sortArrow('orders')}</th>
+                <th style={{ ...s.th, cursor:'pointer' }} onClick={() => toggleSort('last')}>Ultimo ordine{sortArrow('last')}</th>
+                <th style={{ ...s.th, cursor:'pointer' }} onClick={() => toggleSort('total')}>Fatturato{sortArrow('total')}</th>
+                <th style={s.th}>Tier</th>
+                <th style={s.th}>Shop</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sorted.length === 0 ? (
+                <tr><td colSpan={7} style={{ ...s.td, textAlign:'center', color:MUTED, padding:'32px 0', fontStyle:'italic' }}>Nessun cliente trovato con questi filtri</td></tr>
+              ) : sorted.map(c => (
+                <tr key={c.id} style={{ cursor:'pointer' }} onClick={() => setSelectedId(c.id)}>
+                  <td style={s.td}>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18 }}>
+                      {c.name}
+                      {c.unlinkable.length > 0 && (
+                        <span style={{ marginLeft:8, fontSize:9, letterSpacing:1, color:CLAY, background:'rgba(196,98,58,0.1)', border:'1px solid rgba(196,98,58,0.3)', padding:'2px 6px', borderRadius:2, verticalAlign:'middle' }}>
+                          {c.unlinkable.length} da collegare
+                        </span>
+                      )}
+                    </div>
+                    {(c.city || c.province) && (
+                      <div style={{ fontSize:10, color:MUTED, letterSpacing:0.5, marginTop:2 }}>
+                        {[c.city, c.province].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </td>
+                  <td style={s.td}><CatChip cat={c.category}/></td>
+                  <td style={{ ...s.td, textAlign:'center' }}>{c.confirmed.length}</td>
+                  <td style={{ ...s.td, fontSize:12, color: c.lastOrder ? CREAM : MUTED }}>{c.lastOrder || '—'}</td>
+                  <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
+                    {c.total > 0 ? `${c.total.toLocaleString('it-IT',{minimumFractionDigits:2})} €` : '—'}
+                  </td>
+                  <td style={s.td}><TierBadge tier={c.tier}/></td>
+                  <td style={s.td}>
+                    <div style={{ width:10, height:10, borderRadius:'50%', background: c.shop_attivo ? GREEN : 'rgba(255,255,255,0.15)', display:'inline-block' }}/>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
 
       {/* ── Client detail modal ───────────────────────────────────── */}
