@@ -161,7 +161,8 @@ export default function MobileOrderDetail({ order, onBack }) {
                     {(() => {
                       const adultEntries = ADULT_SIZES.filter(sz => (art.sizes?.adult?.[sz] || 0) > 0)
                       const kidsEntries  = KIDS_SIZES.filter(sz  => (art.sizes?.kids?.[sz]  || 0) > 0)
-                      if (!adultEntries.length && !kidsEntries.length) return null
+                      const uni          = art.sizes?.uni || 0
+                      if (!adultEntries.length && !kidsEntries.length && !uni) return null
                       return (
                         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                           {adultEntries.map(sz => (
@@ -178,6 +179,13 @@ export default function MobileOrderDetail({ order, onBack }) {
                               borderRadius: 3, padding: '2px 6px', color: MUTED, letterSpacing: 0.5,
                             }}>{sz} · {art.sizes.kids[sz]}</span>
                           ))}
+                          {uni > 0 && (
+                            <span style={{
+                              fontSize: 9, background: 'rgba(74,158,110,0.12)',
+                              border: '1px solid rgba(74,158,110,0.28)',
+                              borderRadius: 3, padding: '2px 6px', color: GREEN, letterSpacing: 0.5,
+                            }}>TU · {uni}</span>
+                          )}
                         </div>
                       )
                     })()}

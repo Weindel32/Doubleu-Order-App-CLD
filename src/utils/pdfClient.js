@@ -54,6 +54,13 @@ export function generateClientPDF(order) {
   const articleRows = articles.map(art => {
     const adultTotal = ADULT_SIZES.reduce((s, sz) => s + (art.sizes.adult?.[sz] || 0), 0)
     const kidsTotal  = KIDS_SIZES.reduce((s, sz)  => s + (art.sizes.kids?.[sz]  || 0), 0)
+    const uniTotal   = art.sizes.uni || 0
+
+    const uniSection = uniTotal > 0 ? `
+      <div style="margin-top:6px;display:inline-block;background:#f0f8f4;border:1px solid #cfe3d6;border-radius:4px;padding:6px 14px;">
+        <span style="font-size:9px;letter-spacing:2px;color:#4a9e6e;">TAGLIA UNICA</span>
+        <strong style="font-size:14px;color:#1a2744;margin-left:10px;">${uniTotal}</strong>
+      </div>` : ''
 
     const adultSection = hasAdult ? `
       <tr style="background:#f0f4f8;">
@@ -98,8 +105,9 @@ export function generateClientPDF(order) {
         <table style="border-collapse:collapse;font-family:'Josefin Sans',sans-serif;width:100%;">
           ${adultSection}${kidsSection}
         </table>
+        ${uniSection}
         <div style="text-align:right;margin-top:6px;font-size:11px;color:#8a9ab5;">
-          Totale pezzi: <strong style="color:#1a2744;">${adultTotal+kidsTotal}</strong>
+          Totale pezzi: <strong style="color:#1a2744;">${adultTotal+kidsTotal+uniTotal}</strong>
           ${(art.omaggio||0)>0?`&nbsp;&nbsp;<span style="color:#c4623a;font-weight:700;">di cui ${art.omaggio} pz in omaggio</span>`:''}
         </div>
       </div>`

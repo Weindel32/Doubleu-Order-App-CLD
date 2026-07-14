@@ -19,30 +19,32 @@ export function exportSizesCSV(order) {
   articles.forEach(art => {
     const adultTotal = ADULT_SIZES.reduce((s, sz) => s + (art.sizes.adult?.[sz] || 0), 0)
     const kidsTotal  = KIDS_SIZES.reduce((s, sz)  => s + (art.sizes.kids?.[sz]  || 0), 0)
+    const uniTotal   = art.sizes.uni || 0
 
     // Article header
     rows.push([`${art.sp}`, art.description, art.color, art.category, art.line, '', '', '', '', '', '', '', '', '', ''])
-    
+
     // Adult sizes header
-    rows.push(['', 'ADULTO', ...ADULT_SIZES, 'TOT ADULTO', '', 'BAMBINO', ...KIDS_SIZES, 'TOT BAMBINO', 'TOTALE'])
-    
+    rows.push(['', 'ADULTO', ...ADULT_SIZES, 'TOT ADULTO', '', 'BAMBINO', ...KIDS_SIZES, 'TOT BAMBINO', 'TAGLIA UNICA', 'TOTALE'])
+
     // Values row
     const adultVals = ADULT_SIZES.map(sz => art.sizes.adult?.[sz] ?? 0)
     const kidsVals  = KIDS_SIZES.map(sz  => art.sizes.kids?.[sz]  ?? 0)
-    rows.push(['', 'pz', ...adultVals, adultTotal, '', 'pz', ...kidsVals, kidsTotal, adultTotal + kidsTotal])
+    rows.push(['', 'pz', ...adultVals, adultTotal, '', 'pz', ...kidsVals, kidsTotal, uniTotal, adultTotal + kidsTotal + uniTotal])
     
     rows.push([]) // spacer
   })
 
   // Summary
   rows.push(['RIEPILOGO', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
-  rows.push(['Articolo', 'SP', 'Colore', 'Tot Adulto', 'Tot Bambino', 'Totale'])
+  rows.push(['Articolo', 'SP', 'Colore', 'Tot Adulto', 'Tot Bambino', 'Tot Taglia Unica', 'Totale'])
   articles.forEach(art => {
     const adultTotal = ADULT_SIZES.reduce((s, sz) => s + (art.sizes.adult?.[sz] || 0), 0)
     const kidsTotal  = KIDS_SIZES.reduce((s, sz)  => s + (art.sizes.kids?.[sz]  || 0), 0)
-    rows.push([art.description, art.sp, art.color, adultTotal, kidsTotal, adultTotal + kidsTotal])
+    const uniTotal   = art.sizes.uni || 0
+    rows.push([art.description, art.sp, art.color, adultTotal, kidsTotal, uniTotal, adultTotal + kidsTotal + uniTotal])
   })
-  rows.push(['', '', 'TOTALE ORDINE', '', '', order.pieces])
+  rows.push(['', '', 'TOTALE ORDINE', '', '', '', order.pieces])
 
   // Convert to CSV string
   const csv = rows.map(row =>

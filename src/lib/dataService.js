@@ -70,7 +70,7 @@ export async function fetchOrders() {
           delivered: a.delivered || false,
           omaggio: a.omaggio || 0,
           estimatedQty: (a.sizes_adult || {}).__qty || null,
-          sizes: { adult: (({ __qty, ...rest }) => rest)(a.sizes_adult || {}), kids: a.sizes_kids || {} }
+          sizes: { adult: (({ __qty, __uni, ...rest }) => rest)(a.sizes_adult || {}), kids: a.sizes_kids || {}, uni: (a.sizes_adult || {}).__uni || 0 }
         }))
       }
     }))
@@ -136,7 +136,7 @@ export async function createOrder(order) {
         description: art.description, color: art.color, price: art.price || null,
         notes: art.notes || null, delivered: art.delivered || false,
         omaggio: art.omaggio || 0,
-        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}) },
+        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}), ...(art.sizes?.uni ? { __uni: parseInt(art.sizes.uni) } : {}) },
         sizes_kids: art.sizes?.kids || {},
       })
     }
@@ -182,7 +182,7 @@ export async function updateOrder(order) {
         description: art.description, color: art.color, price: art.price || null,
         notes: art.notes || null, delivered: art.delivered || false,
         omaggio: art.omaggio || 0,
-        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}) },
+        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}), ...(art.sizes?.uni ? { __uni: parseInt(art.sizes.uni) } : {}) },
         sizes_kids: art.sizes?.kids || {},
       })
     }
