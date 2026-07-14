@@ -112,11 +112,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     return sortDir === 'asc' ? cmp : -cmp
   })
 
-  const toggleSort = (key) => {
-    if (sortKey === key) { setSortDir(d => d === 'asc' ? 'desc' : 'asc') }
-    else { setSortKey(key); setSortDir(key === 'name' ? 'asc' : 'desc') }
-  }
-  const sortArrow = (key) => sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''
+  const SORT_LABELS = { total:'Fatturato', name:'Nome', last:'Ultimo ordine', orders:'N° ordini' }
 
   const selected     = selectedId ? enriched.find(c => c.id === selectedId) : null
 
@@ -241,56 +237,89 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
             </button>
           </div>
 
-          <div style={{ fontSize:11, letterSpacing:1, color:MUTED, marginBottom:10 }}>
-            {sorted.length} {sorted.length === 1 ? 'cliente' : 'clienti'}{sorted.length !== enriched.length ? ` di ${enriched.length}` : ''}
+          {/* Contatore + ordinamento */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:12, flexWrap:'wrap' }}>
+            <div style={{ fontSize:11, letterSpacing:1, color:MUTED }}>
+              {sorted.length} {sorted.length === 1 ? 'cliente' : 'clienti'}{sorted.length !== enriched.length ? ` di ${enriched.length}` : ''}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:9, letterSpacing:2, color:MUTED, textTransform:'uppercase' }}>Ordina per</span>
+              <select value={sortKey} onChange={e => setSortKey(e.target.value)} style={{ ...inp, width:'auto', cursor:'pointer', padding:'7px 10px' }}>
+                {Object.entries(SORT_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+              <button onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                title={sortDir === 'asc' ? 'Crescente' : 'Decrescente'}
+                style={{ ...chipStyle(false), padding:'7px 11px', fontSize:12, color:GOLD, borderColor:'rgba(184,150,90,0.35)' }}>
+                {sortDir === 'asc' ? '▲' : '▼'}
+              </button>
+            </div>
           </div>
 
-          <table style={s.table}>
-            <thead>
-              <tr>
-                <th style={{ ...s.th, cursor:'pointer' }} onClick={() => toggleSort('name')}>Cliente{sortArrow('name')}</th>
-                <th style={s.th}>Cat.</th>
-                <th style={{ ...s.th, cursor:'pointer', textAlign:'center' }} onClick={() => toggleSort('orders')}>Ordini{sortArrow('orders')}</th>
-                <th style={{ ...s.th, cursor:'pointer' }} onClick={() => toggleSort('last')}>Ultimo ordine{sortArrow('last')}</th>
-                <th style={{ ...s.th, cursor:'pointer' }} onClick={() => toggleSort('total')}>Fatturato{sortArrow('total')}</th>
-                <th style={s.th}>Tier</th>
-                <th style={s.th}>Shop</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.length === 0 ? (
-                <tr><td colSpan={7} style={{ ...s.td, textAlign:'center', color:MUTED, padding:'32px 0', fontStyle:'italic' }}>Nessun cliente trovato con questi filtri</td></tr>
-              ) : sorted.map(c => (
-                <tr key={c.id} style={{ cursor:'pointer' }} onClick={() => setSelectedId(c.id)}>
-                  <td style={s.td}>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18 }}>
-                      {c.name}
-                      {c.unlinkable.length > 0 && (
-                        <span style={{ marginLeft:8, fontSize:9, letterSpacing:1, color:CLAY, background:'rgba(196,98,58,0.1)', border:'1px solid rgba(196,98,58,0.3)', padding:'2px 6px', borderRadius:2, verticalAlign:'middle' }}>
-                          {c.unlinkable.length} da collegare
-                        </span>
+          {/* Card clienti */}
+          {sorted.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'48px 0', color:MUTED, fontStyle:'italic' }}>
+              Nessun cliente trovato con questi filtri
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {sorted.map(c => {
+                const zona = [c.city, c.province, c.country && c.country !== 'Italia' ? c.country : null].filter(Boolean).join(' · ')
+                const sub  = [zona, c.email].filter(Boolean).join('  ·  ')
+                return (
+                  <div key={c.id} className="du-card" onClick={() => setSelectedId(c.id)}
+                    style={{ display:'flex', alignItems:'center', gap:20, padding:'16px 22px', background:'rgba(255,255,255,0.03)', border:`1px solid ${BORDER}`, borderRadius:10, cursor:'pointer', flexWrap:'wrap' }}>
+
+                    {/* Nome + badge + dettagli */}
+                    <div style={{ flex:'1 1 260px', minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                        <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:CREAM, letterSpacing:0.5 }}>{c.name}</span>
+                        <TierBadge tier={c.tier}/>
+                        {c.category && <CatChip cat={c.category}/>}
+                        {c.shop_attivo && (
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:9, letterSpacing:1, color:GREEN, background:'rgba(74,158,110,0.12)', border:'1px solid rgba(74,158,110,0.3)', padding:'2px 8px', borderRadius:2 }}>
+                            <span style={{ width:6, height:6, borderRadius:'50%', background:GREEN }}/>SHOP
+                          </span>
+                        )}
+                        {c.unlinkable.length > 0 && (
+                          <span style={{ fontSize:9, letterSpacing:1, color:CLAY, background:'rgba(196,98,58,0.1)', border:'1px solid rgba(196,98,58,0.3)', padding:'2px 6px', borderRadius:2 }}>
+                            {c.unlinkable.length} da collegare
+                          </span>
+                        )}
+                      </div>
+                      {sub && (
+                        <div style={{ fontSize:11, color:MUTED, marginTop:5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {sub}
+                        </div>
                       )}
                     </div>
-                    {(c.city || c.province) && (
-                      <div style={{ fontSize:10, color:MUTED, letterSpacing:0.5, marginTop:2 }}>
-                        {[c.city, c.province].filter(Boolean).join(' · ')}
+
+                    {/* Ordini */}
+                    <div style={{ textAlign:'right', flexShrink:0, width:64 }}>
+                      <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>ORDINI</div>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color: c.confirmed.length > 0 ? CREAM : MUTED }}>{c.confirmed.length}</div>
+                    </div>
+
+                    {/* Ultimo ordine */}
+                    <div style={{ textAlign:'right', flexShrink:0, width:104 }}>
+                      <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>ULTIMO ORDINE</div>
+                      <div style={{ fontSize:13, color: c.lastOrder ? CREAM : MUTED }}>{c.lastOrder || '—'}</div>
+                    </div>
+
+                    {/* Fatturato */}
+                    <div style={{ textAlign:'right', flexShrink:0, width:120 }}>
+                      <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>FATTURATO</div>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color: c.total > 0 ? GOLD : MUTED }}>
+                        {c.total > 0 ? `€ ${c.total.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'}
                       </div>
-                    )}
-                  </td>
-                  <td style={s.td}><CatChip cat={c.category}/></td>
-                  <td style={{ ...s.td, textAlign:'center' }}>{c.confirmed.length}</td>
-                  <td style={{ ...s.td, fontSize:12, color: c.lastOrder ? CREAM : MUTED }}>{c.lastOrder || '—'}</td>
-                  <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
-                    {c.total > 0 ? `${c.total.toLocaleString('it-IT',{minimumFractionDigits:2})} €` : '—'}
-                  </td>
-                  <td style={s.td}><TierBadge tier={c.tier}/></td>
-                  <td style={s.td}>
-                    <div style={{ width:10, height:10, borderRadius:'50%', background: c.shop_attivo ? GREEN : 'rgba(255,255,255,0.15)', display:'inline-block' }}/>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </div>
+
+                    {/* Affordance apertura */}
+                    <div style={{ flexShrink:0, color:GOLD, fontSize:20, lineHeight:1, opacity:0.5 }}>›</div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </>
       )}
 
