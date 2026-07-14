@@ -10,7 +10,14 @@ export function generateDeliveryPDF(order, selectedArticles = null) {
   const articleRows = articles.map(art => {
     const adultTotal = ADULT_SIZES.reduce((s, sz) => s + (art.sizes.adult?.[sz] || 0), 0)
     const kidsTotal  = KIDS_SIZES.reduce((s, sz)  => s + (art.sizes.kids?.[sz]  || 0), 0)
-    const grandTotal = adultTotal + kidsTotal
+    const uniTotal   = art.sizes.uni || 0
+    const grandTotal = adultTotal + kidsTotal + uniTotal
+
+    const uniSection = uniTotal > 0 ? `
+      <div style="margin-top:8px;display:inline-block;background:#f0f8f4;border:1px solid #cfe3d6;border-radius:4px;padding:6px 14px;">
+        <span style="font-size:9px;letter-spacing:2px;color:#4a9e6e;">TAGLIA UNICA</span>
+        <strong style="font-size:14px;color:#1a2744;margin-left:10px;">${uniTotal}</strong>
+      </div>` : ''
 
     const adultSection = hasAdult ? `
       <tr style="background:#f5f5f5;">
@@ -57,6 +64,7 @@ export function generateDeliveryPDF(order, selectedArticles = null) {
         <table style="border-collapse:collapse;font-family:'Josefin Sans',sans-serif;width:100%;">
           ${adultSection}${kidsSection}
         </table>
+        ${uniSection}
       </div>`
   }).join('')
 

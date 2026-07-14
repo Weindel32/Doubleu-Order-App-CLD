@@ -10,7 +10,14 @@ export function generateProductionPDF(order) {
   const articleRows = articles.map(art => {
     const adultTotal = ADULT_SIZES.reduce((s, sz) => s + (art.sizes.adult?.[sz] || 0), 0)
     const kidsTotal  = KIDS_SIZES.reduce((s, sz)  => s + (art.sizes.kids?.[sz]  || 0), 0)
-    const grandTotal = adultTotal + kidsTotal
+    const uniTotal   = art.sizes.uni || 0
+    const grandTotal = adultTotal + kidsTotal + uniTotal
+
+    const uniSection = uniTotal > 0 ? `
+      <div style="margin-top:8px;display:inline-block;background:#f0f8f4;border:1px solid #cfe3d6;border-radius:4px;padding:6px 14px;">
+        <span style="font-size:9px;letter-spacing:2px;color:#4a9e6e;">TAGLIA UNICA</span>
+        <strong style="font-size:15px;color:#1a2744;margin-left:10px;">${uniTotal}</strong>
+      </div>` : ''
 
     const adultSection = hasAdult ? `
       <tr style="background:#f0f4f8;">
@@ -58,6 +65,7 @@ export function generateProductionPDF(order) {
             ${adultSection}${kidsSection}
           </table>
         </div>
+        ${uniSection}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
           <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
             ${['CRTM','TESS','TAGLIO','RIC/ST','CONF','PRONTO'].map(s=>`

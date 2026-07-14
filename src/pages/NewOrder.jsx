@@ -16,7 +16,7 @@ const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riep
 const emptyArticle = () => ({
   sp:'', category:'Felpa', line:'Performance', description:'', color:'', price:'', notes:'',
   delivered: false, omaggio: 0,
-  sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])) }
+  sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])), uni:0 }
 })
 const emptyKit = () => ({ name:'', price:'', quantity:'', articles:[emptyArticle()] })
 
@@ -197,6 +197,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
   const removeArt  =(ki,ai)=>  setKits(kits.map((k,i)=>i===ki?{...k,articles:k.articles.filter((_,j)=>j!==ai)}:k))
   const updateArt  =(ki,ai,f,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,[f]:v})}))
   const updateSz        =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
+  const updateUni       =(ki,ai,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,uni:parseInt(v)||0}})}))
   const toggleDelivered = async (ki, ai) => {
     const newKits = kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,delivered:!a.delivered})})
     setKits(newKits)
@@ -513,6 +514,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
         {kits.map((kit,ki)=>kit.articles.map((art,ai)=>{
           const adT=ADULT_SIZES.reduce((s,sz)=>s+(art.sizes.adult?.[sz]||0),0)
           const kiT=KIDS_SIZES.reduce((s,sz)=>s+(art.sizes.kids?.[sz]||0),0)
+          const uni=art.sizes.uni||0
           return (
             <div key={`${ki}-${ai}`} style={{...s.card,marginBottom:20}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:22}}>
@@ -526,7 +528,17 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
                 </div>
                 <div style={{textAlign:'right'}}>
                   <div style={{fontSize:9,color:MUTED,letterSpacing:2}}>TOT.</div>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,color:GOLD,lineHeight:1}}>{adT+kiT}</div>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,color:GOLD,lineHeight:1}}>{adT+kiT+uni}</div>
+                </div>
+              </div>
+              <div style={{marginBottom:20}}>
+                <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:12}}>TAGLIA UNICA</div>
+                <div style={{display:'flex',gap:10,alignItems:'flex-end'}}>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:9,letterSpacing:2,color:GOLD,marginBottom:6}}>TU</div>
+                    <input type="number" min="0" style={{...inp,width:58,textAlign:'center',padding:'8px 4px',fontSize:15}} value={uni} onChange={e=>updateUni(ki,ai,e.target.value)}/>
+                  </div>
+                  <div style={{fontSize:10,color:MUTED,paddingBottom:10}}>per articoli senza taglia (es. cappellini, sciarpe, accessori)</div>
                 </div>
               </div>
               <div style={{marginBottom:20}}>

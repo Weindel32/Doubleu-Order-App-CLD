@@ -7,6 +7,7 @@ export function getAllArticles(order) {
 export function artPieceCount(art) {
   return ADULT_SIZES.reduce((s, sz) => s + (art.sizes?.adult?.[sz] || 0), 0)
        + KIDS_SIZES.reduce((s, sz)  => s + (art.sizes?.kids?.[sz]  || 0), 0)
+       + (art.sizes?.uni || 0)
 }
 
 // ── Kit pricing: price × kit.quantity (per-kit), fallback to order.kitQuantity for old records

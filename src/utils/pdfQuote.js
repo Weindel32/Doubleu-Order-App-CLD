@@ -6,7 +6,8 @@ const KIDS_SIZES  = ['4', '6', '8', '10', '12', '14', '16']
 function artSizeTotal(art) {
   const ad = ADULT_SIZES.reduce((s, sz) => s + (art.sizes && art.sizes.adult ? (art.sizes.adult[sz] || 0) : 0), 0)
   const ki = KIDS_SIZES.reduce((s, sz) => s + (art.sizes && art.sizes.kids ? (art.sizes.kids[sz] || 0) : 0), 0)
-  return ad + ki
+  const un = art.sizes && art.sizes.uni ? art.sizes.uni : 0
+  return ad + ki + un
 }
 
 function sizeTableHtml(art) {
@@ -18,9 +19,10 @@ function sizeTableHtml(art) {
 
   const adult = art.sizes && art.sizes.adult ? art.sizes.adult : {}
   const kids  = art.sizes && art.sizes.kids  ? art.sizes.kids  : {}
+  const uni   = art.sizes && art.sizes.uni   ? art.sizes.uni   : 0
   const adTotal = ADULT_SIZES.reduce((s, sz) => s + (adult[sz] || 0), 0)
   const kiTotal = KIDS_SIZES.reduce((s, sz) => s + (kids[sz] || 0), 0)
-  if (adTotal + kiTotal === 0) return ''
+  if (adTotal + kiTotal + uni === 0) return ''
 
   let rows = ''
 
@@ -50,8 +52,14 @@ function sizeTableHtml(art) {
     rows += '<tr>' + headCells + '</tr><tr>' + valCells + '</tr>'
   }
 
-  return '<div style="margin-top:10px;overflow-x:auto;"><table style="border-collapse:collapse;">' + rows + '</table>'
-    + '<div style="margin-top:4px;font-size:9px;letter-spacing:2px;color:#c4623a;">TOTALE PEZZI: ' + (adTotal + kiTotal) + '</div></div>'
+  const uniBlock = uni > 0
+    ? '<div style="margin-top:6px;display:inline-block;background:#f0f8f4;border:1px solid #cfe3d6;border-radius:4px;padding:5px 12px;">'
+      + '<span style="font-size:9px;letter-spacing:2px;color:#4a9e6e;">TAGLIA UNICA</span>'
+      + '<strong style="font-size:14px;color:#1a2744;margin-left:8px;">' + uni + '</strong></div>'
+    : ''
+
+  return '<div style="margin-top:10px;overflow-x:auto;"><table style="border-collapse:collapse;">' + rows + '</table>' + uniBlock
+    + '<div style="margin-top:4px;font-size:9px;letter-spacing:2px;color:#c4623a;">TOTALE PEZZI: ' + (adTotal + kiTotal + uni) + '</div></div>'
 }
 
 export function generateQuotePDF(order) {
