@@ -84,6 +84,7 @@ export default function App() {
   const [view, setView]               = useState('dashboard')
   const [editOrder, setEditOrder]     = useState(null)
   const [prefillClient, setPrefill]   = useState(null)
+  const [quoteProspect, setQuoteProspect] = useState(null)
   const [orders, setOrders]           = useState([])
   const [clients, setClients]         = useState([])
   const [prospects, setProspects]     = useState([])
@@ -189,7 +190,7 @@ export default function App() {
 
   const [ordersFilter, setOrdersFilter] = useState('Tutti')
 
-  const navigate  = (v) => { if (v === 'orders') setOrdersFilter('Tutti'); setView(v); window.scrollTo(0, 0) }
+  const navigate  = (v) => { if (v === 'orders') setOrdersFilter('Tutti'); if (v !== 'newQuote') setQuoteProspect(null); setView(v); window.scrollTo(0, 0) }
   const goToOrder = (order) => { setEditOrder(order); setPrefill(null); navigate('new') }
   const goToQuote = (quote) => { setEditOrder(quote); setPrefill(null); navigate('newQuote') }
   const navigateToOrders = (filter) => { setOrdersFilter(filter); setView('orders'); window.scrollTo(0, 0) }
@@ -203,6 +204,21 @@ export default function App() {
   const handleNewQuoteFromClient = (clientData) => {
     setEditOrder(null)
     setPrefill(clientData)
+    navigate('newQuote')
+  }
+
+  const handleNewQuoteFromProspect = (prospect) => {
+    setEditOrder(null)
+    setPrefill({
+      name:    prospect.name,
+      contact: prospect.contact_name  || '',
+      email:   prospect.contact_email || '',
+      phone:   prospect.contact_phone || '',
+      address: '',
+      city:    prospect.city    || '',
+      country: prospect.country || 'Italia',
+    })
+    setQuoteProspect(prospect)
     navigate('newQuote')
   }
 
@@ -232,7 +248,17 @@ export default function App() {
   }
 
   const handleSavedOrder = () => { loadOrders(); navigate('orders') }
-  const handleSavedQuote = () => { loadOrders(); navigate('quotes') }
+  const handleSavedQuote = async () => {
+    // Un preventivo creato da un prospect fa avanzare il club a 'negoziazione'
+    // (solo in avanti: non regredisce won/lost né uno stage già più avanti)
+    if (quoteProspect && ['contatto', 'sample'].includes(quoteProspect.stage)) {
+      const { prospect_activities, ...rest } = quoteProspect
+      await handleUpsertProspect({ ...rest, stage: 'negoziazione' })
+    }
+    setQuoteProspect(null)
+    loadOrders()
+    navigate('quotes')
+  }
   const handleOrdersChange = (newOrders) => setOrders(newOrders)
 
   if (authLoading) {
@@ -275,7 +301,7 @@ export default function App() {
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder}/>}
-        {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect}/>}
+        {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onNewQuote={handleNewQuoteFromProspect}/>}
         {view === 'analytics'  && <Analytics orders={orders}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
         {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}

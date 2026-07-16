@@ -194,7 +194,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete }) {
+export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onNewQuote }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
@@ -479,6 +479,12 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                 </div>
               </div>
               <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                {selected.contact_type === 'cliente' && onNewQuote && (
+                  <button style={{ ...btnGoldStyle, padding:'7px 18px', fontSize:9 }}
+                    onClick={() => { onNewQuote(selected); closeModal() }}>
+                    + Preventivo
+                  </button>
+                )}
                 <button style={{ ...btnStyle(false), padding:'7px 18px', fontSize:9 }}
                   onClick={() => setEditForm({ id:selected.id, ...selected, prospect_activities:undefined, deal_value_est: selected.deal_value_est||'', next_action_date: selected.next_action_date||'', referred_by: selected.referred_by||'' })}>
                   Modifica
