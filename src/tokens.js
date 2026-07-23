@@ -9,7 +9,7 @@ export const SURFACE = 'rgba(255,255,255,0.04)'
 export const BORDER  = 'rgba(184,150,90,0.18)'
 
 // ─── ORDER STATUS ─────────────────────────────────────────────────
-export const ORDER_STATUSES = ['PREVENTIVO', 'CONFERMATO', 'IN PRODUZIONE', 'CONSEGNA PARZIALE', 'CONSEGNATO']
+export const ORDER_STATUSES = ['PREVENTIVO', 'CONFERMATO', 'IN PRODUZIONE', 'CONSEGNA PARZIALE', 'CONSEGNATO', 'ANNULLATO']
 
 // ─── QUOTE LOSS REASONS ──────────────────────────────────────────
 export const LOSS_REASONS = [
@@ -27,6 +27,7 @@ export const STATUS_COLORS = {
   'IN PRODUZIONE':     { bg: 'rgba(90,130,184,0.18)', color: '#7aaee8', border: 'rgba(90,130,184,0.4)' },
   'CONSEGNA PARZIALE': { bg: 'rgba(180,140,50,0.18)', color: '#e8c96e', border: 'rgba(180,140,50,0.4)' },
   'CONSEGNATO':        { bg: 'rgba(74,158,110,0.18)', color: '#4a9e6e', border: 'rgba(74,158,110,0.4)' },
+  'ANNULLATO':         { bg: 'rgba(138,143,156,0.16)', color: '#9298a6', border: 'rgba(138,143,156,0.4)' },
 }
 
 // ─── CONSTANTS ───────────────────────────────────────────────────

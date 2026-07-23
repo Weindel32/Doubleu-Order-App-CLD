@@ -141,6 +141,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
   const [actualDeliveryDate,setActualDelivery] = useState(editOrder ? fromItalianDate(editOrder.actualDeliveryDate)||'' : '')
   const [alertDays,setAlertDays]   = useState(editOrder?.alertDays ?? 7)
   const [status,setStatus]         = useState(editOrder?.status || 'PREVENTIVO')
+  const [cancelReason,setCancelReason] = useState(editOrder?.cancelReason || '')
+  const [cancelDate,setCancelDate] = useState(editOrder?.cancelDate || null)
   const [clientNotes,setCN]        = useState(editOrder?.notes || '')
   const [productionNotes,setPN]    = useState(editOrder?.productionNotes || '')
   const [showTotal,setShowTotal]   = useState(editOrder?.showTotalInClientPDF ?? true)
@@ -175,6 +177,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
     notes: clientNotes, productionNotes, pricingMode,
     convertedFromQuote: editOrder?.convertedFromQuote || false,
     lost: editOrder?.lost || false, lostReason: editOrder?.lostReason || null, lostDate: editOrder?.lostDate || null,
+    cancelReason: status==='ANNULLATO' ? (cancelReason || null) : null,
+    cancelDate:   status==='ANNULLATO' ? (cancelDate || null) : null,
     kitQuantity: null,
     ivaEnabled, ivaRate, shipping: parseFloat(shipping) || 0, invoiceNumber, kits, payments,
     showTotalInClientPDF: showTotal,
@@ -237,6 +241,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
       setActualDelivery(new Date().toISOString().split('T')[0])
     } else if (newStatus === 'CONSEGNA PARZIALE' && !actualDeliveryDate) {
       setActualDelivery(new Date().toISOString().split('T')[0])
+    } else if (newStatus === 'ANNULLATO' && !cancelDate) {
+      setCancelDate(new Date().toLocaleDateString('it-IT'))
     }
   }
 
@@ -396,6 +402,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
             ))}
           </div>
           <div style={{marginTop:12}}><span style={badgeStyle(status)}>{status}</span></div>
+          {status==='ANNULLATO' && (
+            <div style={{marginTop:16,padding:'14px 16px',background:'rgba(138,143,156,0.08)',border:'1px solid rgba(138,143,156,0.3)',borderRadius:6}}>
+              <label style={{...s.label,color:'#9298a6'}}>Motivo annullamento{cancelDate?` · ${cancelDate}`:''}</label>
+              <textarea rows={2} style={{...inp,resize:'vertical'}} value={cancelReason} onChange={e=>setCancelReason(e.target.value)} placeholder="Es. Cliente ha rinunciato — errore nostro sui tempi di consegna..."/>
+              <div style={{fontSize:9,color:MUTED,letterSpacing:1,marginTop:8}}>Promemoria interno · escluso da fatturato e pezzi prodotti</div>
+            </div>
+          )}
         </div>
         <div style={s.card}>
           <div style={s.cardTitle}>Note per il Cliente</div>
@@ -595,6 +608,21 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
                 {item.badge?<span style={badgeStyle(item.badge)}>{item.badge}</span>:<div style={{fontFamily:item.serif?"'Cormorant Garamond',serif":undefined,fontSize:item.serif?20:14,color:item.color||CREAM}}>{item.v}</div>}
               </div>
             ))}
+          </div>
+          <div style={{marginBottom:20,paddingTop:16,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+            <div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:10}}>MODIFICA STATO ORDINE</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {ORDER_STATUSES.map(st=>(
+                <button key={st} onClick={()=>handleStatusChange(st)} style={{ padding:'8px 16px', borderRadius:3, border:'none', cursor:'pointer', fontFamily:"'Josefin Sans',sans-serif", fontSize:9, letterSpacing:2, textTransform:'uppercase', background:status===st?'rgba(184,150,90,0.2)':'rgba(255,255,255,0.05)', color:status===st?GOLD:MUTED, outline:status===st?`1px solid ${GOLD}`:'none' }}>{st}</button>
+              ))}
+            </div>
+            {status==='ANNULLATO' && (
+              <div style={{marginTop:16,padding:'14px 16px',background:'rgba(138,143,156,0.08)',border:'1px solid rgba(138,143,156,0.3)',borderRadius:6}}>
+                <label style={{...s.label,color:'#9298a6'}}>Motivo annullamento{cancelDate?` · ${cancelDate}`:''}</label>
+                <textarea rows={2} style={{...inp,resize:'vertical'}} value={cancelReason} onChange={e=>setCancelReason(e.target.value)} placeholder="Es. Cliente ha rinunciato — errore nostro sui tempi di consegna..."/>
+                <div style={{fontSize:9,color:MUTED,letterSpacing:1,marginTop:8}}>Promemoria interno · escluso da fatturato e pezzi prodotti</div>
+              </div>
+            )}
           </div>
           <TotalBox/>
           {payments.length>0 && (

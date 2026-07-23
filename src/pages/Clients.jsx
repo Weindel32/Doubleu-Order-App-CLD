@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
-import { orderTotal, paymentSummary, parseDate } from '../utils/helpers.js'
+import { orderTotal, paymentSummary, parseDate, isConfirmed } from '../utils/helpers.js'
 
 const TIER_COLORS = {
   ANCHOR: { bg: 'rgba(184,150,90,0.18)', color: GOLD,      border: 'rgba(184,150,90,0.35)' },
@@ -76,7 +76,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     const linked    = orders.filter(o => o.clientId === c.id)
     const textMatch = orders.filter(o => !o.clientId && o.client === c.name)
     const allOrders = [...linked, ...textMatch]
-    const confirmed = allOrders.filter(o => o.status !== 'PREVENTIVO')
+    const confirmed = allOrders.filter(isConfirmed)
     const total     = confirmed.reduce((sum, o) => sum + orderTotal(o), 0)
     const pieces    = confirmed.reduce((sum, o) => sum + (o.pieces || 0), 0)
     const totalIst  = confirmed.filter(o => o.orderType !== 'soci').reduce((sum, o) => sum + orderTotal(o), 0)

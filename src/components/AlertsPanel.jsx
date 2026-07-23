@@ -1,12 +1,12 @@
 import { GOLD, MUTED, CREAM, CLAY } from '../tokens.js'
-import { daysUntilDelivery, needsAlert, paymentSummary } from '../utils/helpers.js'
+import { daysUntilDelivery, needsAlert, paymentSummary, isConfirmed } from '../utils/helpers.js'
 
 export default function AlertsPanel({ orders, setView, setEditOrder }) {
   const alerts = (orders||[]).filter(o => needsAlert(o))
     .sort((a, b) => (daysUntilDelivery(a) ?? 999) - (daysUntilDelivery(b) ?? 999))
 
   const pendingPayments = (orders||[]).filter(o =>
-    o.status !== 'PREVENTIVO' && (o.payments || []).some(p => !p.paid)
+    isConfirmed(o) && (o.payments || []).some(p => !p.paid)
   )
 
   if (alerts.length === 0 && pendingPayments.length === 0) return null

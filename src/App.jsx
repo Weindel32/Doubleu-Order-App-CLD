@@ -13,7 +13,7 @@ import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
 import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, markQuoteLost, restoreQuote } from './lib/dataService.js'
-import { needsAlert } from './utils/helpers.js'
+import { needsAlert, isConfirmed } from './utils/helpers.js'
 import { supabase } from './lib/supabase.js'
 
 // Telefono: schermo stretto (portrait) oppure basso e non troppo largo (landscape)
@@ -32,7 +32,7 @@ function useIsMobile() {
 function Sidebar({ view, setView, orders, onLogout }) {
   const alertCount   = orders.filter(o => needsAlert(o)).length
   const pendingCount = orders.filter(o =>
-    o.status !== 'PREVENTIVO' && (o.payments || []).some(p => !p.paid)
+    isConfirmed(o) && (o.payments || []).some(p => !p.paid)
   ).length
   const quoteCount   = orders.filter(o => o.status === 'PREVENTIVO' && !o.lost).length
 
