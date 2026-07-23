@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { s } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderTotal } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderTotal, isConfirmed, isCancelled } from '../utils/helpers.js'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
 const LINE_COLORS = { 'Performance':CLAY,'Club':GOLD,'Training':'#7aaee8','Lifestyle':GREEN }
@@ -176,7 +176,7 @@ function DonutChart({ data, title }) {
 
 export default function Analytics({ orders }) {
   const quotes    = orders.filter(o => o.status === 'PREVENTIVO')
-  const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
+  const confirmed = orders.filter(isConfirmed)
 
   const byCategory={}, byLine={}, byStatus={}, omaggioByCategory={}
   let totalPieces=0, totalOmaggio=0
@@ -239,6 +239,11 @@ export default function Analytics({ orders }) {
   })
   const lossReasonRows = Object.entries(lossReasons).sort((a, b) => b[1] - a[1])
   const maxLossReason  = Math.max(...lossReasonRows.map(r => r[1]), 1)
+
+  // ── Ordini annullati (esclusi dai conteggi di produzione/fatturato) ──
+  const cancelledOrders = orders.filter(isCancelled)
+  const cancelledCount  = cancelledOrders.length
+  const cancelledValue  = cancelledOrders.reduce((s, o) => s + orderTotal(o), 0)
 
   const totalRevenue      = confirmed.reduce((s,o)=>s+orderTotal(o),0)
   const istituzionale     = confirmed.filter(o=>o.orderType!=='soci').reduce((s,o)=>s+orderTotal(o),0)
@@ -509,6 +514,39 @@ export default function Analytics({ orders }) {
               </div>
             </div>
           )}
+        </div>
+      </>}
+
+      {cancelledCount > 0 && <>
+        <div style={s.divider}/>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:'#9298a6',letterSpacing:2,marginBottom:20}}>Ordini Annullati</div>
+        <div style={{fontSize:11,color:MUTED,marginBottom:20,letterSpacing:0.5}}>Esclusi da fatturato e pezzi prodotti · tracciati qui come promemoria per migliorare</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:24}}>
+          {[
+            {label:'Ordini Annullati', value:cancelledCount,  color:'#9298a6', sub:'Non conteggiati nella produzione'},
+            {label:'Valore Annullato', value:`€ ${cancelledValue.toLocaleString('it-IT',{maximumFractionDigits:0})}`, color:'#ef4444', sub:'Fatturato non realizzato'},
+          ].map(item=>(
+            <div key={item.label} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'20px 24px'}}>
+              <div style={{fontSize:12,letterSpacing:1,color:MUTED,marginBottom:10,textTransform:'uppercase'}}>{item.label}</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,color:item.color,lineHeight:1}}>{item.value}</div>
+              {item.sub && <div style={{fontSize:12,color:MUTED,marginTop:8}}>{item.sub}</div>}
+            </div>
+          ))}
+        </div>
+        <div style={{...s.card,marginBottom:0}}>
+          <div style={s.cardTitle}>Motivi di Annullamento</div>
+          <div style={{display:'flex',flexDirection:'column',gap:2}}>
+            {cancelledOrders.map(o=>(
+              <div key={o.id} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                <div style={{minWidth:150}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:CREAM}}>{o.client}</div>
+                  <div style={{fontSize:9,color:MUTED,letterSpacing:1}}>{o.id}{o.cancelDate?` · ${o.cancelDate}`:''}</div>
+                </div>
+                <div style={{flex:1,fontSize:12,color:(o.cancelReason||'').trim()?CREAM:MUTED,lineHeight:1.5}}>{(o.cancelReason||'').trim()||'Motivo non specificato'}</div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:'#ef4444',whiteSpace:'nowrap'}}>€ {orderTotal(o).toLocaleString('it-IT',{maximumFractionDigits:0})}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </>}
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
-import { orderTotal, getAllArticles, artPieceCount } from '../utils/helpers.js'
+import { orderTotal, getAllArticles, artPieceCount, isConfirmed } from '../utils/helpers.js'
 
 function fmt(n) {
   return '€' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -119,7 +119,7 @@ function MonthlyChart({ monthlyByYear }) {
 }
 
 export default function MobileAnalytics({ orders }) {
-  const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
+  const confirmed = orders.filter(isConfirmed)
 
   const monthlyByYear = {}
   confirmed.forEach(o => {

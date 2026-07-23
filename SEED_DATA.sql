@@ -21,6 +21,13 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS province text;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS omaggio integer DEFAULT 0;
 -- ----------------------------------------------------------------
 
+-- ----------------------------------------------------------------
+-- MIGRATION: annullamento ordine — motivo e data (esegui una volta sola)
+-- ----------------------------------------------------------------
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason text;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_date text;
+-- ----------------------------------------------------------------
+
 -- ORDINE 1: ECO VILLAGE
 INSERT INTO orders VALUES ('DU-2026-0038','ECO VILLAGE','10/12/2025','28/02/2026',10,'CONSEGNATO',242,'kit','Cliente premium - priorità assoluta','Verde ECO pantone 356C. Logo fronte ricamato, retro stampa.',true,now());
 INSERT INTO kits (order_id,name,price,position) VALUES ('DU-2026-0038','Kit Completo ECO Village',90,0);

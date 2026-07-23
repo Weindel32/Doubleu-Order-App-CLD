@@ -21,21 +21,29 @@ function StatusSelector({ order, onStatusChange }) {
   const [saving, setSaving] = useState(false)
   const handleSelect = async (newStatus) => {
     if (newStatus === order.status) { setOpen(false); return }
+    let cancelFields = {}
+    if (newStatus === 'ANNULLATO') {
+      const reason = window.prompt('Motivo annullamento (promemoria interno):', order.cancelReason || '')
+      if (reason === null) { setOpen(false); return }
+      cancelFields = { cancel_reason: reason.trim() || null, cancel_date: order.cancelDate || todayItalian() }
+    } else if (order.status === 'ANNULLATO') {
+      cancelFields = { cancel_reason: null, cancel_date: null }
+    }
     setSaving(true)
-    const isDelivered = newStatus === 'CONSEGNA PARZIALE' || newStatus === 'CONSEGNATO'
     const autoDate = newStatus === 'CONSEGNATO'
       ? todayItalian()
       : (newStatus === 'CONSEGNA PARZIALE' && !order.actualDeliveryDate) ? todayItalian() : null
-    const extraFields = autoDate ? { actual_delivery_date: autoDate } : {}
+    const extraFields = { ...(autoDate ? { actual_delivery_date: autoDate } : {}), ...cancelFields }
     const ok = await quickUpdateStatus(order.id, newStatus, extraFields)
-    if (ok) onStatusChange(order.id, newStatus, autoDate)
+    if (ok) onStatusChange(order.id, newStatus, autoDate, cancelFields)
     setSaving(false); setOpen(false)
   }
   return (
     <div style={{ position:'relative' }}>
       <div onClick={() => !saving && setOpen(!open)} style={{ cursor: saving?'wait':'pointer' }}>
-        <span style={{ ...badgeStyle(order.status), cursor:'pointer' }}>{saving?'...':order.status} {!saving&&'▾'}</span>
+        <span title={order.status==='ANNULLATO'&&order.cancelReason?`Motivo: ${order.cancelReason}`:undefined} style={{ ...badgeStyle(order.status), cursor:'pointer' }}>{saving?'...':order.status} {!saving&&'▾'}</span>
       </div>
+      {order.status==='ANNULLATO'&&order.cancelReason&&<div style={{fontSize:9,color:MUTED,marginTop:4,maxWidth:160,lineHeight:1.4}}>{order.cancelReason}</div>}
       {open && (
         <div style={{ position:'absolute', top:'100%', left:0, zIndex:100, marginTop:4, background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:8, padding:6, minWidth:180, boxShadow:'0 8px 24px rgba(0,0,0,0.4)' }}>
           {ORDER_STATUSES.map(st => {
@@ -89,7 +97,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
   const [sortBy, setSortBy]   = useState('date')
   const [sortDir, setSortDir] = useState('desc')
   const [bollaOrder, setBollaOrder] = useState(null)
-  const filters = ['Tutti','Confermato','In Produzione','Consegna Parziale','Consegnato','Da Incassare']
+  const filters = ['Tutti','Confermato','In Produzione','Consegna Parziale','Consegnato','Annullato','Da Incassare']
 
   const handleSort = (col) => {
     if (sortBy === col) setSortDir(d => d==='asc'?'desc':'asc')
@@ -124,7 +132,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
     const h=gen(order); const w=window.open('','_blank'); w.document.write(h); w.document.close()
   }
 
-  const handleStatusChange   = (orderId, newStatus, autoDate) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(autoDate?{actualDeliveryDate:autoDate}:{})}:o))
+  const handleStatusChange   = (orderId, newStatus, autoDate, cancelFields={}) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(autoDate?{actualDeliveryDate:autoDate}:{}),...('cancel_reason' in cancelFields?{cancelReason:cancelFields.cancel_reason||'',cancelDate:cancelFields.cancel_date||null}:{})}:o))
   const handlePaymentToggle  = (orderId, paymentId, newPaid) => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid}:p)}))
 
   const thStyle = (col) => ({

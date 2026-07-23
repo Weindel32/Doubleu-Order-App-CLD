@@ -1,6 +1,6 @@
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
-import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../utils/helpers.js'
+import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert, isConfirmed } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -11,7 +11,7 @@ import { useState }              from 'react'
 
 export default function Dashboard({ orders, setView, setEditOrder, onDelete, onOrdersChange, navigateToOrders, onNavigateToQuotes }) {
   const [bollaOrder, setBollaOrder] = useState(null)
-  const confirmed = orders.filter(o => o.status !== 'PREVENTIVO')
+  const confirmed = orders.filter(isConfirmed)
   const quote     = orders.filter(o => o.status === 'PREVENTIVO')
   const inProd    = orders.filter(o => o.status === 'IN PRODUZIONE')
 
@@ -25,7 +25,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     .sort((a,b) => parseDate(b.date) - parseDate(a.date))
     .slice(0, 5)
   const totalRev  = confirmed.reduce((a, o) => a + orderTotal(o), 0)
-  const totalPending = orders.filter(o=>o.status!=='PREVENTIVO').reduce((s,o)=>s+paymentSummary(o).pending,0)
+  const totalPending = confirmed.reduce((s,o)=>s+paymentSummary(o).pending,0)
 
   // ── Yearly comparison ─────────────────────────────────────────
   const revenueByYear = confirmed.reduce((acc, o) => {
@@ -43,7 +43,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     : null
 
   const top3 = Object.values(
-    orders.filter(o=>o.status!=='PREVENTIVO').reduce((acc,o)=>{
+    confirmed.reduce((acc,o)=>{
       const tot=orderTotal(o)
       if(!acc[o.client]) acc[o.client]={name:o.client,total:0}
       acc[o.client].total+=tot

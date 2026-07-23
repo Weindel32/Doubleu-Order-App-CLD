@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, STATUS_COLORS, GREEN } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
-import { needsAlert, daysUntilDelivery, paymentSummary, orderTotal } from '../utils/helpers.js'
+import { needsAlert, daysUntilDelivery, paymentSummary, orderTotal, isConfirmed } from '../utils/helpers.js'
 
 function fmt(n) {
   return '€' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -28,20 +28,20 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
     'CONSEGNATO':        orders.filter(o => o.status === 'CONSEGNATO').length,
   }
 
-  const activeOrders = orders.filter(o => o.status !== 'CONSEGNATO' && o.status !== 'PREVENTIVO')
+  const activeOrders = orders.filter(o => isConfirmed(o) && o.status !== 'CONSEGNATO')
 
   const totalPending = orders
-    .filter(o => o.status !== 'PREVENTIVO')
+    .filter(isConfirmed)
     .reduce((sum, o) => sum + paymentSummary(o).pending, 0)
 
   const totalResidual = orders
-    .filter(o => o.status !== 'PREVENTIVO')
+    .filter(isConfirmed)
     .reduce((sum, o) => sum + paymentSummary(o).residual, 0)
 
   // Dettaglio pagamenti attesi per cliente
   const pendingByClient = {}
   orders
-    .filter(o => o.status !== 'PREVENTIVO')
+    .filter(isConfirmed)
     .forEach(o => {
       const pending = (o.payments || [])
         .filter(p => !p.paid && parseFloat(p.amount) > 0)
@@ -61,7 +61,7 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
     return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0
   }
   const fullyPaid = orders
-    .filter(o => o.status !== 'PREVENTIVO')
+    .filter(isConfirmed)
     .filter(o => { const ps = paymentSummary(o); return ps.total > 0 && ps.residual === 0 && ps.pending === 0 })
     .sort((a,b) => parseDate(b.date) - parseDate(a.date))
     .slice(0, 5)

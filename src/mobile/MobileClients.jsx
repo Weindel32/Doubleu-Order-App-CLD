@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
-import { orderTotal, parseDate } from '../utils/helpers.js'
+import { orderTotal, parseDate, isConfirmed } from '../utils/helpers.js'
 
 function fmt(n) {
   return '€' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -280,9 +280,9 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
 
   const enriched = allClients.map(c => {
     const cOrders   = orders.filter(o => o.client === c.name)
-    const confirmed = cOrders.filter(o => o.status !== 'PREVENTIVO')
+    const confirmed = cOrders.filter(isConfirmed)
     const revenue   = cOrders.filter(o => o.status === 'CONSEGNATO').reduce((s, o) => s + orderTotal(o), 0)
-    const active    = cOrders.filter(o => o.status !== 'CONSEGNATO' && o.status !== 'PREVENTIVO').length
+    const active    = cOrders.filter(o => isConfirmed(o) && o.status !== 'CONSEGNATO').length
     const tier      = getCategory(c, orders)
     const lastTs    = confirmed.reduce((m, o) => { const d = parseDate(o.date); return d && d.getTime() > m ? d.getTime() : m }, 0)
     const lastOrder = confirmed.reduce((b, o) => { const d = parseDate(o.date); return d && d.getTime() === lastTs ? o.date : b }, null)

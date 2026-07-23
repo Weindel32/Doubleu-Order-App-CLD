@@ -4,6 +4,13 @@ export function getAllArticles(order) {
   return (order.kits || []).flatMap(k => k.articles || [])
 }
 
+// ── Order status predicates ───────────────────────────────────────
+// Un ordine annullato resta in archivio ma è escluso da fatturato,
+// pezzi prodotti e alert pagamenti (tracciato a parte nelle statistiche).
+export const isCancelled = order => order.status === 'ANNULLATO'
+export const isQuote     = order => order.status === 'PREVENTIVO'
+export const isConfirmed = order => order.status !== 'PREVENTIVO' && order.status !== 'ANNULLATO'
+
 export function artPieceCount(art) {
   return ADULT_SIZES.reduce((s, sz) => s + (art.sizes?.adult?.[sz] || 0), 0)
        + KIDS_SIZES.reduce((s, sz)  => s + (art.sizes?.kids?.[sz]  || 0), 0)
@@ -61,7 +68,7 @@ export function daysUntilDelivery(order) {
 }
 
 export function needsAlert(order) {
-  if (['CONSEGNATO'].includes(order.status)) return false
+  if (['CONSEGNATO', 'ANNULLATO'].includes(order.status)) return false
   const days = daysUntilDelivery(order)
   if (days === null) return false
   return days <= (order.alertDays || 7)
