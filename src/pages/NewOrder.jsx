@@ -250,6 +250,21 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
   const canGo2  = allArticles.some(a=>a.sp&&a.description)
   const inp     = {...s.input}
 
+  // ── Taglie: evidenzia le celle con quantità > 0 per lettura veloce ──
+  const sizeCell = (v) => {
+    const filled = (parseInt(v) || 0) > 0
+    return {
+      ...inp, width:58, textAlign:'center', padding:'8px 4px', fontSize:15,
+      ...(filled
+        ? { background:'rgba(184,150,90,0.16)', border:`1px solid ${GOLD}`, color:GOLD, fontWeight:700 }
+        : { color:MUTED, fontWeight:400 }),
+    }
+  }
+  const sizeLabel = (v) => ({
+    fontSize:9, letterSpacing:2, marginBottom:6,
+    color:(parseInt(v)||0) > 0 ? GOLD : MUTED,
+  })
+
   const handleSave = async (confirmOrder=false) => {
     if (!club.trim()) { alert('Inserisci il nome del club'); return }
     if (pricingMode==='kit' && kits.some(k => !k.quantity)) { alert('Inserisci la quantità per ogni kit'); return }
@@ -548,8 +563,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
                 <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:12}}>TAGLIA UNICA</div>
                 <div style={{display:'flex',gap:10,alignItems:'flex-end'}}>
                   <div style={{textAlign:'center'}}>
-                    <div style={{fontSize:9,letterSpacing:2,color:GOLD,marginBottom:6}}>TU</div>
-                    <input type="number" min="0" style={{...inp,width:58,textAlign:'center',padding:'8px 4px',fontSize:15}} value={uni} onChange={e=>updateUni(ki,ai,e.target.value)}/>
+                    <div style={sizeLabel(uni)}>TU</div>
+                    <input type="number" min="0" style={sizeCell(uni)} value={uni} onChange={e=>updateUni(ki,ai,e.target.value)}/>
                   </div>
                   <div style={{fontSize:10,color:MUTED,paddingBottom:10}}>per articoli senza taglia (es. cappellini, sciarpe, accessori)</div>
                 </div>
@@ -558,8 +573,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
                 <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:12}}>TAGLIE ADULTO</div>
                 <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
                   {ADULT_SIZES.map(sz=>(<div key={sz} style={{textAlign:'center'}}>
-                    <div style={{fontSize:9,letterSpacing:2,color:GOLD,marginBottom:6}}>{sz}</div>
-                    <input type="number" min="0" style={{...inp,width:58,textAlign:'center',padding:'8px 4px',fontSize:15}} value={art.sizes.adult?.[sz]||0} onChange={e=>updateSz(ki,ai,'adult',sz,e.target.value)}/>
+                    <div style={sizeLabel(art.sizes.adult?.[sz])}>{sz}</div>
+                    <input type="number" min="0" style={sizeCell(art.sizes.adult?.[sz])} value={art.sizes.adult?.[sz]||0} onChange={e=>updateSz(ki,ai,'adult',sz,e.target.value)}/>
                   </div>))}
                   <div style={{borderLeft:`1px solid ${BORDER}`,paddingLeft:14,marginLeft:4}}>
                     <div style={{fontSize:9,color:MUTED,marginBottom:6}}>TOT</div>
@@ -571,8 +586,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
                 <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:12}}>TAGLIE BAMBINO</div>
                 <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
                   {KIDS_SIZES.map(sz=>(<div key={sz} style={{textAlign:'center'}}>
-                    <div style={{fontSize:9,letterSpacing:2,color:GOLD,marginBottom:6}}>{sz}</div>
-                    <input type="number" min="0" style={{...inp,width:58,textAlign:'center',padding:'8px 4px',fontSize:15}} value={art.sizes.kids?.[sz]||0} onChange={e=>updateSz(ki,ai,'kids',sz,e.target.value)}/>
+                    <div style={sizeLabel(art.sizes.kids?.[sz])}>{sz}</div>
+                    <input type="number" min="0" style={sizeCell(art.sizes.kids?.[sz])} value={art.sizes.kids?.[sz]||0} onChange={e=>updateSz(ki,ai,'kids',sz,e.target.value)}/>
                   </div>))}
                   <div style={{borderLeft:`1px solid ${BORDER}`,paddingLeft:14,marginLeft:4}}>
                     <div style={{fontSize:9,color:MUTED,marginBottom:6}}>TOT</div>
