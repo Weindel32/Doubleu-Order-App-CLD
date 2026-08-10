@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
-import { orderSubtotal, orderIVA, orderTotal as calcOrderTotal } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal as calcOrderTotal } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import SpAutocomplete from '../components/SpAutocomplete.jsx'
@@ -132,6 +132,8 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
   const [pricingMode, setPM]          = useState(editOrder?.pricingMode || 'singolo')
   const [ivaEnabled, setIvaEnabled]   = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                     = useState(22)
+  const [discountType, setDiscountType]   = useState(editOrder?.discountType || 'percentuale')
+  const [discountValue, setDiscountValue] = useState(editOrder?.discountValue || '')
   const [kits, setKits]               = useState(editOrder?.kits || [emptyKit()])
   const [saving, setSaving]           = useState(false)
   const [saveError, setSaveError]     = useState(null)
@@ -149,11 +151,13 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
     convertedFromQuote: editOrder?.convertedFromQuote || false,
     kitQuantity: null,
     ivaEnabled, ivaRate, kits, payments: [],
+    discountType, discountValue: parseFloat(discountValue) || 0,
     showTotalInClientPDF: true,
   })
 
   const currentQuote = quoteObj()
   const subtotal     = orderSubtotal(currentQuote)
+  const discAmount   = orderDiscount(currentQuote)
   const ivaAmount    = orderIVA(currentQuote)
   const total        = calcOrderTotal(currentQuote)
 
@@ -238,10 +242,22 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
             </div>
           )
         })}
-        {pricingMode === 'singolo' && (
+        {(pricingMode === 'singolo' || discAmount > 0) && (
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
             <span>Subtotale</span>
             <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, color: GOLD }}>€ {subtotal.toFixed(2)}</span>
+          </div>
+        )}
+        {discAmount > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
+            <span>Sconto{discountType === 'percentuale' ? ` ${parseFloat(discountValue) || 0}%` : ''}</span>
+            <span style={{ color: '#ef4444' }}>− € {discAmount.toFixed(2)}</span>
+          </div>
+        )}
+        {discAmount > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
+            <span>Imponibile</span>
+            <span style={{ color: CREAM }}>€ {(subtotal - discAmount).toFixed(2)}</span>
           </div>
         )}
         {ivaEnabled && (
@@ -349,6 +365,32 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
               </div>
               <span style={{ fontSize: 12, color: CREAM }}>Applica IVA 22%</span>
             </label>
+          </div>
+          <div style={s.card}>
+            <div style={s.cardTitle}>Sconto</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '220px 160px', gap: 16, alignItems: 'end' }}>
+              <div>
+                <label style={s.label}>Tipo</label>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[['percentuale', '%'], ['importo', '€']].map(([val, label]) => (
+                    <button key={val} onClick={() => setDiscountType(val)} style={{ padding: '10px 28px', borderRadius: 3, border: `1px solid ${discountType === val ? CLAY : BORDER}`, background: discountType === val ? 'rgba(196,98,58,0.12)' : 'transparent', color: discountType === val ? CLAY : MUTED, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={s.label}>{discountType === 'percentuale' ? 'Sconto %' : 'Sconto €'}</label>
+                <input type="number" min="0" step={discountType === 'percentuale' ? '1' : '0.01'} max={discountType === 'percentuale' ? '100' : undefined}
+                  style={inp} value={discountValue} onChange={e => setDiscountValue(e.target.value)}
+                  placeholder={discountType === 'percentuale' ? '10' : '150'}/>
+              </div>
+            </div>
+            {discAmount > 0 && (
+              <div style={{ marginTop: 12, fontSize: 11, color: MUTED }}>
+                Sconto applicato sul subtotale (imponibile): <span style={{ color: '#ef4444' }}>− € {discAmount.toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           {kits.map((kit, ki) => (

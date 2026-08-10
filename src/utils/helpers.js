@@ -38,13 +38,30 @@ export function orderShipping(order) {
   return parseFloat(order.shipping) || 0
 }
 
+// ── Sconto: percentuale sul subtotale oppure importo fisso in €.
+// Non può superare il subtotale (mai totali negativi).
+export function orderDiscount(order) {
+  const value = parseFloat(order.discountValue) || 0
+  if (value <= 0) return 0
+  const subtotal = orderSubtotal(order)
+  const amount = order.discountType === 'percentuale'
+    ? subtotal * (value / 100)
+    : value
+  return Math.min(Math.max(0, amount), subtotal)
+}
+
+// ── Imponibile: subtotale al netto dello sconto. È la base dell'IVA.
+export function orderTaxable(order) {
+  return orderSubtotal(order) - orderDiscount(order)
+}
+
 export function orderIVA(order) {
   if (!order.ivaEnabled) return 0
-  return orderSubtotal(order) * ((parseFloat(order.ivaRate) || 22) / 100)
+  return orderTaxable(order) * ((parseFloat(order.ivaRate) || 22) / 100)
 }
 
 export function orderTotal(order) {
-  return orderSubtotal(order) + orderIVA(order) + orderShipping(order)
+  return orderTaxable(order) + orderIVA(order) + orderShipping(order)
 }
 
 export function paymentSummary(order) {

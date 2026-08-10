@@ -1,6 +1,6 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderTotal, paymentSummary, daysUntilDelivery } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery } from '../utils/helpers.js'
 
 function fmt(n) {
   return '€' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -41,6 +41,7 @@ export default function MobileOrderDetail({ order, onBack }) {
   const days = daysUntilDelivery(order)
   const subtotal = orderSubtotal(order)
   const shipping = orderShipping(order)
+  const discount = orderDiscount(order)
   const iva = orderIVA(order)
   const isOverdue = days !== null && days < 0 && order.status !== 'CONSEGNATO'
   const isUrgent = days !== null && days >= 0 && days <= (order.alertDays || 7) && order.status !== 'CONSEGNATO'
@@ -207,6 +208,12 @@ export default function MobileOrderDetail({ order, onBack }) {
         <SectionTitle>Riepilogo Economico</SectionTitle>
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', marginBottom: 8 }}>
           <InfoRow label="Subtotale" value={fmt(subtotal)} />
+          {discount > 0 && (
+            <>
+              <InfoRow label={`Sconto${order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''}`} value={`− ${fmt(discount)}`} />
+              <InfoRow label="Imponibile" value={fmt(subtotal - discount)} />
+            </>
+          )}
           {order.ivaEnabled && (
             <InfoRow label={`IVA ${order.ivaRate || 22}%`} value={fmt(iva)} />
           )}
