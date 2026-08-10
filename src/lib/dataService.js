@@ -69,6 +69,7 @@ export async function fetchOrders() {
           ...a, notes: a.notes || '',
           delivered: a.delivered || false,
           omaggio: a.omaggio || 0,
+          discountType: a.discount_type || 'percentuale', discountValue: a.discount_value || 0,
           estimatedQty: (a.sizes_adult || {}).__qty || null,
           sizes: { adult: (({ __qty, __uni, ...rest }) => rest)(a.sizes_adult || {}), kids: a.sizes_kids || {}, uni: (a.sizes_adult || {}).__uni || 0 }
         }))
@@ -89,12 +90,17 @@ export async function fetchOrders() {
       kitQuantity: order.kit_quantity || null,
       ivaEnabled: order.iva_enabled || false, ivaRate: order.iva_rate || 22,
       shipping: order.shipping || 0,
+      discountMode: order.discount_mode || 'ordine',
       discountType: order.discount_type || 'percentuale', discountValue: order.discount_value || 0,
+      orderNote: order.order_note || '',
       invoiceNumber: order.invoice_number || '',
       notes: order.notes, productionNotes: order.production_notes,
       showTotalInClientPDF: order.show_total_in_client_pdf,
       orderType: order.order_type || 'istituzionale',
-      kits: kitsWithArticles.map(k => ({ ...k, quantity: k.quantity || null })),
+      kits: kitsWithArticles.map(k => ({
+        ...k, quantity: k.quantity || null,
+        discountType: k.discount_type || 'percentuale', discountValue: k.discount_value || 0,
+      })),
       payments: payments || [],
     }
   }))
@@ -121,7 +127,9 @@ export async function createOrder(order) {
     kit_quantity: order.kitQuantity || null,
     iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     shipping: order.shipping || 0,
+    discount_mode: order.discountMode || 'ordine',
     discount_type: order.discountType || 'percentuale', discount_value: parseFloat(order.discountValue) || 0,
+    order_note: order.orderNote || null,
     invoice_number: order.invoiceNumber || null,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
@@ -131,7 +139,8 @@ export async function createOrder(order) {
   for (let ki = 0; ki < order.kits.length; ki++) {
     const kit = order.kits[ki]
     const { data: kitData, error: kitErr } = await supabase.from('kits')
-      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki })
+      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki,
+        discount_type: kit.discountType || 'percentuale', discount_value: parseFloat(kit.discountValue) || 0 })
       .select().single()
     if (kitErr) { console.error('createKit:', kitErr); continue }
     for (const art of kit.articles) {
@@ -140,6 +149,7 @@ export async function createOrder(order) {
         description: art.description, color: art.color, price: art.price || null,
         notes: art.notes || null, delivered: art.delivered || false,
         omaggio: art.omaggio || 0,
+        discount_type: art.discountType || 'percentuale', discount_value: parseFloat(art.discountValue) || 0,
         sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}), ...(art.sizes?.uni ? { __uni: parseInt(art.sizes.uni) } : {}) },
         sizes_kids: art.sizes?.kids || {},
       })
@@ -168,7 +178,9 @@ export async function updateOrder(order) {
     kit_quantity: order.kitQuantity || null,
     iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
     shipping: order.shipping || 0,
+    discount_mode: order.discountMode || 'ordine',
     discount_type: order.discountType || 'percentuale', discount_value: parseFloat(order.discountValue) || 0,
+    order_note: order.orderNote || null,
     invoice_number: order.invoiceNumber || null,
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
@@ -179,7 +191,8 @@ export async function updateOrder(order) {
   for (let ki = 0; ki < order.kits.length; ki++) {
     const kit = order.kits[ki]
     const { data: kitData, error: kitErr } = await supabase.from('kits')
-      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki })
+      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki,
+        discount_type: kit.discountType || 'percentuale', discount_value: parseFloat(kit.discountValue) || 0 })
       .select().single()
     if (kitErr) { console.error('updateKit:', kitErr); continue }
     for (const art of kit.articles) {
@@ -188,6 +201,7 @@ export async function updateOrder(order) {
         description: art.description, color: art.color, price: art.price || null,
         notes: art.notes || null, delivered: art.delivered || false,
         omaggio: art.omaggio || 0,
+        discount_type: art.discountType || 'percentuale', discount_value: parseFloat(art.discountValue) || 0,
         sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}), ...(art.sizes?.uni ? { __uni: parseInt(art.sizes.uni) } : {}) },
         sizes_kids: art.sizes?.kids || {},
       })

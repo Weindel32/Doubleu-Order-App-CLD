@@ -38,16 +38,60 @@ export function orderShipping(order) {
   return parseFloat(order.shipping) || 0
 }
 
-// ── Sconto: percentuale sul subtotale oppure importo fisso in €.
-// Non può superare il subtotale (mai totali negativi).
+// ── Sconto ────────────────────────────────────────────────────────
+// discountMode: 'nessuno' | 'ordine' (default, sull'intero subtotale)
+// | 'articolo' (per riga: per articolo in pricing singolo, per kit in
+// pricing kit). Gli ordini salvati prima di questa modalità non hanno
+// il campo e ricadono su 'ordine', quindi restano invariati.
+// discountType: 'percentuale' (% sulla base) | 'importo' (€ sulla riga).
+export function discountAmount(base, type, value) {
+  const v = parseFloat(value) || 0
+  if (v <= 0 || base <= 0) return 0
+  const amount = type === 'importo' ? v : base * (v / 100)
+  return Math.min(amount, base)
+}
+
+export function artLineBase(art) {
+  const pieces = artPieceCount(art) || parseInt(art.estimatedQty) || 0
+  return (parseFloat(art.price) || 0) * pieces
+}
+
+export function kitLineBase(order, kit) {
+  const qty = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
+  return (parseFloat(kit.price) || 0) * qty
+}
+
+export function artLineDiscount(art) {
+  return discountAmount(artLineBase(art), art.discountType, art.discountValue)
+}
+
+export function kitLineDiscount(order, kit) {
+  return discountAmount(kitLineBase(order, kit), kit.discountType, kit.discountValue)
+}
+
+// Sconto di riga effettivamente applicato: vale solo in modalità
+// 'articolo' e solo per il pricing corrispondente, così i valori
+// rimasti su articoli/kit non compaiono se poi si torna allo sconto
+// sull'intero ordine.
+export function artDiscountApplied(order, art) {
+  if (order.discountMode !== 'articolo' || order.pricingMode === 'kit') return 0
+  return artLineDiscount(art)
+}
+
+export function kitDiscountApplied(order, kit) {
+  if (order.discountMode !== 'articolo' || order.pricingMode !== 'kit') return 0
+  return kitLineDiscount(order, kit)
+}
+
 export function orderDiscount(order) {
-  const value = parseFloat(order.discountValue) || 0
-  if (value <= 0) return 0
-  const subtotal = orderSubtotal(order)
-  const amount = order.discountType === 'percentuale'
-    ? subtotal * (value / 100)
-    : value
-  return Math.min(Math.max(0, amount), subtotal)
+  if (order.discountMode === 'nessuno') return 0
+  if (order.discountMode === 'articolo') {
+    if (order.pricingMode === 'kit') {
+      return (order.kits || []).reduce((s, kit) => s + kitLineDiscount(order, kit), 0)
+    }
+    return getAllArticles(order).reduce((s, art) => s + artLineDiscount(art), 0)
+  }
+  return discountAmount(orderSubtotal(order), order.discountType, order.discountValue)
 }
 
 // ── Imponibile: subtotale al netto dello sconto. È la base dell'IVA.

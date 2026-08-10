@@ -1,5 +1,5 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
-import { orderSubtotal, orderIVA, orderDiscount, orderTotal } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
 
 function fmt(n) {
@@ -78,6 +78,12 @@ export default function MobileQuoteDetail({ quote, onBack }) {
       <div style={{ padding: '0 16px', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
 
         {/* Dati */}
+        {quote.orderNote && (
+          <div style={{ background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 8 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: CLAY, marginBottom: 4 }}>NOTA PREVENTIVO</div>
+            <div style={{ fontSize: 13, color: CREAM }}>{quote.orderNote}</div>
+          </div>
+        )}
         <SectionTitle>Dati Preventivo</SectionTitle>
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px' }}>
           <InfoRow label="Data" value={quote.date} />
@@ -155,6 +161,11 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                       {art.color && <div style={{ fontSize: 10, color: MUTED, marginTop: 3 }}>{art.color}</div>}
                       {art.sp    && <div style={{ fontSize: 9,  color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
                       {art.notes && <div style={{ fontSize: 10, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
+                      {artDiscountApplied(quote, art) > 0 && (
+                        <div style={{ fontSize: 10, color: CLAY, marginTop: 4 }}>
+                          sconto{art.discountType !== 'importo' ? ` ${parseFloat(art.discountValue) || 0}%` : ''} · − {fmt(artDiscountApplied(quote, art))}
+                        </div>
+                      )}
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {artTotal > 0
@@ -186,7 +197,12 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                 paddingBottom: 8, marginBottom: 8,
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
               }}>
-                <span style={{ fontSize: 10, color: MUTED }}>{kit.name || `Kit ${ki + 1}`}</span>
+                <span style={{ fontSize: 10, color: MUTED }}>
+                  {kit.name || `Kit ${ki + 1}`}
+                  {kitDiscountApplied(quote, kit) > 0 && (
+                    <span style={{ color: CLAY }}> · sconto − {fmt(kitDiscountApplied(quote, kit))}</span>
+                  )}
+                </span>
                 <span style={{ fontSize: 12, color: CREAM }}>{fmt(kitTotal)}</span>
               </div>
             )
@@ -194,7 +210,7 @@ export default function MobileQuoteDetail({ quote, onBack }) {
           <InfoRow label="Subtotale" value={fmt(subtotal)} />
           {discount > 0 && (
             <>
-              <InfoRow label={`Sconto${quote.discountType === 'percentuale' ? ` ${parseFloat(quote.discountValue) || 0}%` : ''}`} value={`− ${fmt(discount)}`} />
+              <InfoRow label={quote.discountMode === 'articolo' ? 'Sconto totale' : `Sconto${quote.discountType === 'percentuale' ? ` ${parseFloat(quote.discountValue) || 0}%` : ''}`} value={`− ${fmt(discount)}`} />
               <InfoRow label="Imponibile" value={fmt(subtotal - discount)} />
             </>
           )}

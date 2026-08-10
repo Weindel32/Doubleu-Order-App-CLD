@@ -1,19 +1,21 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
-import { orderSubtotal, orderIVA, orderDiscount, orderTotal as calcOrderTotal } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal as calcOrderTotal,
+         artPieceCount, artLineBase, artLineDiscount, kitLineBase, kitLineDiscount } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import SpAutocomplete from '../components/SpAutocomplete.jsx'
+import DiscountFields from '../components/DiscountFields.jsx'
 
 const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Taglie', 'Riepilogo']
 
 const emptyArticle = () => ({
   sp: '', category: 'Felpa', line: 'Performance', description: '', color: '', price: '', estimatedQty: '', notes: '',
-  delivered: false, omaggio: 0,
+  delivered: false, omaggio: 0, discountType: 'percentuale', discountValue: '',
   sizes: { adult: {}, kids: {}, uni: 0 },
 })
-const emptyKit = () => ({ name: '', price: '', quantity: '', articles: [emptyArticle()] })
+const emptyKit = () => ({ name: '', price: '', quantity: '', discountType: 'percentuale', discountValue: '', articles: [emptyArticle()] })
 
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
 
@@ -132,8 +134,10 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
   const [pricingMode, setPM]          = useState(editOrder?.pricingMode || 'singolo')
   const [ivaEnabled, setIvaEnabled]   = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                     = useState(22)
+  const [discountMode, setDiscountMode]   = useState(editOrder?.discountMode || (editOrder?.discountValue ? 'ordine' : 'nessuno'))
   const [discountType, setDiscountType]   = useState(editOrder?.discountType || 'percentuale')
   const [discountValue, setDiscountValue] = useState(editOrder?.discountValue || '')
+  const [orderNote, setOrderNote]         = useState(editOrder?.orderNote || '')
   const [kits, setKits]               = useState(editOrder?.kits || [emptyKit()])
   const [saving, setSaving]           = useState(false)
   const [saveError, setSaveError]     = useState(null)
@@ -151,7 +155,8 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
     convertedFromQuote: editOrder?.convertedFromQuote || false,
     kitQuantity: null,
     ivaEnabled, ivaRate, kits, payments: [],
-    discountType, discountValue: parseFloat(discountValue) || 0,
+    discountMode, discountType, discountValue: parseFloat(discountValue) || 0,
+    orderNote,
     showTotalInClientPDF: true,
   })
 
@@ -235,10 +240,38 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
         {pricingMode === 'kit' && kits.map((kit, ki) => {
           const qty = parseInt(kit.quantity) || 0
           const kitTotal = (parseFloat(kit.price) || 0) * qty
+          const kitDisc = discountMode === 'articolo' ? kitLineDiscount(currentQuote, kit) : 0
           return (
-            <div key={ki} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
-              <span>{kit.name || `Kit ${ki + 1}`} — € {parseFloat(kit.price) || 0} × {qty || '?'}</span>
-              <span style={{ color: CREAM }}>€ {kitTotal.toFixed(2)}</span>
+            <div key={ki}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
+                <span>{kit.name || `Kit ${ki + 1}`} — € {parseFloat(kit.price) || 0} × {qty || '?'}</span>
+                <span style={{ color: CREAM }}>€ {kitTotal.toFixed(2)}</span>
+              </div>
+              {kitDisc > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: MUTED, paddingLeft: 14 }}>
+                  <span>sconto{kit.discountType !== 'importo' ? ` ${parseFloat(kit.discountValue) || 0}%` : ''}</span>
+                  <span style={{ color: '#ef4444' }}>− € {kitDisc.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {pricingMode === 'singolo' && discountMode === 'articolo' && allArticles.map((art, i) => {
+          const base = artLineBase(art)
+          const disc = artLineDiscount(art)
+          if (base <= 0) return null
+          return (
+            <div key={i}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
+                <span>{art.description || `Articolo ${i + 1}`} — € {parseFloat(art.price) || 0} × {artPieceCount(art) || parseInt(art.estimatedQty) || 0} pz</span>
+                <span style={{ color: CREAM }}>€ {base.toFixed(2)}</span>
+              </div>
+              {disc > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: MUTED, paddingLeft: 14 }}>
+                  <span>sconto{art.discountType !== 'importo' ? ` ${parseFloat(art.discountValue) || 0}%` : ''}</span>
+                  <span style={{ color: '#ef4444' }}>− € {disc.toFixed(2)}</span>
+                </div>
+              )}
             </div>
           )
         })}
@@ -250,7 +283,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
         )}
         {discAmount > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
-            <span>Sconto{discountType === 'percentuale' ? ` ${parseFloat(discountValue) || 0}%` : ''}</span>
+            <span>{discountMode === 'articolo' ? 'Sconto totale' : `Sconto${discountType === 'percentuale' ? ` ${parseFloat(discountValue) || 0}%` : ''}`}</span>
             <span style={{ color: '#ef4444' }}>− € {discAmount.toFixed(2)}</span>
           </div>
         )}
@@ -314,6 +347,11 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
               <div style={{fontSize:10,color:MUTED,marginTop:8}}>Seleziona un cliente per pre-compilare i campi — puoi modificarli prima di salvare</div>
             </div>
           )}
+          <div style={{ ...s.card, background: 'rgba(196,98,58,0.07)', border: `1px solid rgba(196,98,58,0.25)` }}>
+            <div style={s.cardTitle}>Nota Preventivo</div>
+            <input style={inp} value={orderNote} onChange={e => setOrderNote(e.target.value)} placeholder="Es. Richiesta da Fabian Arnold per conto di MTC"/>
+            <div style={{ fontSize: 10, color: MUTED, marginTop: 8 }}>Nota in evidenza sul singolo preventivo — compare nel dettaglio e nel PDF. Il campo Referente qui sotto resta invece salvato sulla scheda cliente.</div>
+          </div>
           <div style={s.card}>
             <div style={s.cardTitle}>Dati Club / Cliente</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -368,24 +406,22 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
           </div>
           <div style={s.card}>
             <div style={s.cardTitle}>Sconto</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '220px 160px', gap: 16, alignItems: 'end' }}>
-              <div>
-                <label style={s.label}>Tipo</label>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {[['percentuale', '%'], ['importo', '€']].map(([val, label]) => (
-                    <button key={val} onClick={() => setDiscountType(val)} style={{ padding: '10px 28px', borderRadius: 3, border: `1px solid ${discountType === val ? CLAY : BORDER}`, background: discountType === val ? 'rgba(196,98,58,0.12)' : 'transparent', color: discountType === val ? CLAY : MUTED, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={s.label}>{discountType === 'percentuale' ? 'Sconto %' : 'Sconto €'}</label>
-                <input type="number" min="0" step={discountType === 'percentuale' ? '1' : '0.01'} max={discountType === 'percentuale' ? '100' : undefined}
-                  style={inp} value={discountValue} onChange={e => setDiscountValue(e.target.value)}
-                  placeholder={discountType === 'percentuale' ? '10' : '150'}/>
-              </div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: discountMode === 'nessuno' ? 0 : 16, flexWrap: 'wrap' }}>
+              {[['nessuno', 'Nessuno'], ['ordine', 'Intero preventivo'], ['articolo', pricingMode === 'kit' ? 'Per kit' : 'Per articolo']].map(([val, label]) => (
+                <button key={val} onClick={() => setDiscountMode(val)} style={{ padding: '10px 28px', borderRadius: 3, border: `1px solid ${discountMode === val ? CLAY : BORDER}`, background: discountMode === val ? 'rgba(196,98,58,0.12)' : 'transparent', color: discountMode === val ? CLAY : MUTED, cursor: 'pointer', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600 }}>
+                  {label}
+                </button>
+              ))}
             </div>
+            {discountMode === 'ordine' && (
+              <DiscountFields type={discountType} value={discountValue} accent={CLAY} accentBg="rgba(196,98,58,0.12)"
+                onChange={(f, v) => f === 'discountType' ? setDiscountType(v) : setDiscountValue(v)}/>
+            )}
+            {discountMode === 'articolo' && (
+              <div style={{ fontSize: 11, color: MUTED }}>
+                Imposta lo sconto su ogni {pricingMode === 'kit' ? 'kit' : 'articolo'} qui sotto. Le righe lasciate a zero non vengono scontate.
+              </div>
+            )}
             {discAmount > 0 && (
               <div style={{ marginTop: 12, fontSize: 11, color: MUTED }}>
                 Sconto applicato sul subtotale (imponibile): <span style={{ color: '#ef4444' }}>− € {discAmount.toFixed(2)}</span>
@@ -403,6 +439,17 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
                     <label style={s.label}>Quantità (n° persone) *</label>
                     <input type="number" min="1" style={{ ...inp, borderColor: !kit.quantity ? 'rgba(196,98,58,0.5)' : undefined }} value={kit.quantity} onChange={e => updateKit(ki, 'quantity', e.target.value)} placeholder="Es. 50"/>
                   </div>
+                </div>
+              )}
+              {pricingMode === 'kit' && discountMode === 'articolo' && (
+                <div style={{ marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${BORDER}` }}>
+                  <DiscountFields type={kit.discountType} value={kit.discountValue} accent={CLAY} accentBg="rgba(196,98,58,0.12)"
+                    onChange={(f, v) => updateKit(ki, f, v)} compact/>
+                  {kitLineDiscount(currentQuote, kit) > 0 && (
+                    <div style={{ marginTop: 8, fontSize: 11, color: MUTED }}>
+                      € {kitLineBase(currentQuote, kit).toFixed(2)} <span style={{ color: '#ef4444' }}>− € {kitLineDiscount(currentQuote, kit).toFixed(2)}</span> = € {(kitLineBase(currentQuote, kit) - kitLineDiscount(currentQuote, kit)).toFixed(2)}
+                    </div>
+                  )}
                 </div>
               )}
               <div style={{ fontSize: 9, letterSpacing: 3, color: MUTED, marginBottom: 14 }}>{pricingMode === 'kit' ? 'ARTICOLI NEL KIT' : 'ARTICOLI'}</div>
@@ -444,6 +491,17 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
                       <input style={inp} value={art.notes || ''} onChange={e => updateArt(ki, ai, 'notes', e.target.value)} placeholder="Es. logo ricamato fronte sinistra..."/>
                     </div>
                   </div>
+                  {pricingMode === 'singolo' && discountMode === 'articolo' && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${BORDER}` }}>
+                      <DiscountFields type={art.discountType} value={art.discountValue} accent={CLAY} accentBg="rgba(196,98,58,0.12)"
+                        onChange={(f, v) => updateArt(ki, ai, f, v)} compact/>
+                      {artLineDiscount(art) > 0 && (
+                        <div style={{ marginTop: 8, fontSize: 11, color: MUTED }}>
+                          € {artLineBase(art).toFixed(2)} <span style={{ color: '#ef4444' }}>− € {artLineDiscount(art).toFixed(2)}</span> = € {(artLineBase(art) - artLineDiscount(art)).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                     <button style={{ ...btnGoldStyle, padding: '5px 14px', fontSize: 9, borderColor: CLAY, color: CLAY }} onClick={() => duplicateArt(ki, ai)}>⧉ Duplica</button>
                     {kit.articles.length > 1 && <button style={{ ...btnStyle(false), padding: '5px 10px', fontSize: 9, color: CLAY }} onClick={() => removeArt(ki, ai)}>Rimuovi</button>}

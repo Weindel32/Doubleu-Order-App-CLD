@@ -1,5 +1,11 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal,
+         artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
+
+// Riga sconto sotto il prezzo di listino della singola voce
+const lineDisc = (base, disc, entity) => disc > 0
+  ? `<div style="font-size:11px;color:#c4623a;margin-top:2px;">sconto${entity.discountType !== 'importo' ? ` ${parseFloat(entity.discountValue) || 0}%` : ''} − € ${disc.toFixed(2)}</div>`
+  : ''
 
 export function generateClientPDF(order) {
   const articles = getAllArticles(order)
@@ -27,7 +33,8 @@ export function generateClientPDF(order) {
             <div style="text-align:right;">
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° PERSONE</div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(kit.price)||0).toFixed(2)} × ${qty} pers.</div>
-              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${kitTotal.toFixed(2)}</div>
+              ${lineDisc(kitTotal, kitDiscountApplied(order, kit), kit)}
+              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${(kitTotal - kitDiscountApplied(order, kit)).toFixed(2)}</div>
             </div>
           </div>`
       }).join('')
@@ -45,7 +52,8 @@ export function generateClientPDF(order) {
             <div style="text-align:right;">
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO UNITARIO</div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(a.price)||0).toFixed(2)} × ${pz} pz</div>
-              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${tot.toFixed(2)}</div>
+              ${lineDisc(tot, artDiscountApplied(order, a), a)}
+              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${(tot - artDiscountApplied(order, a)).toFixed(2)}</div>
             </div>
           </div>`
       }).join('')
@@ -114,6 +122,12 @@ export function generateClientPDF(order) {
       </div>`
   }).join('')
 
+  const orderNoteBlock = order.orderNote ? `
+    <div style="margin-top:12px;padding:10px 16px;background:#fff7f0;border-left:3px solid #c4623a;border-radius:4px;">
+      <div style="font-size:9px;letter-spacing:2px;color:#c4623a;margin-bottom:3px;">NOTA ORDINE</div>
+      <div style="font-size:13px;color:#1a2744;">${order.orderNote}</div>
+    </div>` : ''
+
   const clientDetailsBlock = (order.clientContact || order.clientEmail || order.clientPhone || order.clientCity) ? `
     <div style="margin-top:12px;display:flex;gap:28px;flex-wrap:wrap;">
       ${order.clientContact ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">REFERENTE</div><div style="font-size:13px;color:#1a2744;">${order.clientContact}</div></div>` : ''}
@@ -131,7 +145,7 @@ export function generateClientPDF(order) {
         </div>
         ${discAmt > 0 ? `
         <div style="display:flex;justify-content:space-between;width:280px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">SCONTO${order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''}</span>
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">${order.discountMode === 'articolo' ? 'SCONTO TOTALE' : `SCONTO${order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''}`}</span>
           <span style="font-size:15px;color:#c4623a;">− € ${discAmt.toFixed(2)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;width:280px;">
@@ -192,6 +206,7 @@ export function generateClientPDF(order) {
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;">${order.status}</div></div>
     </div>
     ${clientDetailsBlock}
+    ${orderNoteBlock}
     ${order.notes ? `<div style="margin-top:14px;padding:10px 16px;background:white;border-radius:6px;border:1px solid #e0d8cc;font-size:13px;color:#1a2744;">${order.notes}</div>` : ''}
   </div>
 

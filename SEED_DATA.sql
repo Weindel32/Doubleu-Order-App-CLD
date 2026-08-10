@@ -36,6 +36,21 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_type text DEFAULT 'percentu
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_value numeric DEFAULT 0;
 -- ----------------------------------------------------------------
 
+-- ----------------------------------------------------------------
+-- MIGRATION: sconto per riga e nota ordine (esegui una volta sola)
+-- discount_mode: 'nessuno' | 'ordine' (sul subtotale) | 'articolo'
+-- (per articolo in pricing singolo, per kit in pricing kit)
+-- order_note: nota in evidenza sul singolo ordine (es. chi ha
+-- effettuato l'ordine per conto del cliente)
+-- ----------------------------------------------------------------
+ALTER TABLE orders   ADD COLUMN IF NOT EXISTS discount_mode text DEFAULT 'ordine';
+ALTER TABLE orders   ADD COLUMN IF NOT EXISTS order_note text;
+ALTER TABLE kits     ADD COLUMN IF NOT EXISTS discount_type text DEFAULT 'percentuale';
+ALTER TABLE kits     ADD COLUMN IF NOT EXISTS discount_value numeric DEFAULT 0;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS discount_type text DEFAULT 'percentuale';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS discount_value numeric DEFAULT 0;
+-- ----------------------------------------------------------------
+
 -- ORDINE 1: ECO VILLAGE
 INSERT INTO orders VALUES ('DU-2026-0038','ECO VILLAGE','10/12/2025','28/02/2026',10,'CONSEGNATO',242,'kit','Cliente premium - priorità assoluta','Verde ECO pantone 356C. Logo fronte ricamato, retro stampa.',true,now());
 INSERT INTO kits (order_id,name,price,position) VALUES ('DU-2026-0038','Kit Completo ECO Village',90,0);

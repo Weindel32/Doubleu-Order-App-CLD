@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
-import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal } from '../utils/helpers.js'
+import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
+         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -10,15 +11,16 @@ import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
 import SpAutocomplete            from '../components/SpAutocomplete.jsx'
+import DiscountFields            from '../components/DiscountFields.jsx'
 
 const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riepilogo']
 
 const emptyArticle = () => ({
   sp:'', category:'Felpa', line:'Performance', description:'', color:'', price:'', notes:'',
-  delivered: false, omaggio: 0,
+  delivered: false, omaggio: 0, discountType:'percentuale', discountValue:'',
   sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])), uni:0 }
 })
-const emptyKit = () => ({ name:'', price:'', quantity:'', articles:[emptyArticle()] })
+const emptyKit = () => ({ name:'', price:'', quantity:'', discountType:'percentuale', discountValue:'', articles:[emptyArticle()] })
 
 // ── Date picker ──────────────────────────────────────────────────
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
@@ -150,8 +152,10 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
   const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
   const [shipping,setShipping]     = useState(editOrder?.shipping ?? '')
+  const [discountMode,setDiscountMode]   = useState(editOrder?.discountMode || (editOrder?.discountValue ? 'ordine' : 'nessuno'))
   const [discountType,setDiscountType]   = useState(editOrder?.discountType || 'percentuale')
   const [discountValue,setDiscountValue] = useState(editOrder?.discountValue || '')
+  const [orderNote,setOrderNote]         = useState(editOrder?.orderNote || '')
   const [invoiceNumber,setInvoiceNumber] = useState(editOrder?.invoiceNumber || '')
   const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
   const [orderType,setOrderType]   = useState(editOrder?.orderType || 'istituzionale')
@@ -183,7 +187,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
     cancelDate:   status==='ANNULLATO' ? (cancelDate || null) : null,
     kitQuantity: null,
     ivaEnabled, ivaRate, shipping: parseFloat(shipping) || 0, invoiceNumber, kits, payments,
-    discountType, discountValue: parseFloat(discountValue) || 0,
+    discountMode, discountType, discountValue: parseFloat(discountValue) || 0,
+    orderNote,
     showTotalInClientPDF: showTotal,
   })
 
@@ -312,10 +317,38 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
         {pricingMode==='kit' && kits.map((kit,ki)=>{
           const qty = parseInt(kit.quantity)||0
           const kitTotal = (parseFloat(kit.price)||0)*qty
+          const kitDisc = discountMode==='articolo' ? kitLineDiscount(currentOrder,kit) : 0
           return (
-            <div key={ki} style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
-              <span>{kit.name||`Kit ${ki+1}`} — € {parseFloat(kit.price)||0} × {qty||'?'}</span>
-              <span style={{ color:CREAM }}>€ {kitTotal.toFixed(2)}</span>
+            <div key={ki}>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
+                <span>{kit.name||`Kit ${ki+1}`} — € {parseFloat(kit.price)||0} × {qty||'?'}</span>
+                <span style={{ color:CREAM }}>€ {kitTotal.toFixed(2)}</span>
+              </div>
+              {kitDisc > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
+                  <span>sconto{kit.discountType!=='importo' ? ` ${parseFloat(kit.discountValue)||0}%` : ''}</span>
+                  <span style={{ color:'#ef4444' }}>− € {kitDisc.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {pricingMode==='singolo' && discountMode==='articolo' && allArticles.map((art,i)=>{
+          const base = artLineBase(art)
+          const disc = artLineDiscount(art)
+          if (base <= 0) return null
+          return (
+            <div key={i}>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
+                <span>{art.description||`Articolo ${i+1}`} — € {parseFloat(art.price)||0} × {artPieceCount(art)||parseInt(art.estimatedQty)||0} pz</span>
+                <span style={{ color:CREAM }}>€ {base.toFixed(2)}</span>
+              </div>
+              {disc > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
+                  <span>sconto{art.discountType!=='importo' ? ` ${parseFloat(art.discountValue)||0}%` : ''}</span>
+                  <span style={{ color:'#ef4444' }}>− € {disc.toFixed(2)}</span>
+                </div>
+              )}
             </div>
           )
         })}
@@ -327,7 +360,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
         )}
         {discAmount > 0 && (
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
-            <span>Sconto{discountType==='percentuale' ? ` ${parseFloat(discountValue)||0}%` : ''}</span>
+            <span>{discountMode==='articolo' ? 'Sconto totale' : `Sconto${discountType==='percentuale' ? ` ${parseFloat(discountValue)||0}%` : ''}`}</span>
             <span style={{ color:'#ef4444' }}>− € {discAmount.toFixed(2)}</span>
           </div>
         )}
@@ -396,6 +429,11 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
             <div style={{fontSize:10,color:MUTED,marginTop:8}}>Seleziona un cliente per pre-compilare i campi — puoi modificarli prima di salvare</div>
           </div>
         )}
+        <div style={{...s.card, background:'rgba(184,150,90,0.07)', border:`1px solid rgba(184,150,90,0.25)`}}>
+          <div style={s.cardTitle}>Nota Ordine</div>
+          <input style={inp} value={orderNote} onChange={e=>setOrderNote(e.target.value)} placeholder="Es. Ordine effettuato da Fabian Arnold per conto di MTC"/>
+          <div style={{fontSize:10,color:MUTED,marginTop:8}}>Nota in evidenza sul singolo ordine — compare nel riepilogo, nel dettaglio e nei PDF. Il campo Referente qui sotto resta invece salvato sulla scheda cliente.</div>
+        </div>
         <div style={s.card}>
           <div style={s.cardTitle}>Dati Club / Cliente</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
@@ -499,24 +537,22 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
         </div>
         <div style={s.card}>
           <div style={s.cardTitle}>Sconto</div>
-          <div style={{display:'grid',gridTemplateColumns:'220px 160px',gap:16,alignItems:'end'}}>
-            <div>
-              <label style={s.label}>Tipo</label>
-              <div style={{display:'flex',gap:10}}>
-                {[['percentuale','%'],['importo','€']].map(([val,label])=>(
-                  <button key={val} onClick={()=>setDiscountType(val)} style={{padding:'10px 28px',borderRadius:3,border:`1px solid ${discountType===val?GOLD:BORDER}`,background:discountType===val?'rgba(184,150,90,0.12)':'transparent',color:discountType===val?GOLD:MUTED,cursor:'pointer',fontSize:12,fontWeight:600}}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label style={s.label}>{discountType==='percentuale'?'Sconto %':'Sconto €'}</label>
-              <input type="number" min="0" step={discountType==='percentuale'?'1':'0.01'} max={discountType==='percentuale'?'100':undefined}
-                style={inp} value={discountValue} onChange={e=>setDiscountValue(e.target.value)}
-                placeholder={discountType==='percentuale'?'10':'150'}/>
-            </div>
+          <div style={{display:'flex',gap:10,marginBottom:discountMode==='nessuno'?0:16,flexWrap:'wrap'}}>
+            {[['nessuno','Nessuno'],['ordine','Intero ordine'],['articolo',pricingMode==='kit'?'Per kit':'Per articolo']].map(([val,label])=>(
+              <button key={val} onClick={()=>setDiscountMode(val)} style={{padding:'10px 28px',borderRadius:3,border:`1px solid ${discountMode===val?GOLD:BORDER}`,background:discountMode===val?'rgba(184,150,90,0.12)':'transparent',color:discountMode===val?GOLD:MUTED,cursor:'pointer',fontSize:10,letterSpacing:2,textTransform:'uppercase',fontWeight:600}}>
+                {label}
+              </button>
+            ))}
           </div>
+          {discountMode==='ordine' && (
+            <DiscountFields type={discountType} value={discountValue}
+              onChange={(f,v)=>f==='discountType'?setDiscountType(v):setDiscountValue(v)}/>
+          )}
+          {discountMode==='articolo' && (
+            <div style={{fontSize:11,color:MUTED}}>
+              Imposta lo sconto su ogni {pricingMode==='kit'?'kit':'articolo'} qui sotto. Le righe lasciate a zero non vengono scontate.
+            </div>
+          )}
           {discAmount > 0 && (
             <div style={{marginTop:12,fontSize:11,color:MUTED}}>
               Sconto applicato sul subtotale (imponibile): <span style={{color:'#ef4444'}}>− € {discAmount.toFixed(2)}</span>
@@ -534,6 +570,17 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
                 <input type="number" min="1" style={{...inp,borderColor:!kit.quantity?'rgba(184,150,90,0.5)':undefined}} value={kit.quantity} onChange={e=>updateKit(ki,'quantity',e.target.value)} placeholder="Es. 50"/>
               </div>
             </div>}
+            {pricingMode==='kit' && discountMode==='articolo' && (
+              <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${BORDER}`}}>
+                <DiscountFields type={kit.discountType} value={kit.discountValue}
+                  onChange={(f,v)=>updateKit(ki,f,v)} compact/>
+                {kitLineDiscount(currentOrder,kit) > 0 && (
+                  <div style={{marginTop:8,fontSize:11,color:MUTED}}>
+                    € {kitLineBase(currentOrder,kit).toFixed(2)} <span style={{color:'#ef4444'}}>− € {kitLineDiscount(currentOrder,kit).toFixed(2)}</span> = € {(kitLineBase(currentOrder,kit)-kitLineDiscount(currentOrder,kit)).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            )}
             <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:14}}>{pricingMode==='kit'?'ARTICOLI NEL KIT':'ARTICOLI'}</div>
             {kit.articles.map((art,ai)=>(
               <div key={ai} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'14px',marginBottom:10}}>
@@ -559,6 +606,17 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
                   </div>
                   <div><label style={s.label}>Note articolo</label><input style={inp} value={art.notes||''} onChange={e=>updateArt(ki,ai,'notes',e.target.value)} placeholder="Es. logo ricamato fronte sinistra, manica raglan..."/></div>
                 </div>
+                {pricingMode==='singolo' && discountMode==='articolo' && (
+                  <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${BORDER}`}}>
+                    <DiscountFields type={art.discountType} value={art.discountValue}
+                      onChange={(f,v)=>updateArt(ki,ai,f,v)} compact/>
+                    {artLineDiscount(art) > 0 && (
+                      <div style={{marginTop:8,fontSize:11,color:MUTED}}>
+                        € {artLineBase(art).toFixed(2)} <span style={{color:'#ef4444'}}>− € {artLineDiscount(art).toFixed(2)}</span> = € {(artLineBase(art)-artLineDiscount(art)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{display:'flex',gap:8,marginTop:10}}>
                   {/* ── DUPLICATE BUTTON ── */}
                   <button style={{...btnGoldStyle,padding:'5px 14px',fontSize:9}} onClick={()=>duplicateArt(ki,ai)} title="Duplica articolo">
@@ -653,6 +711,12 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
       {step===5 && <div>
         <div style={s.card}>
           <div style={s.cardTitle}>Riepilogo Ordine</div>
+          {orderNote && (
+            <div style={{marginBottom:20,padding:'12px 16px',background:'rgba(184,150,90,0.1)',border:`1px solid rgba(184,150,90,0.35)`,borderRadius:6}}>
+              <div style={{fontSize:9,letterSpacing:2,color:GOLD,marginBottom:6}}>NOTA ORDINE</div>
+              <div style={{fontSize:13,color:CREAM}}>{orderNote}</div>
+            </div>
+          )}
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:20}}>
             {[
               {l:'CLUB',v:club||'—',serif:true},
