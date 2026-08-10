@@ -1,5 +1,5 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
-import { orderSubtotal, orderIVA, orderTotal } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
 
 function fmt(n) {
@@ -32,6 +32,7 @@ function InfoRow({ label, value, valueColor, href }) {
 
 export default function MobileQuoteDetail({ quote, onBack }) {
   const subtotal    = orderSubtotal(quote)
+  const discount    = orderDiscount(quote)
   const iva         = orderIVA(quote)
   const total       = orderTotal(quote)
   const allArticles = (quote.kits || []).flatMap(k => k.articles || [])
@@ -191,6 +192,12 @@ export default function MobileQuoteDetail({ quote, onBack }) {
             )
           })}
           <InfoRow label="Subtotale" value={fmt(subtotal)} />
+          {discount > 0 && (
+            <>
+              <InfoRow label={`Sconto${quote.discountType === 'percentuale' ? ` ${parseFloat(quote.discountValue) || 0}%` : ''}`} value={`− ${fmt(discount)}`} />
+              <InfoRow label="Imponibile" value={fmt(subtotal - discount)} />
+            </>
+          )}
           {quote.ivaEnabled && <InfoRow label={`IVA ${quote.ivaRate || 22}%`} value={fmt(iva)} />}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(184,150,90,0.2)', marginTop: 4 }}>
             <span style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale Preventivo</span>

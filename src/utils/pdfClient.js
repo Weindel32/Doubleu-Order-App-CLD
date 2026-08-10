@@ -1,5 +1,5 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderTotal } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal } from '../utils/helpers.js'
 
 export function generateClientPDF(order) {
   const articles = getAllArticles(order)
@@ -7,6 +7,7 @@ export function generateClientPDF(order) {
   const hasAdult = articles.some(a => ADULT_SIZES.some(sz => (a.sizes.adult?.[sz] || 0) > 0))
   const subtotal = orderSubtotal(order)
   const shipAmt  = orderShipping(order)
+  const discAmt  = orderDiscount(order)
   const ivaAmt   = orderIVA(order)
   const total    = orderTotal(order)
 
@@ -125,9 +126,18 @@ export function generateClientPDF(order) {
     <div style="margin-top:20px;padding-top:16px;border-top:2px solid #e0d8cc;">
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
         <div style="display:flex;justify-content:space-between;width:280px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IMPONIBILE</span>
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">${discAmt > 0 ? 'SUBTOTALE' : 'IMPONIBILE'}</span>
           <span style="font-size:15px;color:#1a2744;">€ ${subtotal.toFixed(2)}</span>
         </div>
+        ${discAmt > 0 ? `
+        <div style="display:flex;justify-content:space-between;width:280px;">
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">SCONTO${order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''}</span>
+          <span style="font-size:15px;color:#c4623a;">− € ${discAmt.toFixed(2)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;width:280px;">
+          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IMPONIBILE</span>
+          <span style="font-size:15px;color:#1a2744;">€ ${(subtotal - discAmt).toFixed(2)}</span>
+        </div>` : ''}
         ${order.ivaEnabled ? `
         <div style="display:flex;justify-content:space-between;width:280px;">
           <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IVA ${order.ivaRate || 22}%</span>

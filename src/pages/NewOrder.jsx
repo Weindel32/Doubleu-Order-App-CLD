@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
-import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderTotal as calcOrderTotal } from '../utils/helpers.js'
+import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -150,6 +150,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
   const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
   const [shipping,setShipping]     = useState(editOrder?.shipping ?? '')
+  const [discountType,setDiscountType]   = useState(editOrder?.discountType || 'percentuale')
+  const [discountValue,setDiscountValue] = useState(editOrder?.discountValue || '')
   const [invoiceNumber,setInvoiceNumber] = useState(editOrder?.invoiceNumber || '')
   const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
   const [orderType,setOrderType]   = useState(editOrder?.orderType || 'istituzionale')
@@ -181,12 +183,14 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
     cancelDate:   status==='ANNULLATO' ? (cancelDate || null) : null,
     kitQuantity: null,
     ivaEnabled, ivaRate, shipping: parseFloat(shipping) || 0, invoiceNumber, kits, payments,
+    discountType, discountValue: parseFloat(discountValue) || 0,
     showTotalInClientPDF: showTotal,
   })
 
   const currentOrder = orderObj()
   const subtotal  = orderSubtotal(currentOrder)
   const shipAmount = orderShipping(currentOrder)
+  const discAmount = orderDiscount(currentOrder)
   const ivaAmount = orderIVA(currentOrder)
   const total     = calcOrderTotal(currentOrder)
   const totalPaid = payments.filter(p=>p.paid).reduce((s,p)=>s+(parseFloat(p.amount)||0),0)
@@ -315,10 +319,22 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
             </div>
           )
         })}
-        {pricingMode==='singolo' && (
+        {(pricingMode==='singolo' || discAmount > 0) && (
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
             <span>Subtotale</span>
             <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>€ {subtotal.toFixed(2)}</span>
+          </div>
+        )}
+        {discAmount > 0 && (
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
+            <span>Sconto{discountType==='percentuale' ? ` ${parseFloat(discountValue)||0}%` : ''}</span>
+            <span style={{ color:'#ef4444' }}>− € {discAmount.toFixed(2)}</span>
+          </div>
+        )}
+        {discAmount > 0 && (
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
+            <span>Imponibile</span>
+            <span style={{ color:CREAM }}>€ {(subtotal - discAmount).toFixed(2)}</span>
           </div>
         )}
         {ivaEnabled && (
@@ -480,6 +496,32 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
             <span style={{fontSize:12,color:CREAM}}>Applica IVA 22%</span>
             <span style={{fontSize:10,color:MUTED}}>{ivaEnabled?'Sì':'No'}</span>
           </label>
+        </div>
+        <div style={s.card}>
+          <div style={s.cardTitle}>Sconto</div>
+          <div style={{display:'grid',gridTemplateColumns:'220px 160px',gap:16,alignItems:'end'}}>
+            <div>
+              <label style={s.label}>Tipo</label>
+              <div style={{display:'flex',gap:10}}>
+                {[['percentuale','%'],['importo','€']].map(([val,label])=>(
+                  <button key={val} onClick={()=>setDiscountType(val)} style={{padding:'10px 28px',borderRadius:3,border:`1px solid ${discountType===val?GOLD:BORDER}`,background:discountType===val?'rgba(184,150,90,0.12)':'transparent',color:discountType===val?GOLD:MUTED,cursor:'pointer',fontSize:12,fontWeight:600}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label style={s.label}>{discountType==='percentuale'?'Sconto %':'Sconto €'}</label>
+              <input type="number" min="0" step={discountType==='percentuale'?'1':'0.01'} max={discountType==='percentuale'?'100':undefined}
+                style={inp} value={discountValue} onChange={e=>setDiscountValue(e.target.value)}
+                placeholder={discountType==='percentuale'?'10':'150'}/>
+            </div>
+          </div>
+          {discAmount > 0 && (
+            <div style={{marginTop:12,fontSize:11,color:MUTED}}>
+              Sconto applicato sul subtotale (imponibile): <span style={{color:'#ef4444'}}>− € {discAmount.toFixed(2)}</span>
+            </div>
+          )}
         </div>
 
         {kits.map((kit,ki)=>(

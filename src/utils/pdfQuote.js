@@ -1,4 +1,4 @@
-import { orderSubtotal, orderIVA, orderTotal } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal } from '../utils/helpers.js'
 
 const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const KIDS_SIZES  = ['4', '6', '8', '10', '12', '14', '16']
@@ -65,6 +65,7 @@ function sizeTableHtml(art) {
 export function generateQuotePDF(order) {
   var articles = (order.kits || []).flatMap(function(k) { return k.articles || [] })
   var subtotal  = orderSubtotal(order)
+  var discAmt   = orderDiscount(order)
   var ivaAmt    = orderIVA(order)
   var total     = orderTotal(order)
   var anyHasSizes = articles.some(function(a) { return artSizeTotal(a) > 0 })
@@ -138,9 +139,16 @@ export function generateQuotePDF(order) {
   }
 
   var kitPersone = order.kits.reduce(function(s, k) { return s + (parseInt(k.quantity) || parseInt(order.kitQuantity) || 0) }, 0)
-  var totLabel = order.pricingMode === 'kit'
-    ? 'TOTALE STIMATO (' + kitPersone + ' PERSONE)'
-    : 'IMPONIBILE STIMATO'
+  var totLabel = discAmt > 0
+    ? 'SUBTOTALE' + (order.pricingMode === 'kit' ? ' (' + kitPersone + ' PERSONE)' : '')
+    : order.pricingMode === 'kit'
+      ? 'TOTALE STIMATO (' + kitPersone + ' PERSONE)'
+      : 'IMPONIBILE STIMATO'
+
+  var discRow = discAmt > 0
+    ? '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">SCONTO' + (order.discountType === 'percentuale' ? ' ' + (parseFloat(order.discountValue) || 0) + '%' : '') + '</span><span style="font-size:15px;color:#c4623a;">&minus; &euro; ' + discAmt.toFixed(2) + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IMPONIBILE</span><span style="font-size:15px;color:#1a2744;">&euro; ' + (subtotal - discAmt).toFixed(2) + '</span></div>'
+    : ''
 
   var ivaRow = order.ivaEnabled
     ? '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IVA ' + (order.ivaRate || 22) + '%</span><span style="font-size:15px;color:#1a2744;">&euro; ' + ivaAmt.toFixed(2) + '</span></div>'
@@ -149,6 +157,7 @@ export function generateQuotePDF(order) {
   var totalBlock = '<div style="margin-top:20px;padding-top:16px;border-top:2px solid #e0d8cc;">'
     + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">'
     + '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">' + totLabel + '</span><span style="font-size:15px;color:#1a2744;">&euro; ' + subtotal.toFixed(2) + '</span></div>'
+    + discRow
     + ivaRow
     + '<div style="display:flex;justify-content:space-between;width:300px;padding-top:8px;border-top:1px solid #e0d8cc;"><span style="font-size:11px;color:#1a2744;font-weight:700;letter-spacing:2px;">TOTALE PREVENTIVO' + (order.ivaEnabled ? ' IVA INCL.' : '') + '</span><span style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;font-weight:600;">&euro; ' + total.toFixed(2) + '</span></div>'
     + '</div></div>'
