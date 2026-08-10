@@ -1,4 +1,11 @@
-import { orderSubtotal, orderIVA, orderDiscount, orderTotal } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
+
+// Riga sconto sotto il prezzo di listino della singola voce
+function lineDisc(disc, entity) {
+  if (disc <= 0) return ''
+  var label = entity.discountType !== 'importo' ? ' ' + (parseFloat(entity.discountValue) || 0) + '%' : ''
+  return '<div style="font-size:11px;color:#c4623a;margin-top:2px;">sconto' + label + ' &minus; &euro; ' + disc.toFixed(2) + '</div>'
+}
 
 const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const KIDS_SIZES  = ['4', '6', '8', '10', '12', '14', '16']
@@ -86,7 +93,8 @@ export function generateQuotePDF(order) {
           + '<div style="text-align:right;">'
           + '<div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT &times; N&deg; PERSONE</div>'
           + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#c4623a;">&euro; ' + (parseFloat(kit.price) || 0).toFixed(2) + ' &times; ' + qty + ' pers.</div>'
-          + '<div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= &euro; ' + kitTotal.toFixed(2) + '</div>'
+          + lineDisc(kitDiscountApplied(order, kit), kit)
+          + '<div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= &euro; ' + (kitTotal - kitDiscountApplied(order, kit)).toFixed(2) + '</div>'
           + '</div></div>'
       }).join('')
     } else {
@@ -98,7 +106,8 @@ export function generateQuotePDF(order) {
         var priceRight = qty
           ? '<div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO &times; ' + qtyLabel + '</div>'
             + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#c4623a;">&euro; ' + (parseFloat(a.price) || 0).toFixed(2) + ' &times; ' + qty + ' pz</div>'
-            + '<div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= &euro; ' + artTotal.toFixed(2) + '</div>'
+            + lineDisc(artDiscountApplied(order, a), a)
+            + '<div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= &euro; ' + (artTotal - artDiscountApplied(order, a)).toFixed(2) + '</div>'
           : '<div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO UNITARIO</div>'
             + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#c4623a;">&euro; ' + (parseFloat(a.price) || 0).toFixed(2) + '</div>'
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">'
@@ -137,6 +146,11 @@ export function generateQuotePDF(order) {
       + (order.clientCity    ? '<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">CITT&Agrave;</div><div style="font-size:13px;color:#1a2744;">' + order.clientCity + (order.clientCountry ? ', ' + order.clientCountry : '') + '</div></div>' : '')
       + '</div>'
   }
+  if (order.orderNote) {
+    clientDetailsBlock += '<div style="margin-top:12px;padding:10px 16px;background:#fff7f0;border-left:3px solid #c4623a;border-radius:4px;">'
+      + '<div style="font-size:9px;letter-spacing:2px;color:#c4623a;margin-bottom:3px;">NOTA PREVENTIVO</div>'
+      + '<div style="font-size:13px;color:#1a2744;">' + order.orderNote + '</div></div>'
+  }
 
   var kitPersone = order.kits.reduce(function(s, k) { return s + (parseInt(k.quantity) || parseInt(order.kitQuantity) || 0) }, 0)
   var totLabel = discAmt > 0
@@ -146,7 +160,7 @@ export function generateQuotePDF(order) {
       : 'IMPONIBILE STIMATO'
 
   var discRow = discAmt > 0
-    ? '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">SCONTO' + (order.discountType === 'percentuale' ? ' ' + (parseFloat(order.discountValue) || 0) + '%' : '') + '</span><span style="font-size:15px;color:#c4623a;">&minus; &euro; ' + discAmt.toFixed(2) + '</span></div>'
+    ? '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">' + (order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ' ' + (parseFloat(order.discountValue) || 0) + '%' : '')) + '</span><span style="font-size:15px;color:#c4623a;">&minus; &euro; ' + discAmt.toFixed(2) + '</span></div>'
       + '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IMPONIBILE</span><span style="font-size:15px;color:#1a2744;">&euro; ' + (subtotal - discAmt).toFixed(2) + '</span></div>'
     : ''
 

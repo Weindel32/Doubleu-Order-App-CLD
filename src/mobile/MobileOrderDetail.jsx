@@ -1,6 +1,6 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
-import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery } from '../utils/helpers.js'
+import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery, artDiscountApplied } from '../utils/helpers.js'
 
 function fmt(n) {
   return '€' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -104,6 +104,14 @@ export default function MobileOrderDetail({ order, onBack }) {
           </div>
         )}
 
+        {/* Nota ordine */}
+        {order.orderNote && (
+          <div style={{ background: 'rgba(184,150,90,0.1)', border: '1px solid rgba(184,150,90,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 8 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, marginBottom: 4 }}>NOTA ORDINE</div>
+            <div style={{ fontSize: 13, color: CREAM }}>{order.orderNote}</div>
+          </div>
+        )}
+
         {/* Dettaglio ordine */}
         <SectionTitle>Dettaglio Ordine</SectionTitle>
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px' }}>
@@ -159,6 +167,11 @@ export default function MobileOrderDetail({ order, onBack }) {
                     {art.color && <div style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>{art.color}</div>}
                     {art.sp && <div style={{ fontSize: 11, color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
                     {art.notes && <div style={{ fontSize: 12, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
+                    {artDiscountApplied(order, art) > 0 && (
+                      <div style={{ fontSize: 11, color: CLAY, marginTop: 4 }}>
+                        sconto{art.discountType !== 'importo' ? ` ${parseFloat(art.discountValue) || 0}%` : ''} · − {fmt(artDiscountApplied(order, art))}
+                      </div>
+                    )}
                     {(() => {
                       const adultEntries = ADULT_SIZES.filter(sz => (art.sizes?.adult?.[sz] || 0) > 0)
                       const kidsEntries  = KIDS_SIZES.filter(sz  => (art.sizes?.kids?.[sz]  || 0) > 0)
@@ -210,7 +223,7 @@ export default function MobileOrderDetail({ order, onBack }) {
           <InfoRow label="Subtotale" value={fmt(subtotal)} />
           {discount > 0 && (
             <>
-              <InfoRow label={`Sconto${order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''}`} value={`− ${fmt(discount)}`} />
+              <InfoRow label={order.discountMode === 'articolo' ? 'Sconto totale' : `Sconto${order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''}`} value={`− ${fmt(discount)}`} />
               <InfoRow label="Imponibile" value={fmt(subtotal - discount)} />
             </>
           )}
