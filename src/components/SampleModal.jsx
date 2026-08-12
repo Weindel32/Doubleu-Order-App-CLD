@@ -292,7 +292,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
           <button style={{ ...btnGoldStyle, padding: '4px 14px', fontSize: 9 }} onClick={addItem}>+ Riga</button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {form.items.map((it, i) => {
             const outCfg = OUTCOME_CFG[it.outcome || 'in_attesa']
             const isOpen = expanded.has(it._key)
@@ -303,14 +303,14 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
 
               {/* Intestazione riga: sempre visibile, click per espandere */}
               <div onClick={() => toggleExpanded(it._key)}
-                style={{ padding: '11px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <span style={{ color: GOLD, fontSize: 10, flexShrink: 0 }}>{isOpen ? '▾' : '▸'}</span>
+                style={{ padding: '15px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+                  <span style={{ color: GOLD, fontSize: 16, flexShrink: 0, padding: '4px 2px' }}>{isOpen ? '▾' : '▸'}</span>
                   <span style={{ fontSize: 13, color: CREAM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {label || 'Nuovo articolo'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                   {it.revision_requested && (
                     <span title="Richiede modifiche" style={{ fontSize: 9, letterSpacing: 1, padding: '2px 8px', borderRadius: 2,
                       color: '#e8c96e', background: 'rgba(232,201,110,0.12)', border: '1px solid rgba(232,201,110,0.35)' }}>
@@ -320,7 +320,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
                   <OutcomeBadge outcome={it.outcome || 'in_attesa'}/>
                   <button onClick={e => { e.stopPropagation(); removeItem(i) }} disabled={form.items.length === 1}
                     title="Rimuovi riga"
-                    style={{ padding: '2px 8px', borderRadius: 3, fontSize: 13, lineHeight: 1,
+                    style={{ padding: '7px 13px', borderRadius: 4, fontSize: 16, lineHeight: 1, marginLeft: 4,
                       cursor: form.items.length === 1 ? 'not-allowed' : 'pointer',
                       background: 'transparent', border: '1px solid rgba(196,98,58,0.35)',
                       color: CLAY, opacity: form.items.length === 1 ? 0.35 : 1 }}>×</button>
@@ -328,7 +328,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
               </div>
 
               {isOpen && (
-                <div style={{ padding: '0 14px 14px' }}>
+                <div style={{ padding: '0 18px 18px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 1fr', gap: 10, marginBottom: 10 }}>
                     <SpAutocomplete
                       value={it.sp}
