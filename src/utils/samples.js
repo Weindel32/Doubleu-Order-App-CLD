@@ -30,12 +30,16 @@ export const OUTCOME_LABELS = {
   ordine:     'Ordine acquisito',
 }
 
+// Colori a colpo d'occhio: verde/rosso per il feedback (buono/cattivo),
+// separati dall'esito commerciale (blu = preventivo in corso, oro =
+// ordine acquisito, come il resto dei valori economici nell'app). Un
+// feedback positivo non implica un ordine: sono stati indipendenti.
 export const OUTCOME_CFG = {
   in_attesa:  { color: MUTED,     border: 'rgba(138,154,181,0.3)',  bg: 'rgba(138,154,181,0.12)' },
-  positivo:   { color: '#7aaee8', border: 'rgba(90,130,184,0.35)',  bg: 'rgba(90,130,184,0.15)'  },
+  positivo:   { color: GREEN,     border: 'rgba(74,158,110,0.35)',  bg: 'rgba(74,158,110,0.15)'  },
   negativo:   { color: CLAY,      border: 'rgba(196,98,58,0.3)',    bg: 'rgba(196,98,58,0.12)'   },
-  preventivo: { color: GOLD,      border: 'rgba(184,150,90,0.35)',  bg: 'rgba(184,150,90,0.15)'  },
-  ordine:     { color: GREEN,     border: 'rgba(74,158,110,0.35)',  bg: 'rgba(74,158,110,0.15)'  },
+  preventivo: { color: '#7aaee8', border: 'rgba(90,130,184,0.35)',  bg: 'rgba(90,130,184,0.15)'  },
+  ordine:     { color: GOLD,      border: 'rgba(184,150,90,0.35)',  bg: 'rgba(184,150,90,0.15)'  },
 }
 
 // Un articolo è "aperto" finché non ha ricevuto un esito.
