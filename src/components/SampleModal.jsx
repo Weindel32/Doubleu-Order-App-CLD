@@ -3,6 +3,7 @@ import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES, CATEG
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import SpAutocomplete from './SpAutocomplete.jsx'
 import DatePicker from './DatePicker.jsx'
+import { OutcomeBadge } from './SampleTimeline.jsx'
 import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   todayISO, addDaysISO, itemCostValue, itemPriceValue, euro, FOLLOW_UP_DAYS,
@@ -11,7 +12,13 @@ import { generateSamplePDF } from '../utils/pdfSample.js'
 
 const inp = { ...s.input }
 
+// _key identifica la riga lato client (per lo stato "espansa/chiusa"),
+// indipendente dalla posizione nell'array e dall'id del db — non viene
+// salvato: dataService whitelista solo i campi che conosce.
+const newKey = () => `k${Date.now()}${Math.random().toString(36).slice(2)}`
+
 const EMPTY_ITEM = () => ({
+  _key: newKey(),
   sp: '', description: '', category: '', color: '', size: '', quantity: 1,
   unit_cost: '', unit_price: '', returned: false,
   outcome: 'in_attesa', outcome_date: '', outcome_note: '', outcome_order_id: '',
@@ -54,6 +61,7 @@ export function shipmentToForm(sh) {
     items: (sh.items || []).length > 0
       ? sh.items.map(it => ({
           ...it,
+          _key: it.id || newKey(),
           unit_cost:  it.unit_cost  ? String(it.unit_cost)  : '',
           unit_price: it.unit_price ? String(it.unit_price) : '',
           quantity:   it.quantity || 1,
@@ -74,6 +82,18 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
     form.client_id ? 'cliente' : form.prospect_id ? 'prospect' : 'altro'
   )
 
+  // Righe articolo: chiuse di default (basta descrizione + q.tà + esito
+  // per orientarsi), aperte solo quelle ancora vuote da compilare — così
+  // un invio con più articoli non costringe a scrollare tutto il modal.
+  const [expanded, setExpanded] = useState(() => new Set(
+    form.items.filter(it => !((it.sp || '').trim() || (it.description || '').trim())).map(it => it._key)
+  ))
+  const toggleExpanded = (key) => setExpanded(prev => {
+    const next = new Set(prev)
+    next.has(key) ? next.delete(key) : next.add(key)
+    return next
+  })
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const setItem = (i, k, v) => setForm(f => ({
@@ -88,7 +108,11 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
       : it),
   }))
 
-  const addItem    = ()  => setForm(f => ({ ...f, items: [...f.items, EMPTY_ITEM()] }))
+  const addItem = () => {
+    const item = EMPTY_ITEM()
+    setForm(f => ({ ...f, items: [...f.items, item] }))
+    setExpanded(prev => new Set(prev).add(item._key))
+  }
   const removeItem = (i) => setForm(f => ({ ...f, items: f.items.length > 1 ? f.items.filter((_, idx) => idx !== i) : f.items }))
 
   const chooseTarget = (t) => {
@@ -266,104 +290,126 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
           <button style={{ ...btnGoldStyle, padding: '4px 14px', fontSize: 9 }} onClick={addItem}>+ Riga</button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {form.items.map((it, i) => {
             const outCfg = OUTCOME_CFG[it.outcome || 'in_attesa']
+            const isOpen = expanded.has(it._key)
+            const label = [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
+              .filter(Boolean).join(' ')
             return (
-            <div key={i} style={{ padding: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderLeft: `3px solid ${outCfg.color}`, borderRadius: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 1fr', gap: 10, marginBottom: 10 }}>
-                <SpAutocomplete
-                  value={it.sp}
-                  category={it.category}
-                  inputStyle={inp}
-                  onSelect={p => setForm(f => ({
-                    ...f,
-                    items: f.items.map((row, idx) => idx === i
-                      ? { ...row, sp: p.code, description: p.description, category: p.category }
-                      : row),
-                  }))}
-                />
-                <div>
-                  <label style={s.label}>Descrizione</label>
-                  <input style={inp} value={it.description} onChange={e => setItem(i, 'description', e.target.value)}/>
+            <div key={it._key} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderLeft: `3px solid ${outCfg.color}`, borderRadius: 8, overflow: 'hidden' }}>
+
+              {/* Intestazione riga: sempre visibile, click per espandere */}
+              <div onClick={() => toggleExpanded(it._key)}
+                style={{ padding: '11px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <span style={{ color: GOLD, fontSize: 10, flexShrink: 0 }}>{isOpen ? '▾' : '▸'}</span>
+                  <span style={{ fontSize: 13, color: CREAM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {label || 'Nuovo articolo'}
+                  </span>
                 </div>
-                <div>
-                  <label style={s.label}>Categoria</label>
-                  <select style={{ ...inp, cursor: 'pointer' }} value={it.category} onChange={e => setItem(i, 'category', e.target.value)}>
-                    <option value="">— nessuna —</option>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <OutcomeBadge outcome={it.outcome || 'in_attesa'}/>
+                  <button onClick={e => { e.stopPropagation(); removeItem(i) }} disabled={form.items.length === 1}
+                    title="Rimuovi riga"
+                    style={{ padding: '2px 8px', borderRadius: 3, fontSize: 13, lineHeight: 1,
+                      cursor: form.items.length === 1 ? 'not-allowed' : 'pointer',
+                      background: 'transparent', border: '1px solid rgba(196,98,58,0.35)',
+                      color: CLAY, opacity: form.items.length === 1 ? 0.35 : 1 }}>×</button>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.7fr 0.6fr 0.8fr 0.8fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 10 }}>
-                <div>
-                  <label style={s.label}>Colore</label>
-                  <input style={inp} value={it.color} onChange={e => setItem(i, 'color', e.target.value)}/>
-                </div>
-                <div>
-                  <label style={s.label}>Taglia</label>
-                  <input style={inp} value={it.size} list="du-sample-sizes" placeholder="es. L"
-                    onChange={e => setItem(i, 'size', e.target.value)}/>
-                </div>
-                <div>
-                  <label style={s.label}>Q.tà</label>
-                  <input style={inp} type="number" min="1" value={it.quantity}
-                    onChange={e => setItem(i, 'quantity', e.target.value)}/>
-                </div>
-                <div>
-                  <label style={s.label}>Costo un. (€)</label>
-                  <input style={inp} type="number" step="0.01" value={it.unit_cost} placeholder="0"
-                    onChange={e => setItem(i, 'unit_cost', e.target.value)}/>
-                </div>
-                <div>
-                  <label style={s.label}>Prezzo club (€)</label>
-                  <input style={inp} type="number" step="0.01" value={it.unit_price} placeholder="0"
-                    onChange={e => setItem(i, 'unit_price', e.target.value)}/>
-                </div>
-                <button onClick={() => removeItem(i)} disabled={form.items.length === 1}
-                  title="Rimuovi riga"
-                  style={{ padding: '9px 14px', borderRadius: 3, fontSize: 14, lineHeight: 1,
-                    cursor: form.items.length === 1 ? 'not-allowed' : 'pointer',
-                    background: 'transparent', border: '1px solid rgba(196,98,58,0.35)',
-                    color: CLAY, opacity: form.items.length === 1 ? 0.35 : 1 }}>×</button>
-              </div>
-
-              {mustReturn && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <input type="checkbox" checked={!!it.returned} onChange={e => setItem(i, 'returned', e.target.checked)}
-                    style={{ cursor: 'pointer', accentColor: GREEN }}/>
-                  <span style={{ fontSize: 11, color: it.returned ? GREEN : MUTED }}>Rientrato</span>
-                </div>
-              )}
-
-              {/* Esito di questa riga: articoli diversi nello stesso invio
-                  possono avere feedback diversi */}
-              <div style={{ paddingTop: 10, borderTop: `1px solid ${BORDER}` }}>
-                <div style={{ display: 'grid', gridTemplateColumns: it.outcome === 'ordine' ? '1fr 1fr' : '1fr', gap: 10, marginBottom: 8 }}>
-                  <div>
-                    <label style={s.label}>Esito articolo</label>
-                    <select style={{ ...inp, cursor: 'pointer' }} value={it.outcome || 'in_attesa'} onChange={e => setItemOutcome(i, e.target.value)}>
-                      {OUTCOMES.map(o => <option key={o} value={o}>{OUTCOME_LABELS[o]}</option>)}
-                    </select>
-                  </div>
-                  {it.outcome === 'ordine' && (
+              {isOpen && (
+                <div style={{ padding: '0 14px 14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 1fr', gap: 10, marginBottom: 10 }}>
+                    <SpAutocomplete
+                      value={it.sp}
+                      category={it.category}
+                      inputStyle={inp}
+                      onSelect={p => setForm(f => ({
+                        ...f,
+                        items: f.items.map((row, idx) => idx === i
+                          ? { ...row, sp: p.code, description: p.description, category: p.category }
+                          : row),
+                      }))}
+                    />
                     <div>
-                      <label style={s.label}>Ordine collegato</label>
-                      <select style={{ ...inp, cursor: 'pointer' }} value={it.outcome_order_id || ''}
-                        onChange={e => setItem(i, 'outcome_order_id', e.target.value)}>
-                        <option value="">— nessuno —</option>
-                        {orders.filter(o => o.status !== 'PREVENTIVO')
-                          .map(o => <option key={o.id} value={o.id}>{o.id} · {o.client}</option>)}
+                      <label style={s.label}>Descrizione</label>
+                      <input style={inp} value={it.description} onChange={e => setItem(i, 'description', e.target.value)}/>
+                    </div>
+                    <div>
+                      <label style={s.label}>Categoria</label>
+                      <select style={{ ...inp, cursor: 'pointer' }} value={it.category} onChange={e => setItem(i, 'category', e.target.value)}>
+                        <option value="">— nessuna —</option>
+                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.7fr 0.6fr 0.8fr 0.8fr', gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <label style={s.label}>Colore</label>
+                      <input style={inp} value={it.color} onChange={e => setItem(i, 'color', e.target.value)}/>
+                    </div>
+                    <div>
+                      <label style={s.label}>Taglia</label>
+                      <input style={inp} value={it.size} list="du-sample-sizes" placeholder="es. L"
+                        onChange={e => setItem(i, 'size', e.target.value)}/>
+                    </div>
+                    <div>
+                      <label style={s.label}>Q.tà</label>
+                      <input style={inp} type="number" min="1" value={it.quantity}
+                        onChange={e => setItem(i, 'quantity', e.target.value)}/>
+                    </div>
+                    <div>
+                      <label style={s.label}>Costo un. (€)</label>
+                      <input style={inp} type="number" step="0.01" value={it.unit_cost} placeholder="0"
+                        onChange={e => setItem(i, 'unit_cost', e.target.value)}/>
+                    </div>
+                    <div>
+                      <label style={s.label}>Prezzo club (€)</label>
+                      <input style={inp} type="number" step="0.01" value={it.unit_price} placeholder="0"
+                        onChange={e => setItem(i, 'unit_price', e.target.value)}/>
+                    </div>
+                  </div>
+
+                  {mustReturn && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <input type="checkbox" checked={!!it.returned} onChange={e => setItem(i, 'returned', e.target.checked)}
+                        style={{ cursor: 'pointer', accentColor: GREEN }}/>
+                      <span style={{ fontSize: 11, color: it.returned ? GREEN : MUTED }}>Rientrato</span>
+                    </div>
                   )}
+
+                  {/* Esito di questa riga: articoli diversi nello stesso invio
+                      possono avere feedback diversi */}
+                  <div style={{ paddingTop: 10, borderTop: `1px solid ${BORDER}` }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: it.outcome === 'ordine' ? '1fr 1fr' : '1fr', gap: 10, marginBottom: 8 }}>
+                      <div>
+                        <label style={s.label}>Esito articolo</label>
+                        <select style={{ ...inp, cursor: 'pointer' }} value={it.outcome || 'in_attesa'} onChange={e => setItemOutcome(i, e.target.value)}>
+                          {OUTCOMES.map(o => <option key={o} value={o}>{OUTCOME_LABELS[o]}</option>)}
+                        </select>
+                      </div>
+                      {it.outcome === 'ordine' && (
+                        <div>
+                          <label style={s.label}>Ordine collegato</label>
+                          <select style={{ ...inp, cursor: 'pointer' }} value={it.outcome_order_id || ''}
+                            onChange={e => setItem(i, 'outcome_order_id', e.target.value)}>
+                            <option value="">— nessuno —</option>
+                            {orders.filter(o => o.status !== 'PREVENTIVO')
+                              .map(o => <option key={o.id} value={o.id}>{o.id} · {o.client}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    {(it.outcome || 'in_attesa') !== 'in_attesa' && (
+                      <input style={inp} value={it.outcome_note || ''} placeholder="Nota sul feedback ricevuto per questo articolo…"
+                        onChange={e => setItem(i, 'outcome_note', e.target.value)}/>
+                    )}
+                  </div>
                 </div>
-                {(it.outcome || 'in_attesa') !== 'in_attesa' && (
-                  <input style={inp} value={it.outcome_note || ''} placeholder="Nota sul feedback ricevuto per questo articolo…"
-                    onChange={e => setItem(i, 'outcome_note', e.target.value)}/>
-                )}
-              </div>
+              )}
             </div>
           )})}
         </div>
