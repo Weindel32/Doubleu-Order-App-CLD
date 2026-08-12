@@ -9,7 +9,7 @@ import StatCard                  from '../components/StatCard.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
 import { useState }              from 'react'
 
-export default function Dashboard({ orders, setView, setEditOrder, onDelete, onOrdersChange, navigateToOrders, onNavigateToQuotes }) {
+export default function Dashboard({ orders, setView, setEditOrder, onDelete, onOrdersChange, navigateToOrders, onNavigateToQuotes, shipments = [], clients = [], prospects = [] }) {
   const [bollaOrder, setBollaOrder] = useState(null)
   const confirmed = orders.filter(isConfirmed)
   const quote     = orders.filter(o => o.status === 'PREVENTIVO')
@@ -65,7 +65,8 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
         <button style={btnStyle(true)} onClick={()=>{setEditOrder(null);setView('new')}}>+ Nuovo Ordine</button>
       </div>
 
-      <AlertsPanel orders={orders} setView={setView} setEditOrder={setEditOrder}/>
+      <AlertsPanel orders={orders} setView={setView} setEditOrder={setEditOrder}
+        shipments={shipments} clients={clients} prospects={prospects}/>
 
       <div style={s.grid4}>
         <StatCard label="Preventivi"    value={quote.length}     sub="In attesa"           onClick={onNavigateToQuotes || undefined} />

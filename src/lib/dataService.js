@@ -348,6 +348,100 @@ export async function deleteProspectActivity(activityId) {
   return true
 }
 
+// ─── CAMPIONATURE ────────────────────────────────────────────────
+
+const SHIPMENT_FIELDS = [
+  'client_id', 'prospect_id', 'recipient_name', 'contact_name', 'shipped_date',
+  'purpose', 'return_required', 'return_due_date', 'returned_date',
+  'carrier', 'tracking', 'shipping_cost', 'outcome', 'outcome_date',
+  'outcome_order_id', 'follow_up_date', 'notes',
+]
+
+export async function fetchSampleShipments() {
+  const { data, error } = await supabase
+    .from('sample_shipments')
+    .select('*, sample_items(*)')
+    .order('shipped_date', { ascending: false })
+  if (error) { console.error('fetchSampleShipments:', error); return [] }
+  return (data || []).map(sh => {
+    const { sample_items, ...rest } = sh
+    return { ...rest, items: [...(sample_items || [])].sort((a, b) => (a.position || 0) - (b.position || 0)) }
+  })
+}
+
+function shipmentRow(shipment) {
+  const row = {}
+  SHIPMENT_FIELDS.forEach(k => { if (shipment[k] !== undefined) row[k] = shipment[k] || null })
+  row.return_required = !!shipment.return_required
+  row.shipping_cost   = parseFloat(shipment.shipping_cost) || 0
+  row.outcome         = shipment.outcome || 'in_attesa'
+  row.purpose         = shipment.purpose || 'valutazione'
+  return row
+}
+
+async function replaceSampleItems(shipmentId, items) {
+  await supabase.from('sample_items').delete().eq('shipment_id', shipmentId)
+  const rows = (items || [])
+    .filter(it => (it.sp || '').trim() || (it.description || '').trim())
+    .map((it, i) => ({
+      shipment_id: shipmentId,
+      sp:          it.sp || null,
+      description: it.description || null,
+      category:    it.category || null,
+      color:       it.color || null,
+      size:        it.size || null,
+      quantity:    parseInt(it.quantity) || 1,
+      unit_value:  parseFloat(it.unit_value) || 0,
+      returned:    !!it.returned,
+      position:    i,
+    }))
+  if (rows.length === 0) return true
+  const { error } = await supabase.from('sample_items').insert(rows)
+  if (error) { console.error('replaceSampleItems:', error); return false }
+  return true
+}
+
+export async function upsertSampleShipment(shipment) {
+  const row = shipmentRow(shipment)
+  if (shipment.id) {
+    const { error } = await supabase.from('sample_shipments').update(row).eq('id', shipment.id)
+    if (error) { console.error('upsertSampleShipment update:', error); return null }
+    await replaceSampleItems(shipment.id, shipment.items)
+    return { id: shipment.id, ...row }
+  }
+  const { data, error } = await supabase.from('sample_shipments').insert(row).select().single()
+  if (error) { console.error('upsertSampleShipment insert:', error); return null }
+  await replaceSampleItems(data.id, shipment.items)
+  return data
+}
+
+export async function deleteSampleShipment(shipmentId) {
+  await supabase.from('sample_items').delete().eq('shipment_id', shipmentId)
+  const { error } = await supabase.from('sample_shipments').delete().eq('id', shipmentId)
+  if (error) { console.error('deleteSampleShipment:', error); return false }
+  return true
+}
+
+// Aggiorna solo l'esito, senza riscrivere le righe articolo
+export async function updateSampleOutcome(shipmentId, outcome, extraFields = {}) {
+  const { error } = await supabase.from('sample_shipments')
+    .update({ outcome, outcome_date: new Date().toISOString().slice(0, 10), ...extraFields })
+    .eq('id', shipmentId)
+  if (error) { console.error('updateSampleOutcome:', error); return false }
+  return true
+}
+
+// Rientro completo: tutte le righe + data reso sull'invio
+export async function markSampleReturned(shipmentId, returnedDate) {
+  const { error: e1 } = await supabase.from('sample_items').update({ returned: true }).eq('shipment_id', shipmentId)
+  if (e1) { console.error('markSampleReturned items:', e1); return false }
+  const { error: e2 } = await supabase.from('sample_shipments')
+    .update({ returned_date: returnedDate || new Date().toISOString().slice(0, 10) })
+    .eq('id', shipmentId)
+  if (e2) { console.error('markSampleReturned shipment:', e2); return false }
+  return true
+}
+
 export async function generateOrderId(orderDate) {
   const year = orderDate ? parseInt(orderDate.split('-')[0]) : new Date().getFullYear()
   const BASE = 1600

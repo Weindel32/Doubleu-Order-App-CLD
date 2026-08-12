@@ -3,6 +3,8 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import ActIcon  from '../components/ActIcon.jsx'
+import SampleTimeline from '../components/SampleTimeline.jsx'
+import { shipmentFromProspect } from '../components/SampleModal.jsx'
 
 // ─── Config ──────────────────────────────────────────────────────
 const STAGE_CFG = {
@@ -24,7 +26,11 @@ const CONTACT_TYPES   = ['cliente','ambassador','segnalatore']
 const CT_LABELS       = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
 const CHANNELS        = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
 const LANGUAGES       = ['it','de','es','en']
+// 'sample_shipped' resta per leggere le attività registrate prima del
+// registro campionature, ma i nuovi invii si registrano lì (vedi
+// Campionature nella scheda) e non più come nota libera.
 const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','note']
+const NEW_ACT_TYPES   = ACT_TYPES.filter(t => t !== 'sample_shipped')
 const REWARD_TYPES    = ['prodotto','provvigione']
 
 const ACT_LABELS = {
@@ -194,7 +200,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onNewQuote }) {
+export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onNewQuote, shipments = [], onNewSample }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
@@ -215,6 +221,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const rete  = prospects.filter(p => p.contact_type !== 'cliente')
 
   const referredBy   = (id) => prospects.filter(x => x.referred_by === id)
+  const samplesOf    = (id) => shipments.filter(sh => sh.prospect_id === id)
   const rewardsOf    = (p, type) => (p.prospect_activities || []).filter(a => a.reward_type === type).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
   const rewardsTotal = (p)  => rewardsOf(p,'provvigione') + rewardsOf(p,'prodotto')
 
@@ -479,6 +486,12 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                 </div>
               </div>
               <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                {onNewSample && (
+                  <button style={{ ...btnStyle(false), padding:'7px 18px', fontSize:9 }}
+                    onClick={() => { const p = selected; closeModal(); onNewSample(shipmentFromProspect(p)) }}>
+                    + Campioni
+                  </button>
+                )}
                 {selected.contact_type === 'cliente' && onNewQuote && (
                   <button style={{ ...btnGoldStyle, padding:'7px 18px', fontSize:9 }}
                     onClick={() => { onNewQuote(selected); closeModal() }}>
@@ -580,11 +593,18 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                 )}
 
                 {selected.notes && (
-                  <div style={s.card}>
+                  <div style={{ ...s.card, marginBottom:16 }}>
                     <div style={s.cardTitle}>Note</div>
                     <div style={{ fontSize:12, color:CREAM, lineHeight:1.7 }}>{selected.notes}</div>
                   </div>
                 )}
+
+                {/* Campionature */}
+                <SampleTimeline
+                  shipments={samplesOf(selected.id)}
+                  compact
+                  onNew={onNewSample ? () => { const p = selected; closeModal(); onNewSample(shipmentFromProspect(p)) } : undefined}
+                  emptyText="Nessun campione inviato a questo contatto"/>
               </div>
 
               {/* ── Right: activities ── */}
@@ -607,7 +627,8 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                       <div style={{ marginBottom:10 }}>
                         <label style={s.label}>Tipo</label>
                         <select style={{ ...inp, cursor:'pointer' }} value={actForm.type} onChange={e => setActForm(f => ({ ...f, type:e.target.value }))}>
-                          {ACT_TYPES.map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
+                          {ACT_TYPES.filter(t => NEW_ACT_TYPES.includes(t) || actForm.type === t)
+                            .map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
                         </select>
                       </div>
                       <div style={{ marginBottom:10 }}>

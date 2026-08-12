@@ -8,18 +8,20 @@ import MobileAnalytics   from './MobileAnalytics.jsx'
 import MobileQuotes      from './MobileQuotes.jsx'
 import MobileQuoteDetail from './MobileQuoteDetail.jsx'
 import MobileProspects   from './MobileProspects.jsx'
+import MobileSamples     from './MobileSamples.jsx'
 import NavIcon           from '../components/NavIcon.jsx'
 
 const TABS = [
   { key: 'home',      label: 'Home',       icon: 'home' },
   { key: 'orders',    label: 'Ordini',     icon: 'orders' },
-  { key: 'quotes',    label: 'Preventivi', icon: 'quotes' },
+  { key: 'quotes',    label: 'Prev.',      icon: 'quotes' },
   { key: 'clients',   label: 'Clienti',    icon: 'clients' },
-  { key: 'prospects', label: 'Prospects',  icon: 'prospects' },
+  { key: 'prospects', label: 'Prosp.',     icon: 'prospects' },
+  { key: 'samples',   label: 'Campioni',   icon: 'samples' },
   { key: 'analytics', label: 'Stats',      icon: 'analytics' },
 ]
 
-export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onUpdateActivity, onDeleteActivity, onDeleteProspect }) {
+export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onUpdateActivity, onDeleteActivity, onDeleteProspect, shipments = [], onUpsertShipment, onDeleteShipment, onSampleOutcome, onMarkSampleReturned }) {
   const [tab, setTab]                   = useState('home')
   const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -65,6 +67,9 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
         {tab === 'quotes'    && <MobileQuotes    quotes={quotes} onSelectQuote={setSelectedQuote} />}
         {tab === 'clients'   && <MobileClients   clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
         {tab === 'prospects' && <MobileProspects prospects={prospects} onUpsert={onUpsertProspect} onAddActivity={onAddActivity} onUpdateActivity={onUpdateActivity} onDeleteActivity={onDeleteActivity} onDelete={onDeleteProspect} />}
+        {tab === 'samples'   && <MobileSamples   shipments={shipments} clients={clients} prospects={prospects}
+                                  onUpsert={onUpsertShipment} onDelete={onDeleteShipment}
+                                  onOutcome={onSampleOutcome} onMarkReturned={onMarkSampleReturned} />}
         {tab === 'analytics' && <MobileAnalytics orders={orders} />}
       </div>
 
