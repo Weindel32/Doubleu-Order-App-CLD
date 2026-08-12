@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES, CATEGORIES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import SpAutocomplete from './SpAutocomplete.jsx'
+import DatePicker from './DatePicker.jsx'
 import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   todayISO, addDaysISO, itemCostValue, itemPriceValue, euro, FOLLOW_UP_DAYS,
@@ -192,8 +193,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
           <div>
-            <label style={s.label}>Data invio *</label>
-            <input style={inp} type="date" value={form.shipped_date} onChange={e => set('shipped_date', e.target.value)}/>
+            <DatePicker label="Data invio *" value={form.shipped_date} onChange={v => set('shipped_date', v)}/>
           </div>
           <div>
             <label style={s.label}>Motivo</label>
@@ -202,9 +202,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
             </select>
           </div>
           <div>
-            <label style={s.label}>Follow-up</label>
-            <input style={inp} type="date" value={form.follow_up_date}
-              onChange={e => set('follow_up_date', e.target.value)}/>
+            <DatePicker label="Follow-up" value={form.follow_up_date} onChange={v => set('follow_up_date', v)}/>
             <div style={{ fontSize: 9, color: MUTED, marginTop: 4 }}>
               Vuoto = sollecito dopo {FOLLOW_UP_DAYS} giorni
             </div>
@@ -252,12 +250,10 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
         {mustReturn && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={s.label}>Rientro previsto</label>
-              <input style={inp} type="date" value={form.return_due_date} onChange={e => set('return_due_date', e.target.value)}/>
+              <DatePicker label="Rientro previsto" value={form.return_due_date} onChange={v => set('return_due_date', v)}/>
             </div>
             <div>
-              <label style={s.label}>Rientrato il</label>
-              <input style={inp} type="date" value={form.returned_date} onChange={e => set('returned_date', e.target.value)}/>
+              <DatePicker label="Rientrato il" value={form.returned_date} onChange={v => set('returned_date', v)}/>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import ActIcon  from '../components/ActIcon.jsx'
+import DatePicker from '../components/DatePicker.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
 import { shipmentFromProspect } from '../components/SampleModal.jsx'
 
@@ -156,8 +157,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
           </div>
 
           <div>
-            <label style={s.label}>Prossima Azione</label>
-            <input style={inp} type="date" value={form.next_action_date} onChange={e => setForm(f => ({ ...f, next_action_date:e.target.value }))}/>
+            <DatePicker label="Prossima Azione" value={form.next_action_date} onChange={v => setForm(f => ({ ...f, next_action_date:v }))}/>
           </div>
           <div>
             <label style={s.label}>Categoria</label>

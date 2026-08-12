@@ -7,6 +7,7 @@ import {
   daysSince, itemCostValue, itemOutcome,
 } from '../utils/samples.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
+import DatePicker from '../components/DatePicker.jsx'
 
 const inputStyle = {
   width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`,
@@ -164,7 +165,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
 
           <div>
             <label style={labelStyle}>Data invio *</label>
-            <input style={inputStyle} type="date" value={form.shipped_date} onChange={e => set('shipped_date', e.target.value)}/>
+            <DatePicker triggerStyle={inputStyle} value={form.shipped_date} onChange={v => set('shipped_date', v)}/>
           </div>
 
           <div>
@@ -189,7 +190,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
             {mustReturn && (
               <div style={{ marginTop: 12 }}>
                 <label style={labelStyle}>Rientro previsto</label>
-                <input style={inputStyle} type="date" value={form.return_due_date} onChange={e => set('return_due_date', e.target.value)}/>
+                <DatePicker triggerStyle={inputStyle} value={form.return_due_date} onChange={v => set('return_due_date', v)}/>
               </div>
             )}
           </div>
