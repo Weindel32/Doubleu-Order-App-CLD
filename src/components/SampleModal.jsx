@@ -6,6 +6,7 @@ import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS,
   todayISO, addDaysISO, itemValue, euro, FOLLOW_UP_DAYS,
 } from '../utils/samples.js'
+import { generateSamplePDF } from '../utils/pdfSample.js'
 
 const inp = { ...s.input }
 
@@ -371,6 +372,16 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
           {saving ? 'Salvataggio…' : 'Salva Invio'}
         </button>
         <button style={{ ...btnStyle(false), padding: '9px 20px' }} onClick={onCancel}>Annulla</button>
+        {form.id && (
+          <button style={{ ...btnStyle(false), padding: '9px 20px' }}
+            onClick={() => {
+              const html = generateSamplePDF(form, clients, prospects)
+              const w = window.open('', '_blank')
+              w.document.write(html); w.document.close()
+            }}>
+            Bolla Campioni
+          </button>
+        )}
         {!canSave && (
           <span style={{ fontSize: 10, color: MUTED, alignSelf: 'center' }}>
             Servono destinatario, data e almeno un articolo

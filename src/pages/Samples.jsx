@@ -5,6 +5,7 @@ import StatCard from '../components/StatCard.jsx'
 import SampleModal, { emptyShipment, shipmentToForm } from '../components/SampleModal.jsx'
 import { OutcomeBadge } from '../components/SampleTimeline.jsx'
 import { exportSamplesCSV } from '../utils/exportCSV.js'
+import { generateSamplePDF } from '../utils/pdfSample.js'
 import {
   PURPOSE_LABELS, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   fmtDate, euro, samplePieces, sampleGoodsValue, sampleShipping,
@@ -79,6 +80,13 @@ export default function Samples({
     await onDelete(sh.id)
     setDeleting(false)
     setForm(null)
+  }
+
+  const openSamplePDF = (sh) => {
+    const html = generateSamplePDF(sh, clients, prospects)
+    const w = window.open('', '_blank')
+    w.document.write(html)
+    w.document.close()
   }
 
   return (
@@ -196,6 +204,10 @@ export default function Samples({
 
                   {/* Azioni */}
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 'auto' }}>
+                    <button style={{ ...btnStyle(false), padding: '6px 14px', fontSize: 9 }}
+                      onClick={() => openSamplePDF(sh)}>
+                      Bolla Campioni
+                    </button>
                     {returnPending(sh) && (
                       <button style={{ padding: '6px 14px', fontSize: 9, letterSpacing: 1.5, cursor: 'pointer', borderRadius: 3,
                         background: 'transparent', border: `1px solid ${GREEN}`, color: GREEN }}

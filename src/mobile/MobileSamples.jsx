@@ -6,6 +6,7 @@ import {
   sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
   daysSince, itemValue,
 } from '../utils/samples.js'
+import { generateSamplePDF } from '../utils/pdfSample.js'
 
 const inputStyle = {
   width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`,
@@ -366,6 +367,15 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button onClick={() => {
+                        const html = generateSamplePDF(sh, clients, prospects)
+                        const w = window.open('', '_blank')
+                        w.document.write(html); w.document.close()
+                      }}
+                        style={{ flex: '1 1 100%', padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5,
+                          background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }}>
+                        Bolla Campioni
+                      </button>
                       {returnPending(sh) && (
                         <button onClick={() => onMarkReturned(sh.id, todayISO())}
                           style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5,
