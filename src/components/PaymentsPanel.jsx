@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
+import DatePicker from './DatePicker.jsx'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
 const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Carta di Credito', 'Assegno', 'PayPal', 'Altro']
@@ -173,8 +174,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                     </div>
                   </div>
                   <div style={{ marginBottom: 10 }}>
-                    <label style={s.label}>Data</label>
-                    <input type="date" style={{ ...inp, colorScheme: 'dark' }} value={editP.date} onChange={e => setEditP({ ...editP, date: e.target.value })} />
+                    <DatePicker label="Data" value={editP.date} onChange={v => setEditP({ ...editP, date: v })} />
                   </div>
                   <div style={{ marginBottom: 10 }}>
                     <label style={s.label}>Nota</label>
@@ -265,8 +265,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
           </div>
         </div>
         <div style={{ marginBottom: 10 }}>
-          <label style={s.label}>Data</label>
-          <input type="date" style={{ ...inp, colorScheme: 'dark' }} value={newP.date} onChange={e => setNewP({ ...newP, date: e.target.value })} />
+          <DatePicker label="Data" value={newP.date} onChange={v => setNewP({ ...newP, date: v })} />
         </div>
         <div style={{ marginBottom: 10 }}>
           <label style={s.label}>Nota</label>

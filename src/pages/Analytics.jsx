@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { s } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderTotal, isConfirmed, isCancelled } from '../utils/helpers.js'
+import { sampleStats, euro, itemOutcome } from '../utils/samples.js'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
 const LINE_COLORS = { 'Performance':CLAY,'Club':GOLD,'Training':'#7aaee8','Lifestyle':GREEN }
@@ -174,7 +175,83 @@ function DonutChart({ data, title }) {
   )
 }
 
-export default function Analytics({ orders }) {
+// ─── Campionature ────────────────────────────────────────────────
+// Quanto pesano i campioni e quanto convertono. L'esito è per riga
+// articolo, non per invio: un codice conta come convertito solo se
+// quella specifica riga ha portato a un ordine — non basta che
+// l'invio contenesse anche altri articoli finiti bene.
+function SamplesAnalytics({ shipments }) {
+  const stats = sampleStats(shipments)
+
+  // Articolo più campionato e sua resa: quali codici valgono l'invio
+  const byArticle = {}
+  shipments.forEach(sh => {
+    (sh.items || []).forEach(it => {
+      const key = it.description || it.sp || '—'
+      if (!byArticle[key]) byArticle[key] = { key, sp: it.sp, pieces: 0, sent: 0, won: 0 }
+      byArticle[key].pieces += parseInt(it.quantity) || 0
+      byArticle[key].sent += 1
+      if (itemOutcome(it) === 'ordine') byArticle[key].won += 1
+    })
+  })
+  const articles = Object.values(byArticle).sort((a, b) => b.pieces - a.pieces).slice(0, 8)
+
+  return (
+    <>
+      <div style={s.divider}/>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2,marginBottom:20}}>Campionature</div>
+
+      <div style={s.grid4}>
+        <div style={s.statCard(false)}>
+          <div style={s.statLabel}>Invii</div>
+          <div style={s.statValue}>{stats.count}</div>
+          <div style={s.statSub}>{stats.pieces} pezzi</div>
+        </div>
+        <div style={s.statCard(true)}>
+          <div style={{...s.statLabel, color:'rgba(255,255,255,0.6)'}}>Investito</div>
+          <div style={s.statValue}>{euro(stats.invested)}</div>
+          <div style={{...s.statSub, color:'rgba(255,255,255,0.75)'}}>Merce non rientrata + spedizioni</div>
+        </div>
+        <div style={s.statCard(false)}>
+          <div style={s.statLabel}>Conversione</div>
+          <div style={s.statValue}>{stats.conversion === null ? '—' : `${stats.conversion.toFixed(0)}%`}</div>
+          <div style={s.statSub}>{stats.converted} diventati ordine</div>
+        </div>
+        <div style={s.statCard(false)}>
+          <div style={s.statLabel}>Ancora Aperti</div>
+          <div style={s.statValue}>{stats.open}</div>
+          <div style={s.statSub}>{stats.toFollowUp} da sollecitare</div>
+        </div>
+      </div>
+
+      {articles.length > 0 && (
+        <div style={{...s.card, marginTop:16}}>
+          <div style={s.cardTitle}>Articoli Più Campionati</div>
+          <table style={s.table}>
+            <thead>
+              <tr>{['Articolo','Codice','Pezzi inviati','Invii','Diventati ordine'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {articles.map(a => (
+                <tr key={a.key}>
+                  <td style={{...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:17}}>{a.key}</td>
+                  <td style={{...s.td, color:MUTED, fontSize:11, letterSpacing:1}}>{a.sp || '—'}</td>
+                  <td style={{...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:GOLD}}>{a.pieces}</td>
+                  <td style={{...s.td, textAlign:'center'}}>{a.sent}</td>
+                  <td style={{...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18, color: a.won > 0 ? GREEN : MUTED}}>
+                    {a.won > 0 ? a.won : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  )
+}
+
+export default function Analytics({ orders, shipments = [] }) {
   const quotes    = orders.filter(o => o.status === 'PREVENTIVO')
   const confirmed = orders.filter(isConfirmed)
 
@@ -549,6 +626,8 @@ export default function Analytics({ orders }) {
           </div>
         </div>
       </>}
+
+      {shipments.length > 0 && <SamplesAnalytics shipments={shipments}/>}
 
       <div style={s.divider}/>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2,marginBottom:20}}>Breakdown per Referenza</div>

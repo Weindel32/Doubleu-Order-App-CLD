@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
+import SampleTimeline from '../components/SampleTimeline.jsx'
+import { shipmentFromClient } from '../components/SampleModal.jsx'
 import { orderTotal, paymentSummary, parseDate, isConfirmed } from '../utils/helpers.js'
+import { sampleInvested, euro } from '../utils/samples.js'
 
 const TIER_COLORS = {
   ANCHOR: { bg: 'rgba(184,150,90,0.18)', color: GOLD,      border: 'rgba(184,150,90,0.35)' },
@@ -58,7 +61,7 @@ function InfoField({ label, value }) {
 
 const inp = { ...s.input }
 
-export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpdateClient, onCreateClient, onLinkOrder }) {
+export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpdateClient, onCreateClient, onLinkOrder, shipments = [], onNewSample }) {
   const [selectedId, setSelectedId]   = useState(null)
   const [editForm,   setEditForm]     = useState(null)
   const [editSaving, setEditSaving]   = useState(false)
@@ -84,7 +87,11 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     const unlinkable = textMatch.filter(o => o.status !== 'PREVENTIVO')
     const lastTs    = confirmed.reduce((max, o) => { const d = parseDate(o.date); return d && d.getTime() > max ? d.getTime() : max }, 0)
     const lastOrder = confirmed.reduce((best, o) => { const d = parseDate(o.date); return d && d.getTime() === lastTs ? o.date : best }, null)
-    return { ...c, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, lastTs, lastOrder }
+    // Campionature: collegate per client_id, con fallback sul nome per
+    // gli invii registrati a un destinatario non ancora in anagrafica
+    const samples   = shipments.filter(sh => sh.client_id === c.id || (!sh.client_id && !sh.prospect_id && sh.recipient_name === c.name))
+    const sampleInv = samples.reduce((v, sh) => v + sampleInvested(sh), 0)
+    return { ...c, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, lastTs, lastOrder, samples, sampleInv }
   })
 
   const totalRevenue = enriched.reduce((s, c) => s + c.total, 0)
@@ -351,6 +358,13 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                 </div>
               </div>
               <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                {onNewSample && (
+                  <button style={{ ...btnStyle(false) }} onClick={() => {
+                    const client = selected
+                    closeModal()
+                    onNewSample(shipmentFromClient(client))
+                  }}>+ Campioni</button>
+                )}
                 <button style={{ ...btnStyle(false), border:`1px solid ${CLAY}`, color:CLAY }} onClick={() => {
                   closeModal()
                   onNewQuoteFromClient({ name:selected.name, email:selected.email, phone:selected.phone, country:selected.country })
@@ -452,12 +466,13 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
               </div>
 
               {/* Revenue stats */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:12, marginBottom:20 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12, marginBottom:20 }}>
                 {[
                   { l:'Fatturato',     v: selected.total    > 0 ? `€ ${selected.total.toLocaleString('it-IT',{minimumFractionDigits:2})}` : '—', color:GOLD },
                   { l:'Istituzionale', v: selected.totalIst > 0 ? `€ ${selected.totalIst.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—', color:CREAM },
                   { l:'Soci / Shop',   v: selected.totalSoci > 0 ? `€ ${selected.totalSoci.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—', color:'#7aaee8' },
                   { l:'Pezzi',         v: selected.pieces || 0, color:CREAM },
+                  { l:'Campioni',      v: selected.sampleInv > 0 ? euro(selected.sampleInv) : '—', color: selected.sampleInv > 0 ? CLAY : MUTED },
                 ].map(item => (
                   <div key={item.l} style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${BORDER}`, borderRadius:8, padding:'14px 16px' }}>
                     <div style={{ fontSize:9, letterSpacing:2, color:MUTED, marginBottom:6 }}>{item.l}</div>
@@ -513,6 +528,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                   )}
                 </div>
               )}
+
+              {/* Campionature */}
+              <div style={{ marginBottom:20 }}>
+                <SampleTimeline
+                  shipments={selected.samples}
+                  onNew={onNewSample ? () => { const client = selected; closeModal(); onNewSample(shipmentFromClient(client)) } : undefined}
+                  emptyText="Nessun campione inviato a questo cliente"/>
+              </div>
 
               {/* Storico ordini */}
               {selected.confirmed.length > 0 && (

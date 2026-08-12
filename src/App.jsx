@@ -7,13 +7,15 @@ import Orders    from './pages/Orders.jsx'
 import Quotes    from './pages/Quotes.jsx'
 import Clients    from './pages/Clients.jsx'
 import Prospects  from './pages/Prospects.jsx'
+import Samples    from './pages/Samples.jsx'
 import NavIcon    from './components/NavIcon.jsx'
 import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, markQuoteLost, restoreQuote } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, markQuoteLost, restoreQuote, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
 import { needsAlert, isConfirmed } from './utils/helpers.js'
+import { needsFollowUp, returnOverdue } from './utils/samples.js'
 import { supabase } from './lib/supabase.js'
 
 // Telefono: schermo stretto (portrait) oppure basso e non troppo largo (landscape)
@@ -29,12 +31,13 @@ function useIsMobile() {
   return isMobile
 }
 
-function Sidebar({ view, setView, orders, onLogout }) {
+function Sidebar({ view, setView, orders, shipments, onLogout }) {
   const alertCount   = orders.filter(o => needsAlert(o)).length
   const pendingCount = orders.filter(o =>
     isConfirmed(o) && (o.payments || []).some(p => !p.paid)
   ).length
   const quoteCount   = orders.filter(o => o.status === 'PREVENTIVO' && !o.lost).length
+  const sampleCount  = shipments.filter(sh => needsFollowUp(sh) || returnOverdue(sh)).length
 
   const items = [
     { key: 'dashboard',  label: 'Dashboard',          icon: 'dashboard', badge: alertCount > 0 ? alertCount : null },
@@ -42,6 +45,7 @@ function Sidebar({ view, setView, orders, onLogout }) {
     { key: 'orders',     label: 'Archivio Ordini',    icon: 'orders',    badge: pendingCount > 0 ? pendingCount : null },
     { key: 'clients',    label: 'Clienti',            icon: 'clients' },
     { key: 'prospects',  label: 'Prospects',          icon: 'prospects' },
+    { key: 'samples',    label: 'Campionature',       icon: 'samples',   badge: sampleCount > 0 ? sampleCount : null },
     { key: 'analytics',  label: 'Analytics',          icon: 'analytics' },
     { key: 'newQuote',   label: '+ Nuovo Preventivo', icon: 'plus', accent: CLAY },
     { key: 'new',        label: '+ Nuovo Ordine',     icon: 'plus' },
@@ -88,6 +92,8 @@ export default function App() {
   const [orders, setOrders]           = useState([])
   const [clients, setClients]         = useState([])
   const [prospects, setProspects]     = useState([])
+  const [shipments, setShipments]     = useState([])
+  const [sampleDraft, setSampleDraft] = useState(null)
   const [loading, setLoading]         = useState(true)
   const [session, setSession]         = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -106,10 +112,13 @@ export default function App() {
 
   const loadOrders = async () => {
     setLoading(true)
-    const [data, clientData, prospectData] = await Promise.all([fetchOrders(), fetchClients(), fetchProspects()])
+    const [data, clientData, prospectData, sampleData] = await Promise.all([
+      fetchOrders(), fetchClients(), fetchProspects(), fetchSampleShipments(),
+    ])
     setOrders(data)
     setClients(clientData)
     setProspects(prospectData)
+    setShipments(sampleData)
     setLoading(false)
   }
 
@@ -183,14 +192,56 @@ export default function App() {
     return ok
   }
 
+  // ── Campionature ────────────────────────────────────────────────
+  const handleUpsertShipment = async (shipment) => {
+    const result = await upsertSampleShipment(shipment)
+    if (!result) return null
+    setShipments(await fetchSampleShipments())
+    // Un invio a un prospect ancora al primo contatto lo fa avanzare
+    // a 'sample' (solo in avanti, come per i preventivi)
+    if (shipment.prospect_id) {
+      const p = prospects.find(x => x.id === shipment.prospect_id)
+      if (p && p.stage === 'contatto') {
+        const { prospect_activities, ...rest } = p
+        await handleUpsertProspect({ ...rest, stage: 'sample' })
+      }
+    }
+    return result
+  }
+
+  const handleDeleteShipment = async (shipmentId) => {
+    const ok = await deleteSampleShipment(shipmentId)
+    if (ok) setShipments(await fetchSampleShipments())
+    return ok
+  }
+
+  const handleSampleItemOutcome = async (itemId, outcome, extraFields) => {
+    const ok = await updateSampleItemOutcome(itemId, outcome, extraFields)
+    if (ok) setShipments(await fetchSampleShipments())
+    return ok
+  }
+
+  const handleMarkSampleReturned = async (shipmentId, date) => {
+    const ok = await markSampleReturned(shipmentId, date)
+    if (ok) setShipments(await fetchSampleShipments())
+    return ok
+  }
+
+  // Apre il registro campionature con il form già compilato per un
+  // cliente o un prospect, senza costringere a riselezionarlo.
+  const handleNewSample = (draft) => {
+    setSampleDraft(draft)
+    navigate('samples')
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    setOrders([]); setView('dashboard')
+    setOrders([]); setShipments([]); setView('dashboard')
   }
 
   const [ordersFilter, setOrdersFilter] = useState('Tutti')
 
-  const navigate  = (v) => { if (v === 'orders') setOrdersFilter('Tutti'); if (v !== 'newQuote') setQuoteProspect(null); setView(v); window.scrollTo(0, 0) }
+  const navigate  = (v) => { if (v === 'orders') setOrdersFilter('Tutti'); if (v !== 'newQuote') setQuoteProspect(null); if (v !== 'samples') setSampleDraft(null); setView(v); window.scrollTo(0, 0) }
   const goToOrder = (order) => { setEditOrder(order); setPrefill(null); navigate('new') }
   const goToQuote = (quote) => { setEditOrder(quote); setPrefill(null); navigate('newQuote') }
   const navigateToOrders = (filter) => { setOrdersFilter(filter); setView('orders'); window.scrollTo(0, 0) }
@@ -290,19 +341,23 @@ export default function App() {
       onLogout={handleLogout} onUpsertClient={handleUpsertClient}
       onUpsertProspect={handleUpsertProspect} onAddActivity={handleAddActivity}
       onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity}
-      onDeleteProspect={handleDeleteProspect} />
+      onDeleteProspect={handleDeleteProspect}
+      shipments={shipments} onUpsertShipment={handleUpsertShipment}
+      onDeleteShipment={handleDeleteShipment} onSampleItemOutcome={handleSampleItemOutcome}
+      onMarkSampleReturned={handleMarkSampleReturned} />
   }
 
   return (
     <div style={s.app}>
-      <Sidebar view={view} setView={navigate} orders={orders} onLogout={handleLogout}/>
+      <Sidebar view={view} setView={navigate} orders={orders} shipments={shipments} onLogout={handleLogout}/>
       <main style={s.main}>
-        {view === 'dashboard'  && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders} onNavigateToQuotes={() => navigate('quotes')}/>}
+        {view === 'dashboard'  && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders} onNavigateToQuotes={() => navigate('quotes')} shipments={shipments} clients={clients} prospects={prospects}/>}
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
-        {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder}/>}
-        {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onNewQuote={handleNewQuoteFromProspect}/>}
-        {view === 'analytics'  && <Analytics orders={orders}/>}
+        {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder} shipments={shipments} onNewSample={handleNewSample}/>}
+        {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample}/>}
+        {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} onItemOutcome={handleSampleItemOutcome} onMarkReturned={handleMarkSampleReturned} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
+        {view === 'analytics'  && <Analytics orders={orders} shipments={shipments}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
         {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}
       </main>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import ActIcon from '../components/ActIcon.jsx'
+import DatePicker from '../components/DatePicker.jsx'
 
 // ─── Config (allineata alla pagina desktop) ──────────────────────
 const STAGE_CFG = {
@@ -153,7 +154,7 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
           </div>
           <div>
             <label style={labelStyle}>Prossima Azione</label>
-            <input style={inputStyle} type="date" value={f.next_action_date} onChange={e => set('next_action_date', e.target.value)}/>
+            <DatePicker triggerStyle={inputStyle} value={f.next_action_date} onChange={v => set('next_action_date', v)}/>
           </div>
         </div>
       )}
