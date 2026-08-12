@@ -127,7 +127,7 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
     'Data invio', 'Destinatario', 'Tipo', 'Referente', 'Motivo',
     'Codice DUSP', 'Descrizione', 'Colore', 'Taglia', 'Q.t\u00E0',
     'Costo un. \u20AC', 'Prezzo club un. \u20AC', 'Valore riga (costo) \u20AC', 'Reso richiesto', 'Rientrato',
-    'Corriere', 'Tracking', 'Esito articolo', 'Nota esito', 'Ordine collegato', 'Note invio',
+    'Corriere', 'Tracking', 'Esito articolo', 'Da rivedere', 'Nota esito', 'Ordine collegato', 'Note invio',
   ])
 
   const sorted = [...(shipments || [])].sort((a, b) => (b.shipped_date || '').localeCompare(a.shipped_date || ''))
@@ -143,7 +143,7 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
     const shipTail = [sh.carrier || '', sh.tracking || '']
     const items = (sh.items || [])
     if (items.length === 0) {
-      rows.push([...base, '', '', '', '', 0, '', '', '', sh.return_required ? 'S\u00EC' : 'No', '', ...shipTail, '', '', '', sh.notes || ''])
+      rows.push([...base, '', '', '', '', 0, '', '', '', sh.return_required ? 'S\u00EC' : 'No', '', ...shipTail, '', '', '', '', sh.notes || ''])
       return
     }
     items.forEach(it => {
@@ -158,6 +158,7 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
         it.returned ? 'S\u00EC' : (sh.return_required ? 'No' : '\u2014'),
         ...shipTail,
         OUTCOME_LABELS[itemOutcome(it)] || itemOutcome(it),
+        it.revision_requested ? 'Sì' : 'No',
         it.outcome_note || '',
         it.outcome_order_id || '',
         sh.notes || '',

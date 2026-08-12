@@ -47,6 +47,11 @@ export const itemOutcome   = (it) => it.outcome || 'in_attesa'
 export const isItemOpen    = (it) => itemOutcome(it) === 'in_attesa'
 export const isItemClosed  = (it) => !isItemOpen(it)
 
+// Indipendente dall'esito: un feedback positivo (o negativo) può
+// comunque portare con sé una richiesta di modifica tecnica al capo.
+export const itemNeedsRevision = (it) => !!it.revision_requested
+export const shipmentNeedsRevision = (sh) => (sh.items || []).some(itemNeedsRevision)
+
 // Giorni di silenzio dopo i quali un invio senza esito va sollecitato
 export const FOLLOW_UP_DAYS = 21
 

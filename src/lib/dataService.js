@@ -397,6 +397,7 @@ async function replaceSampleItems(shipmentId, items) {
       outcome_date:     it.outcome_date || null,
       outcome_note:     it.outcome_note || null,
       outcome_order_id: it.outcome_order_id || null,
+      revision_requested: !!it.revision_requested,
     }))
   if (rows.length === 0) return true
   const { error } = await supabase.from('sample_items').insert(rows)

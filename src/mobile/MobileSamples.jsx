@@ -21,6 +21,7 @@ const EMPTY_ITEM = () => ({
   sp: '', description: '', category: '', color: '', size: '', quantity: 1,
   unit_cost: '', unit_price: '', returned: false,
   outcome: 'in_attesa', outcome_date: '', outcome_note: '', outcome_order_id: '',
+  revision_requested: false,
 })
 
 const emptyForm = () => ({
@@ -44,6 +45,7 @@ const toEditForm = (sh) => ({
         unit_price: it.unit_price ? String(it.unit_price) : '',
         outcome: it.outcome || 'in_attesa', outcome_date: it.outcome_date || '',
         outcome_note: it.outcome_note || '', outcome_order_id: it.outcome_order_id || '',
+        revision_requested: !!it.revision_requested,
       }))
     : [EMPTY_ITEM()],
 })
@@ -244,8 +246,16 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                         {OUTCOMES.map(o => <option key={o} value={o}>{OUTCOME_LABELS[o]}</option>)}
                       </select>
                       {(it.outcome || 'in_attesa') !== 'in_attesa' && (
-                        <input style={{ ...inputStyle, marginTop: 8 }} placeholder="Nota sul feedback…"
-                          value={it.outcome_note || ''} onChange={e => setItem(i, 'outcome_note', e.target.value)}/>
+                        <>
+                          <input style={{ ...inputStyle, marginTop: 8 }} placeholder="Nota sul feedback…"
+                            value={it.outcome_note || ''} onChange={e => setItem(i, 'outcome_note', e.target.value)}/>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12, color: it.revision_requested ? '#e8c96e' : MUTED }}>
+                            <input type="checkbox" checked={!!it.revision_requested}
+                              onChange={e => setItem(i, 'revision_requested', e.target.checked)}
+                              style={{ accentColor: '#e8c96e' }}/>
+                            Richiede modifiche prima di riproporlo
+                          </label>
+                        </>
                       )}
                     </div>
                   </div>
@@ -363,10 +373,13 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                       return (
                         <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 11, color: MUTED }}>{label || '—'}</span>
-                          <span style={{ fontSize: 8, letterSpacing: 1, padding: '1px 7px', borderRadius: 2,
-                            background: c.bg, color: c.color, border: `1px solid ${c.border}`, flexShrink: 0 }}>
-                            {(OUTCOME_LABELS[itemOutcome(it)] || '').toUpperCase()}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                            {it.revision_requested && <span style={{ fontSize: 11, color: '#e8c96e' }} title="Richiede modifiche">✎</span>}
+                            <span style={{ fontSize: 8, letterSpacing: 1, padding: '1px 7px', borderRadius: 2,
+                              background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
+                              {(OUTCOME_LABELS[itemOutcome(it)] || '').toUpperCase()}
+                            </span>
+                          </div>
                         </div>
                       )
                     })}
