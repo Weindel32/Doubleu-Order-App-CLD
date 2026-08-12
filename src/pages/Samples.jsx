@@ -158,12 +158,12 @@ export default function Samples({
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {filtered.map(sh => (
             <div key={sh.id} className="du-card"
-              style={{ padding: '20px 26px', background: 'rgba(255,255,255,0.03)',
+              style={{ padding: '24px 30px', background: 'rgba(255,255,255,0.03)',
                 border: `1px solid ${BORDER}`, borderLeft: `3px solid ${GOLD}`, borderRadius: 10,
-                display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+                display: 'flex', alignItems: 'center', gap: 36, flexWrap: 'wrap' }}>
 
               {/* Destinatario — le altre informazioni (articoli, esiti, resi,
                   solleciti) si vedono aprendo l'invio: qui basta il colpo
@@ -201,7 +201,7 @@ export default function Samples({
               </div>
 
               {/* Azioni */}
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' }}>
+              <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginLeft: 'auto' }}>
                 <button style={{ ...btnStyle(false), padding: '7px 16px', fontSize: 9 }}
                   onClick={() => openSamplePDF(sh)}>
                   Bolla Campioni
