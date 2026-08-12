@@ -22,6 +22,7 @@ const EMPTY_ITEM = () => ({
   sp: '', description: '', category: '', color: '', size: '', quantity: 1,
   unit_cost: '', unit_price: '', returned: false,
   outcome: 'in_attesa', outcome_date: '', outcome_note: '', outcome_order_id: '',
+  revision_requested: false,
 })
 
 export function emptyShipment(prefill = {}) {
@@ -69,6 +70,7 @@ export function shipmentToForm(sh) {
           outcome_date: it.outcome_date || '',
           outcome_note: it.outcome_note || '',
           outcome_order_id: it.outcome_order_id || '',
+          revision_requested: !!it.revision_requested,
         }))
       : [EMPTY_ITEM()],
   }
@@ -309,6 +311,12 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  {it.revision_requested && (
+                    <span title="Richiede modifiche" style={{ fontSize: 9, letterSpacing: 1, padding: '2px 8px', borderRadius: 2,
+                      color: '#e8c96e', background: 'rgba(232,201,110,0.12)', border: '1px solid rgba(232,201,110,0.35)' }}>
+                      ✎ DA RIVEDERE
+                    </span>
+                  )}
                   <OutcomeBadge outcome={it.outcome || 'in_attesa'}/>
                   <button onClick={e => { e.stopPropagation(); removeItem(i) }} disabled={form.items.length === 1}
                     title="Rimuovi riga"
@@ -404,8 +412,18 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
                       )}
                     </div>
                     {(it.outcome || 'in_attesa') !== 'in_attesa' && (
-                      <input style={inp} value={it.outcome_note || ''} placeholder="Nota sul feedback ricevuto per questo articolo…"
-                        onChange={e => setItem(i, 'outcome_note', e.target.value)}/>
+                      <>
+                        <input style={inp} value={it.outcome_note || ''} placeholder="Nota sul feedback ricevuto per questo articolo…"
+                          onChange={e => setItem(i, 'outcome_note', e.target.value)}/>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={!!it.revision_requested}
+                            onChange={e => setItem(i, 'revision_requested', e.target.checked)}
+                            style={{ cursor: 'pointer', accentColor: '#e8c96e' }}/>
+                          <span style={{ fontSize: 11, color: it.revision_requested ? '#e8c96e' : MUTED }}>
+                            Richiede modifiche prima di riproporlo — a prescindere dall'esito
+                          </span>
+                        </label>
+                      </>
                     )}
                   </div>
                 </div>

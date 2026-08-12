@@ -7,7 +7,7 @@ import { exportSamplesCSV } from '../utils/exportCSV.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 import {
   PURPOSE_LABELS, fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
-  sampleStats, recipientLabel, needsFollowUp, returnPending,
+  sampleStats, recipientLabel, needsFollowUp, returnPending, shipmentNeedsRevision,
 } from '../utils/samples.js'
 
 const inp = { ...s.input }
@@ -17,6 +17,7 @@ const VIEW_FILTERS = [
   { k: 'open',      label: 'In attesa' },
   { k: 'followup',  label: 'Da sollecitare' },
   { k: 'toreturn',  label: 'Da rientrare' },
+  { k: 'revision',  label: 'Da rivedere' },
   { k: 'converted', label: 'Convertiti' },
 ]
 
@@ -50,6 +51,7 @@ export default function Samples({
     if (filter === 'open'      && !(sh.items || []).some(it => itemOutcome(it) === 'in_attesa')) return false
     if (filter === 'followup'  && !needsFollowUp(sh))  return false
     if (filter === 'toreturn'  && !returnPending(sh))  return false
+    if (filter === 'revision'  && !shipmentNeedsRevision(sh)) return false
     if (filter === 'converted' && !(sh.items || []).some(it => itemOutcome(it) === 'ordine')) return false
     if (q) {
       const hay = [
@@ -173,6 +175,9 @@ export default function Samples({
                   </span>
                   {sh.prospect_id && (
                     <span style={{ fontSize: 9, letterSpacing: 1.5, color: '#7aaee8' }}>PROSPECT</span>
+                  )}
+                  {shipmentNeedsRevision(sh) && (
+                    <span style={{ fontSize: 9, letterSpacing: 1, color: '#e8c96e' }}>✎ DA RIVEDERE</span>
                   )}
                 </div>
                 <div style={{ fontSize: 11, color: MUTED, marginTop: 5 }}>

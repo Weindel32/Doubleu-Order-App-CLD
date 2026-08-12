@@ -123,7 +123,8 @@ BEGIN
       outcome           text    DEFAULT 'in_attesa',
       outcome_date      text,
       outcome_note      text,
-      outcome_order_id  %s REFERENCES orders(id) ON DELETE SET NULL
+      outcome_order_id  %s REFERENCES orders(id) ON DELETE SET NULL,
+      revision_requested boolean DEFAULT false
     )$f$, oid_type);
 END $$;
 

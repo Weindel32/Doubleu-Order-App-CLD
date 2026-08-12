@@ -26,7 +26,10 @@ function ItemOutcomeRow({ it }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '4px 0' }}>
       <span style={{ fontSize: 11, color: MUTED }}>{label || '—'}</span>
-      <OutcomeBadge outcome={outcome}/>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        {it.revision_requested && <span style={{ fontSize: 11, color: '#e8c96e' }} title="Richiede modifiche">✎</span>}
+        <OutcomeBadge outcome={outcome}/>
+      </div>
     </div>
   )
 }
