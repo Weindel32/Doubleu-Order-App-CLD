@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { s } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderTotal, isConfirmed, isCancelled } from '../utils/helpers.js'
-import { sampleStats, euro } from '../utils/samples.js'
+import { sampleStats, euro, itemOutcome } from '../utils/samples.js'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
 const LINE_COLORS = { 'Performance':CLAY,'Club':GOLD,'Training':'#7aaee8','Lifestyle':GREEN }
@@ -176,8 +176,10 @@ function DonutChart({ data, title }) {
 }
 
 // ─── Campionature ────────────────────────────────────────────────
-// Quanto pesano i campioni e quanto ritornano: un invio conta come
-// convertito solo quando è diventato un ordine.
+// Quanto pesano i campioni e quanto convertono. L'esito è per riga
+// articolo, non per invio: un codice conta come convertito solo se
+// quella specifica riga ha portato a un ordine — non basta che
+// l'invio contenesse anche altri articoli finiti bene.
 function SamplesAnalytics({ shipments }) {
   const stats = sampleStats(shipments)
 
@@ -186,10 +188,10 @@ function SamplesAnalytics({ shipments }) {
   shipments.forEach(sh => {
     (sh.items || []).forEach(it => {
       const key = it.description || it.sp || '—'
-      if (!byArticle[key]) byArticle[key] = { key, sp: it.sp, pieces: 0, sent: new Set(), won: new Set() }
+      if (!byArticle[key]) byArticle[key] = { key, sp: it.sp, pieces: 0, sent: 0, won: 0 }
       byArticle[key].pieces += parseInt(it.quantity) || 0
-      byArticle[key].sent.add(sh.id)
-      if (sh.outcome === 'ordine') byArticle[key].won.add(sh.id)
+      byArticle[key].sent += 1
+      if (itemOutcome(it) === 'ordine') byArticle[key].won += 1
     })
   })
   const articles = Object.values(byArticle).sort((a, b) => b.pieces - a.pieces).slice(0, 8)
@@ -235,9 +237,9 @@ function SamplesAnalytics({ shipments }) {
                   <td style={{...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:17}}>{a.key}</td>
                   <td style={{...s.td, color:MUTED, fontSize:11, letterSpacing:1}}>{a.sp || '—'}</td>
                   <td style={{...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:GOLD}}>{a.pieces}</td>
-                  <td style={{...s.td, textAlign:'center'}}>{a.sent.size}</td>
-                  <td style={{...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18, color: a.won.size > 0 ? GREEN : MUTED}}>
-                    {a.won.size > 0 ? a.won.size : '—'}
+                  <td style={{...s.td, textAlign:'center'}}>{a.sent}</td>
+                  <td style={{...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18, color: a.won > 0 ? GREEN : MUTED}}>
+                    {a.won > 0 ? a.won : '—'}
                   </td>
                 </tr>
               ))}

@@ -2,8 +2,8 @@ import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
 import { s, btnGoldStyle } from '../tokens.js'
 import {
   PURPOSE_LABELS, OUTCOME_LABELS, OUTCOME_CFG, fmtDate, euro,
-  samplePieces, sampleGoodsValue, sampleInvested, sampleOutstanding,
-  needsFollowUp, returnOverdue, returnPending, daysSince,
+  samplePieces, sampleCostValue, sampleInvested, sampleOutstanding,
+  needsFollowUp, returnOverdue, returnPending, daysSince, itemOutcome,
 } from '../utils/samples.js'
 
 export function OutcomeBadge({ outcome }) {
@@ -13,6 +13,21 @@ export function OutcomeBadge({ outcome }) {
       letterSpacing: 1.5, fontWeight: 600, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
       {(OUTCOME_LABELS[outcome] || outcome || 'In attesa').toUpperCase()}
     </span>
+  )
+}
+
+// Riepilogo esiti di un invio: articoli diversi possono avere feedback
+// diversi, quindi non collassiamo tutto a un badge unico.
+function ItemOutcomeRow({ it }) {
+  const outcome = itemOutcome(it)
+  const cfg = OUTCOME_CFG[outcome]
+  const label = [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
+    .filter(Boolean).join(' ')
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+      <span style={{ fontSize: 11, color: MUTED }}>{label || '—'}</span>
+      <OutcomeBadge outcome={outcome}/>
+    </div>
   )
 }
 
@@ -56,34 +71,29 @@ export default function SampleTimeline({ shipments, onOpen, onNew, emptyText = '
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {list.map(sh => {
-              const cfg     = OUTCOME_CFG[sh.outcome] || OUTCOME_CFG.in_attesa
-              const overdue = returnOverdue(sh)
+              const overdue  = returnOverdue(sh)
               const followUp = needsFollowUp(sh)
-              const days    = daysSince(sh.shipped_date)
+              const days     = daysSince(sh.shipped_date)
               return (
                 <div key={sh.id} onClick={onOpen ? () => onOpen(sh) : undefined}
                   style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 6,
-                    borderLeft: `3px solid ${cfg.color}`, cursor: onOpen ? 'pointer' : 'default' }}>
+                    borderLeft: `3px solid ${GOLD}`, cursor: onOpen ? 'pointer' : 'default' }}>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 12, color: CREAM, letterSpacing: 0.5 }}>{fmtDate(sh.shipped_date)}</span>
                       <span style={{ fontSize: 10, color: MUTED }}>{PURPOSE_LABELS[sh.purpose] || sh.purpose}</span>
-                      <OutcomeBadge outcome={sh.outcome}/>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                       <span style={{ fontSize: 11, color: MUTED }}>{samplePieces(sh)} pz</span>
                       <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: GOLD }}>
-                        {euro(sampleGoodsValue(sh), 2)}
+                        {euro(sampleCostValue(sh), 2)}
                       </span>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6 }}>
-                    {(sh.items || []).length === 0
-                      ? '—'
-                      : sh.items.map(it => [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
-                          .filter(Boolean).join(' ')).join('  ·  ')}
+                  <div>
+                    {(sh.items || []).map((it, i) => <ItemOutcomeRow key={it.id || i} it={it}/>)}
                   </div>
 
                   {(sh.carrier || sh.tracking) && (
@@ -111,9 +121,6 @@ export default function SampleTimeline({ shipments, onOpen, onNew, emptyText = '
                       <span style={{ fontSize: 10, color: CLAY }}>
                         ⚠ Nessun esito da {days} giorni
                       </span>
-                    )}
-                    {sh.outcome === 'ordine' && sh.outcome_order_id && (
-                      <span style={{ fontSize: 10, color: GREEN }}>→ {sh.outcome_order_id}</span>
                     )}
                   </div>
                 </div>

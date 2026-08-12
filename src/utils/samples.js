@@ -1,10 +1,12 @@
 import { GOLD, MUTED, CLAY, GREEN } from '../tokens.js'
 
 // ─── Registro campionature ───────────────────────────────────────
-// Un invio di campioni (sample_shipments) raccoglie data, destinatario
-// e righe articolo (sample_items). Le date sono in formato ISO
-// (yyyy-mm-dd) come next_action_date dei prospect: si ordinano e si
-// confrontano come stringhe. fmtDate() le mostra all'italiana.
+// Un invio di campioni (sample_shipments) è il contenitore logistico
+// (data, destinatario, corriere). Ogni riga articolo (sample_items)
+// porta il proprio esito: articoli diversi nello stesso invio possono
+// avere feedback diversi, quindi l'esito non vive sull'invio.
+// Le date sono in formato ISO (yyyy-mm-dd): si ordinano e confrontano
+// come stringhe. fmtDate() le mostra all'italiana.
 
 export const PURPOSES = ['valutazione', 'misurazione', 'fiera', 'omaggio']
 
@@ -36,8 +38,10 @@ export const OUTCOME_CFG = {
   ordine:     { color: GREEN,     border: 'rgba(74,158,110,0.35)',  bg: 'rgba(74,158,110,0.15)'  },
 }
 
-// Un esito è "chiuso" quando la palla è tornata a noi: niente più follow-up.
-export const isOpenOutcome = (sh) => (sh.outcome || 'in_attesa') === 'in_attesa'
+// Un articolo è "aperto" finché non ha ricevuto un esito.
+export const itemOutcome   = (it) => it.outcome || 'in_attesa'
+export const isItemOpen    = (it) => itemOutcome(it) === 'in_attesa'
+export const isItemClosed  = (it) => !isItemOpen(it)
 
 // Giorni di silenzio dopo i quali un invio senza esito va sollecitato
 export const FOLLOW_UP_DAYS = 21
@@ -67,42 +71,69 @@ export const addDaysISO = (iso, days) => {
 }
 
 // ─── Pezzi e valore ──────────────────────────────────────────────
+// unit_cost  = prezzo di costo: base dell'esposizione economica reale.
+// unit_price = prezzo al club/listino: riferimento per un eventuale
+//              addebito, non entra nel calcolo dell'investito.
 
 export const samplePieces = (sh) =>
   (sh.items || []).reduce((n, it) => n + (parseInt(it.quantity) || 0), 0)
 
-export const itemValue = (it) =>
-  (parseInt(it.quantity) || 0) * (parseFloat(it.unit_value) || 0)
+export const itemCostValue  = (it) => (parseInt(it.quantity) || 0) * (parseFloat(it.unit_cost)  || 0)
+export const itemPriceValue = (it) => (parseInt(it.quantity) || 0) * (parseFloat(it.unit_price) || 0)
 
-export const sampleGoodsValue = (sh) =>
-  (sh.items || []).reduce((v, it) => v + itemValue(it), 0)
+export const sampleCostValue = (sh) =>
+  (sh.items || []).reduce((v, it) => v + itemCostValue(it), 0)
+
+export const samplePriceValue = (sh) =>
+  (sh.items || []).reduce((v, it) => v + itemPriceValue(it), 0)
 
 export const sampleShipping = (sh) => parseFloat(sh.shipping_cost) || 0
 
-// Valore complessivo movimentato: merce + spedizione.
-export const sampleTotalValue = (sh) => sampleGoodsValue(sh) + sampleShipping(sh)
-
 // Investimento effettivo sul cliente: la spedizione è sempre un costo,
-// la merce pesa finché non rientra. Un campione a fondo perduto non
-// rientra mai, quindi resta a carico per intero.
+// la merce (al prezzo di costo) pesa finché non rientra. Un campione a
+// fondo perduto non rientra mai, quindi resta a carico per intero.
 export const sampleInvested = (sh) =>
-  sampleShipping(sh) + (sh.items || []).reduce((v, it) => v + (it.returned ? 0 : itemValue(it)), 0)
+  sampleShipping(sh) + (sh.items || []).reduce((v, it) => v + (it.returned ? 0 : itemCostValue(it)), 0)
 
-// Merce prestata e non ancora tornata indietro
+// Merce (a prezzo di costo) prestata e non ancora tornata indietro
 export const sampleOutstanding = (sh) =>
   sh.return_required
-    ? (sh.items || []).reduce((v, it) => v + (it.returned ? 0 : itemValue(it)), 0)
+    ? (sh.items || []).reduce((v, it) => v + (it.returned ? 0 : itemCostValue(it)), 0)
     : 0
 
 export const allItemsReturned = (sh) =>
   (sh.items || []).length > 0 && (sh.items || []).every(it => it.returned)
 
+// ─── Esito per invio: riepilogo dei singoli articoli ─────────────
+// Non collassiamo l'esito a un solo valore: un invio con feedback
+// misto (una riga positiva, una negativa) resta misto in UI.
+
+export function shipmentOutcomeSummary(sh) {
+  const items = sh.items || []
+  const counts = {}
+  items.forEach(it => {
+    const o = itemOutcome(it)
+    counts[o] = (counts[o] || 0) + 1
+  })
+  const distinct = Object.keys(counts)
+  return {
+    counts,
+    total:  items.length,
+    open:   counts.in_attesa || 0,
+    isOpen: (counts.in_attesa || 0) > 0,
+    isMixed: distinct.filter(o => o !== 'in_attesa').length > 1,
+    // Se tutte le righe condividono lo stesso esito, utile per un badge unico
+    uniform: distinct.length === 1 ? distinct[0] : null,
+  }
+}
+
 // ─── Alert ───────────────────────────────────────────────────────
 
-// Nessuna risposta dopo FOLLOW_UP_DAYS (o dopo la data di follow-up
-// impostata a mano, se presente).
+// Almeno un articolo ancora senza risposta dopo FOLLOW_UP_DAYS (o
+// dopo la data di follow-up impostata a mano, se presente).
 export function needsFollowUp(sh) {
-  if (!isOpenOutcome(sh)) return false
+  const hasOpenItem = (sh.items || []).some(isItemOpen)
+  if (!hasOpenItem) return false
   if (sh.follow_up_date) return sh.follow_up_date <= todayISO()
   const days = daysSince(sh.shipped_date)
   return days !== null && days >= FOLLOW_UP_DAYS
@@ -123,20 +154,21 @@ export function returnPending(sh) {
 // ─── Aggregati ───────────────────────────────────────────────────
 
 export function sampleStats(shipments) {
-  const list      = shipments || []
-  const converted = list.filter(sh => sh.outcome === 'ordine')
-  const closed    = list.filter(sh => !isOpenOutcome(sh))
+  const list  = shipments || []
+  const items = list.flatMap(sh => sh.items || [])
+  const converted = items.filter(it => itemOutcome(it) === 'ordine')
+  const closed    = items.filter(isItemClosed)
   return {
     count:       list.length,
     pieces:      list.reduce((n, sh) => n + samplePieces(sh), 0),
     invested:    list.reduce((v, sh) => v + sampleInvested(sh), 0),
     outstanding: list.reduce((v, sh) => v + sampleOutstanding(sh), 0),
-    open:        list.filter(isOpenOutcome).length,
+    open:        list.filter(sh => (sh.items || []).some(isItemOpen)).length,
     toFollowUp:  list.filter(needsFollowUp).length,
     toReturn:    list.filter(returnPending).length,
     overdue:     list.filter(returnOverdue).length,
     converted:   converted.length,
-    // Sul totale degli invii con esito noto: gli invii ancora in attesa
+    // Sul totale degli articoli con esito noto: quelli ancora in attesa
     // non hanno ancora vinto né perso e falserebbero la percentuale.
     conversion:  closed.length > 0 ? (converted.length / closed.length) * 100 : null,
   }

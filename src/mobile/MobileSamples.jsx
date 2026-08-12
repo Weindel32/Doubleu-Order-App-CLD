@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER, CATEGORIES } from '../tokens.js'
 import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
-  fmtDate, euro, todayISO, addDaysISO, samplePieces, sampleGoodsValue, sampleShipping,
+  fmtDate, euro, todayISO, addDaysISO, samplePieces, sampleCostValue,
   sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
-  daysSince, itemValue,
+  daysSince, itemCostValue, itemOutcome,
 } from '../utils/samples.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 
@@ -16,15 +16,35 @@ const inputStyle = {
 const labelStyle = { fontSize: 10, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
 const cardStyle  = { background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16 }
 
-const EMPTY_ITEM = () => ({ sp: '', description: '', category: '', color: '', size: '', quantity: 1, unit_value: '', returned: false })
+const EMPTY_ITEM = () => ({
+  sp: '', description: '', category: '', color: '', size: '', quantity: 1,
+  unit_cost: '', unit_price: '', returned: false,
+  outcome: 'in_attesa', outcome_date: '', outcome_note: '', outcome_order_id: '',
+})
 
 const emptyForm = () => ({
   client_id: null, prospect_id: null, recipient_name: '', contact_name: '',
   shipped_date: todayISO(), purpose: 'valutazione',
   return_required: false, return_due_date: '', returned_date: '',
   carrier: '', tracking: '', shipping_cost: '',
-  outcome: 'in_attesa', outcome_date: '', outcome_order_id: '',
   follow_up_date: '', notes: '', items: [EMPTY_ITEM()],
+})
+
+const toEditForm = (sh) => ({
+  ...sh,
+  shipping_cost: sh.shipping_cost ? String(sh.shipping_cost) : '',
+  return_due_date: sh.return_due_date || '', returned_date: sh.returned_date || '',
+  follow_up_date: sh.follow_up_date || '',
+  contact_name: sh.contact_name || '', carrier: sh.carrier || '', tracking: sh.tracking || '', notes: sh.notes || '',
+  items: (sh.items || []).length > 0
+    ? sh.items.map(it => ({
+        ...it,
+        unit_cost:  it.unit_cost  ? String(it.unit_cost)  : '',
+        unit_price: it.unit_price ? String(it.unit_price) : '',
+        outcome: it.outcome || 'in_attesa', outcome_date: it.outcome_date || '',
+        outcome_note: it.outcome_note || '', outcome_order_id: it.outcome_order_id || '',
+      }))
+    : [EMPTY_ITEM()],
 })
 
 const FILTERS = [
@@ -34,7 +54,7 @@ const FILTERS = [
   { k: 'toreturn', label: 'Da rientrare' },
 ]
 
-export default function MobileSamples({ shipments, clients, prospects, onUpsert, onDelete, onOutcome, onMarkReturned }) {
+export default function MobileSamples({ shipments, clients, prospects, onUpsert, onDelete, onItemOutcome, onMarkReturned }) {
   const [form,     setForm]     = useState(null)
   const [saving,   setSaving]   = useState(false)
   const [openId,   setOpenId]   = useState(null)
@@ -46,7 +66,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
 
   const q = search.trim().toLowerCase()
   const filtered = list.filter(sh => {
-    if (filter === 'open'     && (sh.outcome || 'in_attesa') !== 'in_attesa') return false
+    if (filter === 'open'     && !(sh.items || []).some(it => itemOutcome(it) === 'in_attesa')) return false
     if (filter === 'followup' && !needsFollowUp(sh)) return false
     if (filter === 'toreturn' && !returnPending(sh)) return false
     if (q) {
@@ -61,6 +81,11 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
 
   const set     = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const setItem = (i, k, v) => setForm(f => ({ ...f, items: f.items.map((it, idx) => idx === i ? { ...it, [k]: v } : it) }))
+  const setItemOutcome = (i, outcome) => setForm(f => ({
+    ...f, items: f.items.map((it, idx) => idx === i
+      ? { ...it, outcome, outcome_date: it.outcome_date || (outcome !== 'in_attesa' ? todayISO() : it.outcome_date) }
+      : it),
+  }))
 
   const choosePurpose = (purpose) => setForm(f => ({
     ...f,
@@ -169,7 +194,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
             )}
           </div>
 
-          {/* Articoli */}
+          {/* Articoli, ciascuno con il proprio esito */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={labelStyle}>Campioni inviati</span>
@@ -180,8 +205,10 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {form.items.map((it, i) => (
-                <div key={i} style={cardStyle}>
+              {form.items.map((it, i) => {
+                const outCfg = OUTCOME_CFG[it.outcome || 'in_attesa']
+                return (
+                <div key={i} style={{ ...cardStyle, borderLeft: `3px solid ${outCfg.color}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <span style={{ fontSize: 10, letterSpacing: 2, color: GOLD }}>ARTICOLO {i + 1}</span>
                     {form.items.length > 1 && (
@@ -200,21 +227,33 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                       <input style={inputStyle} placeholder="Colore" value={it.color} onChange={e => setItem(i, 'color', e.target.value)}/>
                       <input style={inputStyle} placeholder="Taglia" value={it.size} onChange={e => setItem(i, 'size', e.target.value)}/>
                       <input style={inputStyle} type="number" min="1" placeholder="Q.tà" value={it.quantity} onChange={e => setItem(i, 'quantity', e.target.value)}/>
-                      <input style={inputStyle} type="number" step="0.01" placeholder="Valore un. €" value={it.unit_value} onChange={e => setItem(i, 'unit_value', e.target.value)}/>
+                      <input style={inputStyle} type="number" step="0.01" placeholder="Costo un. €" value={it.unit_cost} onChange={e => setItem(i, 'unit_cost', e.target.value)}/>
                     </div>
+                    <input style={inputStyle} type="number" step="0.01" placeholder="Prezzo al club €" value={it.unit_price} onChange={e => setItem(i, 'unit_price', e.target.value)}/>
                     {mustReturn && (
                       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: it.returned ? GREEN : MUTED }}>
                         <input type="checkbox" checked={!!it.returned} onChange={e => setItem(i, 'returned', e.target.checked)} style={{ accentColor: GREEN }}/>
                         Rientrato
                       </label>
                     )}
+
+                    <div style={{ paddingTop: 10, borderTop: `1px solid ${BORDER}` }}>
+                      <label style={labelStyle}>Esito articolo</label>
+                      <select style={inputStyle} value={it.outcome || 'in_attesa'} onChange={e => setItemOutcome(i, e.target.value)}>
+                        {OUTCOMES.map(o => <option key={o} value={o}>{OUTCOME_LABELS[o]}</option>)}
+                      </select>
+                      {(it.outcome || 'in_attesa') !== 'in_attesa' && (
+                        <input style={{ ...inputStyle, marginTop: 8 }} placeholder="Nota sul feedback…"
+                          value={it.outcome_note || ''} onChange={e => setItem(i, 'outcome_note', e.target.value)}/>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
-            <div style={{ textAlign: 'right', marginTop: 10, fontSize: 12, color: MUTED }}>
-              Valore merce: <span style={{ color: GOLD }}>{euro(form.items.reduce((v, it) => v + itemValue(it), 0), 2)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 12, color: MUTED }}>
+              <span>Costo: <span style={{ color: GOLD }}>{euro(form.items.reduce((v, it) => v + itemCostValue(it), 0), 2)}</span></span>
             </div>
           </div>
 
@@ -235,14 +274,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
           </div>
 
           <div>
-            <label style={labelStyle}>Esito</label>
-            <select style={inputStyle} value={form.outcome} onChange={e => set('outcome', e.target.value)}>
-              {OUTCOMES.map(o => <option key={o} value={o}>{OUTCOME_LABELS[o]}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Note</label>
+            <label style={labelStyle}>Note invio</label>
             <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={form.notes} onChange={e => set('notes', e.target.value)}/>
           </div>
 
@@ -300,12 +332,11 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(sh => {
-            const cfg      = OUTCOME_CFG[sh.outcome] || OUTCOME_CFG.in_attesa
             const open     = openId === sh.id
             const overdue  = returnOverdue(sh)
             const followUp = needsFollowUp(sh)
             return (
-              <div key={sh.id} style={{ ...cardStyle, borderLeft: `3px solid ${cfg.color}`, padding: 0, overflow: 'hidden' }}>
+              <div key={sh.id} style={{ ...cardStyle, borderLeft: `3px solid ${GOLD}`, padding: 0, overflow: 'hidden' }}>
                 <div onClick={() => setOpenId(open ? null : sh.id)} style={{ padding: 16, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                     <div style={{ minWidth: 0 }}>
@@ -317,19 +348,27 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9,
-                        letterSpacing: 1, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
-                        {(OUTCOME_LABELS[sh.outcome] || 'In attesa').toUpperCase()}
-                      </span>
-                      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, color: GOLD, marginTop: 5 }}>
-                        {euro(sampleGoodsValue(sh) + sampleShipping(sh), 2)}
+                      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, color: GOLD }}>
+                        {euro(sampleCostValue(sh), 2)}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: 11, color: MUTED, marginTop: 8, lineHeight: 1.6 }}>
-                    {(sh.items || []).map(it => [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
-                      .filter(Boolean).join(' ')).join(' · ') || '—'}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                    {(sh.items || []).map(it => {
+                      const c = OUTCOME_CFG[itemOutcome(it)]
+                      const label = [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
+                        .filter(Boolean).join(' ')
+                      return (
+                        <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, color: MUTED }}>{label || '—'}</span>
+                          <span style={{ fontSize: 8, letterSpacing: 1, padding: '1px 7px', borderRadius: 2,
+                            background: c.bg, color: c.color, border: `1px solid ${c.border}`, flexShrink: 0 }}>
+                            {(OUTCOME_LABELS[itemOutcome(it)] || '').toUpperCase()}
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
 
                   {(overdue || followUp) && (
@@ -348,20 +387,30 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                     )}
                     {sh.notes && <div style={{ fontSize: 12, color: CREAM, marginBottom: 12, lineHeight: 1.6 }}>{sh.notes}</div>}
 
-                    <div style={{ fontSize: 10, letterSpacing: 2, color: MUTED, marginBottom: 8 }}>ESITO</div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-                      {OUTCOMES.map(o => {
-                        const c = OUTCOME_CFG[o]
-                        const active = (sh.outcome || 'in_attesa') === o
+                    <div style={{ fontSize: 10, letterSpacing: 2, color: MUTED, marginBottom: 8 }}>ESITO PER ARTICOLO</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+                      {(sh.items || []).map(it => {
+                        const label = [it.sp, it.description, it.color, it.size].filter(Boolean).join(' ')
                         return (
-                          <button key={o} onClick={() => onOutcome(sh.id, o)}
-                            style={{ padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 10, letterSpacing: 0.5,
-                              fontFamily: "'Josefin Sans', sans-serif",
-                              border: `1px solid ${active ? c.border : BORDER}`,
-                              background: active ? c.bg : 'transparent',
-                              color: active ? c.color : MUTED }}>
-                            {OUTCOME_LABELS[o]}
-                          </button>
+                          <div key={it.id}>
+                            <div style={{ fontSize: 11, color: CREAM, marginBottom: 5 }}>{label || '—'}</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              {OUTCOMES.map(o => {
+                                const c = OUTCOME_CFG[o]
+                                const active = itemOutcome(it) === o
+                                return (
+                                  <button key={o} onClick={() => onItemOutcome(it.id, o)}
+                                    style={{ padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 10, letterSpacing: 0.5,
+                                      fontFamily: "'Josefin Sans', sans-serif",
+                                      border: `1px solid ${active ? c.border : BORDER}`,
+                                      background: active ? c.bg : 'transparent',
+                                      color: active ? c.color : MUTED }}>
+                                    {OUTCOME_LABELS[o]}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
                         )
                       })}
                     </div>
@@ -383,16 +432,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                           Segna rientrato
                         </button>
                       )}
-                      <button onClick={() => setForm({
-                        ...sh,
-                        shipping_cost: sh.shipping_cost ? String(sh.shipping_cost) : '',
-                        return_due_date: sh.return_due_date || '', returned_date: sh.returned_date || '',
-                        follow_up_date: sh.follow_up_date || '', outcome_order_id: sh.outcome_order_id || '',
-                        contact_name: sh.contact_name || '', carrier: sh.carrier || '', tracking: sh.tracking || '', notes: sh.notes || '',
-                        items: (sh.items || []).length > 0
-                          ? sh.items.map(it => ({ ...it, unit_value: it.unit_value ? String(it.unit_value) : '' }))
-                          : [EMPTY_ITEM()],
-                      })}
+                      <button onClick={() => setForm(toEditForm(sh))}
                         style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5,
                           background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }}>
                         Modifica

@@ -1,8 +1,8 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 import {
-  PURPOSE_LABELS, OUTCOME_LABELS, fmtDate, recipientLabel,
-  samplePieces, sampleGoodsValue, sampleShipping, sampleInvested,
+  PURPOSE_LABELS, OUTCOME_LABELS, fmtDate, recipientLabel, itemOutcome,
+  samplePieces, sampleCostValue, samplePriceValue, sampleShipping, sampleInvested,
 } from './samples.js'
 
 // Scarica una matrice di righe come CSV (BOM per Excel in locale italiano)
@@ -126,8 +126,8 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
   rows.push([
     'Data invio', 'Destinatario', 'Tipo', 'Referente', 'Motivo',
     'Codice DUSP', 'Descrizione', 'Colore', 'Taglia', 'Q.t\u00E0',
-    'Valore un. \u20AC', 'Valore riga \u20AC', 'Reso richiesto', 'Rientrato',
-    'Corriere', 'Tracking', 'Esito', 'Ordine collegato', 'Note',
+    'Costo un. \u20AC', 'Prezzo club un. \u20AC', 'Valore riga (costo) \u20AC', 'Reso richiesto', 'Rientrato',
+    'Corriere', 'Tracking', 'Esito articolo', 'Nota esito', 'Ordine collegato', 'Note invio',
   ])
 
   const sorted = [...(shipments || [])].sort((a, b) => (b.shipped_date || '').localeCompare(a.shipped_date || ''))
@@ -140,30 +140,27 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
       sh.contact_name || '',
       PURPOSE_LABELS[sh.purpose] || sh.purpose || '',
     ]
-    const tail = [
-      sh.return_required ? 'S\u00EC' : 'No',
-      sh.returned_date ? fmtDate(sh.returned_date) : '',
-      sh.carrier || '',
-      sh.tracking || '',
-      OUTCOME_LABELS[sh.outcome] || sh.outcome || '',
-      sh.outcome_order_id || '',
-      sh.notes || '',
-    ]
+    const shipTail = [sh.carrier || '', sh.tracking || '']
     const items = (sh.items || [])
     if (items.length === 0) {
-      rows.push([...base, '', '', '', '', 0, '', '', ...tail])
+      rows.push([...base, '', '', '', '', 0, '', '', '', sh.return_required ? 'S\u00EC' : 'No', '', ...shipTail, '', '', '', sh.notes || ''])
       return
     }
     items.forEach(it => {
       const qty  = parseInt(it.quantity) || 0
-      const unit = parseFloat(it.unit_value) || 0
+      const cost = parseFloat(it.unit_cost)  || 0
+      const price = parseFloat(it.unit_price) || 0
       rows.push([
         ...base,
         it.sp || '', it.description || '', it.color || '', it.size || '', qty,
-        unit.toFixed(2), (qty * unit).toFixed(2),
+        cost.toFixed(2), price.toFixed(2), (qty * cost).toFixed(2),
         sh.return_required ? 'S\u00EC' : 'No',
         it.returned ? 'S\u00EC' : (sh.return_required ? 'No' : '\u2014'),
-        ...tail.slice(2),
+        ...shipTail,
+        OUTCOME_LABELS[itemOutcome(it)] || itemOutcome(it),
+        it.outcome_note || '',
+        it.outcome_order_id || '',
+        sh.notes || '',
       ])
     })
   })
@@ -171,16 +168,17 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
   // Riepilogo per destinatario
   rows.push([])
   rows.push(['RIEPILOGO PER DESTINATARIO'])
-  rows.push(['Destinatario', 'Invii', 'Pezzi', 'Valore merce \u20AC', 'Spedizioni \u20AC', 'Investito \u20AC'])
+  rows.push(['Destinatario', 'Invii', 'Pezzi', 'Valore a costo \u20AC', 'Valore al club \u20AC', 'Spedizioni \u20AC', 'Investito \u20AC'])
 
   const byRecipient = {}
   sorted.forEach(sh => {
     const key = recipientLabel(sh, clients, prospects)
-    if (!byRecipient[key]) byRecipient[key] = { count: 0, pieces: 0, goods: 0, shipping: 0, invested: 0 }
+    if (!byRecipient[key]) byRecipient[key] = { count: 0, pieces: 0, cost: 0, price: 0, shipping: 0, invested: 0 }
     const r = byRecipient[key]
     r.count    += 1
     r.pieces   += samplePieces(sh)
-    r.goods    += sampleGoodsValue(sh)
+    r.cost     += sampleCostValue(sh)
+    r.price    += samplePriceValue(sh)
     r.shipping += sampleShipping(sh)
     r.invested += sampleInvested(sh)
   })
@@ -188,7 +186,7 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
   Object.entries(byRecipient)
     .sort((a, b) => b[1].invested - a[1].invested)
     .forEach(([name, r]) => rows.push([
-      name, r.count, r.pieces, r.goods.toFixed(2), r.shipping.toFixed(2), r.invested.toFixed(2),
+      name, r.count, r.pieces, r.cost.toFixed(2), r.price.toFixed(2), r.shipping.toFixed(2), r.invested.toFixed(2),
     ]))
 
   downloadCSV(rows, `DOUBLEU_Campionature_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.csv`)

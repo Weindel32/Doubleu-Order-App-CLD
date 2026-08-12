@@ -21,7 +21,7 @@ const TABS = [
   { key: 'analytics', label: 'Stats',      icon: 'analytics' },
 ]
 
-export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onUpdateActivity, onDeleteActivity, onDeleteProspect, shipments = [], onUpsertShipment, onDeleteShipment, onSampleOutcome, onMarkSampleReturned }) {
+export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onUpdateActivity, onDeleteActivity, onDeleteProspect, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
   const [tab, setTab]                   = useState('home')
   const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -69,7 +69,7 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
         {tab === 'prospects' && <MobileProspects prospects={prospects} onUpsert={onUpsertProspect} onAddActivity={onAddActivity} onUpdateActivity={onUpdateActivity} onDeleteActivity={onDeleteActivity} onDelete={onDeleteProspect} />}
         {tab === 'samples'   && <MobileSamples   shipments={shipments} clients={clients} prospects={prospects}
                                   onUpsert={onUpsertShipment} onDelete={onDeleteShipment}
-                                  onOutcome={onSampleOutcome} onMarkReturned={onMarkSampleReturned} />}
+                                  onItemOutcome={onSampleItemOutcome} onMarkReturned={onMarkSampleReturned} />}
         {tab === 'analytics' && <MobileAnalytics orders={orders} />}
       </div>
 

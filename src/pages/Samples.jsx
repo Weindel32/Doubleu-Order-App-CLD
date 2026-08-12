@@ -3,12 +3,11 @@ import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleModal, { emptyShipment, shipmentToForm } from '../components/SampleModal.jsx'
-import { OutcomeBadge } from '../components/SampleTimeline.jsx'
 import { exportSamplesCSV } from '../utils/exportCSV.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 import {
   PURPOSE_LABELS, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
-  fmtDate, euro, samplePieces, sampleGoodsValue, sampleShipping,
+  fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
   sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
   daysSince, allItemsReturned, todayISO,
 } from '../utils/samples.js'
@@ -25,7 +24,7 @@ const VIEW_FILTERS = [
 
 export default function Samples({
   shipments, clients, prospects, orders,
-  onUpsert, onDelete, onMarkReturned, onOutcome,
+  onUpsert, onDelete, onMarkReturned, onItemOutcome,
   initialDraft, onDraftConsumed,
 }) {
   const [form,     setForm]     = useState(null)
@@ -50,10 +49,10 @@ export default function Samples({
   const q = search.trim().toLowerCase()
   const filtered = list.filter(sh => {
     if (year !== 'all' && (sh.shipped_date || '').slice(0, 4) !== year) return false
-    if (filter === 'open'      && (sh.outcome || 'in_attesa') !== 'in_attesa') return false
+    if (filter === 'open'      && !(sh.items || []).some(it => itemOutcome(it) === 'in_attesa')) return false
     if (filter === 'followup'  && !needsFollowUp(sh))  return false
     if (filter === 'toreturn'  && !returnPending(sh))  return false
-    if (filter === 'converted' && sh.outcome !== 'ordine') return false
+    if (filter === 'converted' && !(sh.items || []).some(it => itemOutcome(it) === 'ordine')) return false
     if (q) {
       const hay = [
         recipientLabel(sh, clients, prospects), sh.contact_name, sh.carrier, sh.tracking, sh.notes,
@@ -110,10 +109,10 @@ export default function Samples({
       <div style={s.grid4}>
         <StatCard label="Invii Registrati" value={stats.count} sub={`${stats.pieces} pezzi`}/>
         <StatCard label="Investito"        value={euro(stats.invested)} accent
-          sub={stats.outstanding > 0 ? `${euro(stats.outstanding)} da rientrare` : 'Merce + spedizioni'}/>
+          sub={stats.outstanding > 0 ? `${euro(stats.outstanding)} da rientrare` : 'Costo merce non rientrata + spedizioni'}/>
         <StatCard label="Conversione"
           value={stats.conversion === null ? '—' : `${stats.conversion.toFixed(0)}%`}
-          sub={stats.conversion === null ? 'Nessun esito ancora' : `${stats.converted} su ${stats.count - stats.open} chiusi`}/>
+          sub={stats.conversion === null ? 'Nessun esito ancora' : `${stats.converted} articoli convertiti`}/>
         <StatCard label="Da Seguire" value={stats.toFollowUp + stats.overdue}
           sub={`${stats.toFollowUp} solleciti · ${stats.overdue} resi scaduti`}/>
       </div>
@@ -161,14 +160,13 @@ export default function Samples({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(sh => {
-            const cfg      = OUTCOME_CFG[sh.outcome] || OUTCOME_CFG.in_attesa
             const overdue  = returnOverdue(sh)
             const followUp = needsFollowUp(sh)
             const days     = daysSince(sh.shipped_date)
             return (
               <div key={sh.id} className="du-card"
                 style={{ padding: '16px 22px', background: 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${BORDER}`, borderLeft: `3px solid ${cfg.color}`, borderRadius: 10 }}>
+                  border: `1px solid ${BORDER}`, borderLeft: `3px solid ${GOLD}`, borderRadius: 10 }}>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
                   {/* Destinatario */}
@@ -177,7 +175,6 @@ export default function Samples({
                       <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: CREAM, letterSpacing: 0.5 }}>
                         {recipientLabel(sh, clients, prospects)}
                       </span>
-                      <OutcomeBadge outcome={sh.outcome}/>
                       {sh.prospect_id && (
                         <span style={{ fontSize: 9, letterSpacing: 1.5, color: '#7aaee8' }}>PROSPECT</span>
                       )}
@@ -196,9 +193,9 @@ export default function Samples({
 
                   {/* Valore */}
                   <div style={{ textAlign: 'right', flexShrink: 0, width: 110 }}>
-                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 2 }}>VALORE</div>
+                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 2 }}>COSTO</div>
                     <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, color: GOLD }}>
-                      {euro(sampleGoodsValue(sh) + sampleShipping(sh), 2)}
+                      {euro(sampleCostValue(sh), 2)}
                     </div>
                   </div>
 
@@ -228,14 +225,6 @@ export default function Samples({
                   </div>
                 </div>
 
-                {/* Articoli */}
-                <div style={{ fontSize: 11, color: MUTED, marginTop: 10, lineHeight: 1.6 }}>
-                  {(sh.items || []).length === 0
-                    ? '—'
-                    : sh.items.map(it => [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
-                        .filter(Boolean).join(' ')).join('  ·  ')}
-                </div>
-
                 {/* Stato reso / sollecito */}
                 {(returnPending(sh) || sh.returned_date || followUp) && (
                   <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
@@ -257,20 +246,33 @@ export default function Samples({
                   </div>
                 )}
 
-                {/* Esito rapido */}
-                <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginRight: 4 }}>ESITO</span>
-                  {OUTCOMES.map(o => {
-                    const c      = OUTCOME_CFG[o]
-                    const active = (sh.outcome || 'in_attesa') === o
+                {/* Articoli, ciascuno con il proprio esito */}
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(sh.items || []).map(it => {
+                    const label = [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
+                      .filter(Boolean).join(' ')
                     return (
-                      <button key={o} onClick={() => onOutcome(sh.id, o)}
-                        style={{ padding: '4px 11px', borderRadius: 3, cursor: 'pointer', fontSize: 9, letterSpacing: 1,
-                          border: `1px solid ${active ? c.border : BORDER}`,
-                          background: active ? c.bg : 'transparent',
-                          color: active ? c.color : MUTED, fontWeight: active ? 700 : 400 }}>
-                        {OUTCOME_LABELS[o]}
-                      </button>
+                      <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, color: MUTED, flex: '1 1 200px', minWidth: 0 }}>{label || '—'}</span>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {OUTCOMES.map(o => {
+                            const c      = OUTCOME_CFG[o]
+                            const active = itemOutcome(it) === o
+                            return (
+                              <button key={o} onClick={() => onItemOutcome(it.id, o)}
+                                style={{ padding: '3px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 8.5, letterSpacing: 0.5,
+                                  border: `1px solid ${active ? c.border : BORDER}`,
+                                  background: active ? c.bg : 'transparent',
+                                  color: active ? c.color : MUTED, fontWeight: active ? 700 : 400 }}>
+                                {OUTCOME_LABELS[o]}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {it.outcome_note && (
+                          <span style={{ fontSize: 10, color: CREAM, fontStyle: 'italic', flexBasis: '100%' }}>{it.outcome_note}</span>
+                        )}
+                      </div>
                     )
                   })}
                 </div>

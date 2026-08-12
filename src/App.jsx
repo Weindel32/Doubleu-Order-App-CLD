@@ -13,7 +13,7 @@ import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, markQuoteLost, restoreQuote, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleOutcome, markSampleReturned } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, markQuoteLost, restoreQuote, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
 import { needsAlert, isConfirmed } from './utils/helpers.js'
 import { needsFollowUp, returnOverdue } from './utils/samples.js'
 import { supabase } from './lib/supabase.js'
@@ -215,8 +215,8 @@ export default function App() {
     return ok
   }
 
-  const handleSampleOutcome = async (shipmentId, outcome) => {
-    const ok = await updateSampleOutcome(shipmentId, outcome)
+  const handleSampleItemOutcome = async (itemId, outcome, extraFields) => {
+    const ok = await updateSampleItemOutcome(itemId, outcome, extraFields)
     if (ok) setShipments(await fetchSampleShipments())
     return ok
   }
@@ -343,7 +343,7 @@ export default function App() {
       onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity}
       onDeleteProspect={handleDeleteProspect}
       shipments={shipments} onUpsertShipment={handleUpsertShipment}
-      onDeleteShipment={handleDeleteShipment} onSampleOutcome={handleSampleOutcome}
+      onDeleteShipment={handleDeleteShipment} onSampleItemOutcome={handleSampleItemOutcome}
       onMarkSampleReturned={handleMarkSampleReturned} />
   }
 
@@ -356,7 +356,7 @@ export default function App() {
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder} shipments={shipments} onNewSample={handleNewSample}/>}
         {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample}/>}
-        {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} onOutcome={handleSampleOutcome} onMarkReturned={handleMarkSampleReturned} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
+        {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} onItemOutcome={handleSampleItemOutcome} onMarkReturned={handleMarkSampleReturned} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
         {view === 'analytics'  && <Analytics orders={orders} shipments={shipments}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
         {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}

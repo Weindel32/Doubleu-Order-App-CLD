@@ -57,9 +57,18 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS discount_value numeric DEFAULT 0;
 -- Registra ogni invio di campioni a clienti acquisiti o prospect,
 -- così non serve più ricostruire l'informazione dalle note.
 --
--- purpose:  'valutazione' | 'misurazione' | 'fiera' | 'omaggio'
---           'misurazione' (set taglie) implica sempre return_required
--- outcome:  'in_attesa' | 'positivo' | 'negativo' | 'preventivo' | 'ordine'
+-- purpose: 'valutazione' | 'misurazione' | 'fiera' | 'omaggio'
+--          'misurazione' (set taglie) implica sempre return_required
+--
+-- L'esito (outcome) vive sulla singola riga articolo, non
+-- sull'invio: articoli diversi nello stesso invio possono avere
+-- feedback diversi (es. la maglia piace, il pantaloncino no).
+-- outcome: 'in_attesa' | 'positivo' | 'negativo' | 'preventivo' | 'ordine'
+--
+-- Ogni riga ha due valori economici distinti:
+-- unit_cost  = prezzo di costo, base dell'investito reale di DOUBLEU
+-- unit_price = prezzo al club/listino, riferimento per un eventuale
+--              addebito in caso di danno o mancata restituzione
 --
 -- I tipi di client_id / prospect_id sono ricavati dalle tabelle
 -- esistenti, così la migrazione funziona sia con id uuid sia bigint.
@@ -92,28 +101,31 @@ BEGIN
       carrier         text,
       tracking        text,
       shipping_cost   numeric DEFAULT 0,
-      outcome         text    DEFAULT 'in_attesa',
-      outcome_date    text,
-      outcome_order_id %s REFERENCES orders(id) ON DELETE SET NULL,
       follow_up_date  text,
       notes           text,
       created_at      timestamptz DEFAULT now()
-    )$f$, cid_type, pid_type, oid_type);
-END $$;
+    )$f$, cid_type, pid_type);
 
-CREATE TABLE IF NOT EXISTS sample_items (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  shipment_id uuid REFERENCES sample_shipments(id) ON DELETE CASCADE,
-  sp          text,
-  description text,
-  category    text,
-  color       text,
-  size        text,
-  quantity    integer DEFAULT 1,
-  unit_value  numeric DEFAULT 0,
-  returned    boolean DEFAULT false,
-  position    integer DEFAULT 0
-);
+  EXECUTE format($f$
+    CREATE TABLE IF NOT EXISTS sample_items (
+      id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      shipment_id       uuid REFERENCES sample_shipments(id) ON DELETE CASCADE,
+      sp                text,
+      description       text,
+      category          text,
+      color             text,
+      size              text,
+      quantity          integer DEFAULT 1,
+      unit_cost         numeric DEFAULT 0,
+      unit_price        numeric DEFAULT 0,
+      returned          boolean DEFAULT false,
+      position          integer DEFAULT 0,
+      outcome           text    DEFAULT 'in_attesa',
+      outcome_date      text,
+      outcome_note      text,
+      outcome_order_id  %s REFERENCES orders(id) ON DELETE SET NULL
+    )$f$, oid_type);
+END $$;
 
 CREATE INDEX IF NOT EXISTS sample_shipments_client_idx   ON sample_shipments (client_id);
 CREATE INDEX IF NOT EXISTS sample_shipments_prospect_idx ON sample_shipments (prospect_id);

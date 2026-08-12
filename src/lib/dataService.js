@@ -353,8 +353,7 @@ export async function deleteProspectActivity(activityId) {
 const SHIPMENT_FIELDS = [
   'client_id', 'prospect_id', 'recipient_name', 'contact_name', 'shipped_date',
   'purpose', 'return_required', 'return_due_date', 'returned_date',
-  'carrier', 'tracking', 'shipping_cost', 'outcome', 'outcome_date',
-  'outcome_order_id', 'follow_up_date', 'notes',
+  'carrier', 'tracking', 'shipping_cost', 'follow_up_date', 'notes',
 ]
 
 export async function fetchSampleShipments() {
@@ -374,7 +373,6 @@ function shipmentRow(shipment) {
   SHIPMENT_FIELDS.forEach(k => { if (shipment[k] !== undefined) row[k] = shipment[k] || null })
   row.return_required = !!shipment.return_required
   row.shipping_cost   = parseFloat(shipment.shipping_cost) || 0
-  row.outcome         = shipment.outcome || 'in_attesa'
   row.purpose         = shipment.purpose || 'valutazione'
   return row
 }
@@ -384,16 +382,21 @@ async function replaceSampleItems(shipmentId, items) {
   const rows = (items || [])
     .filter(it => (it.sp || '').trim() || (it.description || '').trim())
     .map((it, i) => ({
-      shipment_id: shipmentId,
-      sp:          it.sp || null,
-      description: it.description || null,
-      category:    it.category || null,
-      color:       it.color || null,
-      size:        it.size || null,
-      quantity:    parseInt(it.quantity) || 1,
-      unit_value:  parseFloat(it.unit_value) || 0,
-      returned:    !!it.returned,
-      position:    i,
+      shipment_id:      shipmentId,
+      sp:               it.sp || null,
+      description:      it.description || null,
+      category:         it.category || null,
+      color:            it.color || null,
+      size:             it.size || null,
+      quantity:         parseInt(it.quantity) || 1,
+      unit_cost:        parseFloat(it.unit_cost) || 0,
+      unit_price:       parseFloat(it.unit_price) || 0,
+      returned:         !!it.returned,
+      position:         i,
+      outcome:          it.outcome || 'in_attesa',
+      outcome_date:     it.outcome_date || null,
+      outcome_note:     it.outcome_note || null,
+      outcome_order_id: it.outcome_order_id || null,
     }))
   if (rows.length === 0) return true
   const { error } = await supabase.from('sample_items').insert(rows)
@@ -422,12 +425,14 @@ export async function deleteSampleShipment(shipmentId) {
   return true
 }
 
-// Aggiorna solo l'esito, senza riscrivere le righe articolo
-export async function updateSampleOutcome(shipmentId, outcome, extraFields = {}) {
-  const { error } = await supabase.from('sample_shipments')
+// Aggiorna l'esito della singola riga articolo, senza toccare le
+// altre righe dello stesso invio: articoli diversi possono avere
+// feedback diversi.
+export async function updateSampleItemOutcome(itemId, outcome, extraFields = {}) {
+  const { error } = await supabase.from('sample_items')
     .update({ outcome, outcome_date: new Date().toISOString().slice(0, 10), ...extraFields })
-    .eq('id', shipmentId)
-  if (error) { console.error('updateSampleOutcome:', error); return false }
+    .eq('id', itemId)
+  if (error) { console.error('updateSampleItemOutcome:', error); return false }
   return true
 }
 
