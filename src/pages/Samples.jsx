@@ -3,11 +3,11 @@ import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleModal, { emptyShipment, shipmentToForm } from '../components/SampleModal.jsx'
+import { OutcomeBadge } from '../components/SampleTimeline.jsx'
 import { exportSamplesCSV } from '../utils/exportCSV.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 import {
-  PURPOSE_LABELS, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
-  fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
+  PURPOSE_LABELS, fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
   sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
   daysSince, allItemsReturned, todayISO,
 } from '../utils/samples.js'
@@ -24,7 +24,7 @@ const VIEW_FILTERS = [
 
 export default function Samples({
   shipments, clients, prospects, orders,
-  onUpsert, onDelete, onMarkReturned, onItemOutcome,
+  onUpsert, onDelete, onMarkReturned,
   initialDraft, onDraftConsumed,
 }) {
   const [form,     setForm]     = useState(null)
@@ -246,32 +246,19 @@ export default function Samples({
                   </div>
                 )}
 
-                {/* Articoli, ciascuno con il proprio esito */}
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Articoli: una riga compatta ciascuno, badge esito a colpo
+                    d'occhio. Per cambiare esito si apre il modal — tenerlo
+                    modificabile qui gonfiava la card con 5 pulsanti per riga. */}
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {(sh.items || []).map(it => {
                     const label = [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
                       .filter(Boolean).join(' ')
                     return (
-                      <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, color: MUTED, flex: '1 1 200px', minWidth: 0 }}>{label || '—'}</span>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                          {OUTCOMES.map(o => {
-                            const c      = OUTCOME_CFG[o]
-                            const active = itemOutcome(it) === o
-                            return (
-                              <button key={o} onClick={() => onItemOutcome(it.id, o)}
-                                style={{ padding: '3px 9px', borderRadius: 3, cursor: 'pointer', fontSize: 8.5, letterSpacing: 0.5,
-                                  border: `1px solid ${active ? c.border : BORDER}`,
-                                  background: active ? c.bg : 'transparent',
-                                  color: active ? c.color : MUTED, fontWeight: active ? 700 : 400 }}>
-                                {OUTCOME_LABELS[o]}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {it.outcome_note && (
-                          <span style={{ fontSize: 10, color: CREAM, fontStyle: 'italic', flexBasis: '100%' }}>{it.outcome_note}</span>
-                        )}
+                      <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {label || '—'}
+                        </span>
+                        <OutcomeBadge outcome={itemOutcome(it)}/>
                       </div>
                     )
                   })}
