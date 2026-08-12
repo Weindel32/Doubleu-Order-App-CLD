@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleModal, { emptyShipment, shipmentToForm } from '../components/SampleModal.jsx'
-import { OutcomeBadge } from '../components/SampleTimeline.jsx'
 import { exportSamplesCSV } from '../utils/exportCSV.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 import {
   PURPOSE_LABELS, fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
-  sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
-  daysSince, allItemsReturned, todayISO,
+  sampleStats, recipientLabel, needsFollowUp, returnPending,
 } from '../utils/samples.js'
 
 const inp = { ...s.input }
@@ -24,7 +22,7 @@ const VIEW_FILTERS = [
 
 export default function Samples({
   shipments, clients, prospects, orders,
-  onUpsert, onDelete, onMarkReturned,
+  onUpsert, onDelete,
   initialDraft, onDraftConsumed,
 }) {
   const [form,     setForm]     = useState(null)
@@ -159,113 +157,63 @@ export default function Samples({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filtered.map(sh => {
-            const overdue  = returnOverdue(sh)
-            const followUp = needsFollowUp(sh)
-            const days     = daysSince(sh.shipped_date)
-            return (
-              <div key={sh.id} className="du-card"
-                style={{ padding: '16px 22px', background: 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${BORDER}`, borderLeft: `3px solid ${GOLD}`, borderRadius: 10 }}>
+          {filtered.map(sh => (
+            <div key={sh.id} className="du-card"
+              style={{ padding: '20px 26px', background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${BORDER}`, borderLeft: `3px solid ${GOLD}`, borderRadius: 10,
+                display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-                  {/* Destinatario */}
-                  <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: CREAM, letterSpacing: 0.5 }}>
-                        {recipientLabel(sh, clients, prospects)}
-                      </span>
-                      {sh.prospect_id && (
-                        <span style={{ fontSize: 9, letterSpacing: 1.5, color: '#7aaee8' }}>PROSPECT</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: MUTED, marginTop: 5 }}>
-                      {[fmtDate(sh.shipped_date), PURPOSE_LABELS[sh.purpose] || sh.purpose, sh.contact_name, sh.carrier]
-                        .filter(Boolean).join('  ·  ')}
-                    </div>
-                  </div>
-
-                  {/* Pezzi */}
-                  <div style={{ textAlign: 'right', flexShrink: 0, width: 70 }}>
-                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 2 }}>PEZZI</div>
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, color: CREAM }}>{samplePieces(sh)}</div>
-                  </div>
-
-                  {/* Valore */}
-                  <div style={{ textAlign: 'right', flexShrink: 0, width: 110 }}>
-                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 2 }}>COSTO</div>
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, color: GOLD }}>
-                      {euro(sampleCostValue(sh), 2)}
-                    </div>
-                  </div>
-
-                  {/* Azioni */}
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 'auto' }}>
-                    <button style={{ ...btnStyle(false), padding: '6px 14px', fontSize: 9 }}
-                      onClick={() => openSamplePDF(sh)}>
-                      Bolla Campioni
-                    </button>
-                    {returnPending(sh) && (
-                      <button style={{ padding: '6px 14px', fontSize: 9, letterSpacing: 1.5, cursor: 'pointer', borderRadius: 3,
-                        background: 'transparent', border: `1px solid ${GREEN}`, color: GREEN }}
-                        onClick={() => onMarkReturned(sh.id, todayISO())}>
-                        Segna rientrato
-                      </button>
-                    )}
-                    <button style={{ ...btnGoldStyle, padding: '6px 16px', fontSize: 9 }}
-                      onClick={() => setForm(shipmentToForm(sh))}>
-                      Apri
-                    </button>
-                    <button disabled={deleting}
-                      style={{ padding: '6px 14px', fontSize: 9, letterSpacing: 1.5, cursor: 'pointer', borderRadius: 3,
-                        background: 'transparent', border: '1px solid rgba(196,98,58,0.35)', color: CLAY }}
-                      onClick={() => handleDelete(sh)}>
-                      Elimina
-                    </button>
-                  </div>
+              {/* Destinatario — le altre informazioni (articoli, esiti, resi,
+                  solleciti) si vedono aprendo l'invio: qui basta il colpo
+                  d'occhio su chi, quanto e cosa fare. */}
+              <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 21, color: CREAM, letterSpacing: 0.5 }}>
+                    {recipientLabel(sh, clients, prospects)}
+                  </span>
+                  {sh.prospect_id && (
+                    <span style={{ fontSize: 9, letterSpacing: 1.5, color: '#7aaee8' }}>PROSPECT</span>
+                  )}
                 </div>
-
-                {/* Stato reso / sollecito */}
-                {(returnPending(sh) || sh.returned_date || followUp) && (
-                  <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
-                    {returnPending(sh) && (
-                      <span style={{ fontSize: 10, color: overdue ? CLAY : '#e8c96e' }}>
-                        {overdue
-                          ? `⚠ Reso scaduto il ${fmtDate(sh.return_due_date)}`
-                          : `Da rientrare${sh.return_due_date ? ` entro il ${fmtDate(sh.return_due_date)}` : ''}`}
-                      </span>
-                    )}
-                    {(sh.returned_date || allItemsReturned(sh)) && sh.return_required && (
-                      <span style={{ fontSize: 10, color: GREEN }}>
-                        Rientrato{sh.returned_date ? ` il ${fmtDate(sh.returned_date)}` : ''}
-                      </span>
-                    )}
-                    {followUp && (
-                      <span style={{ fontSize: 10, color: CLAY }}>⚠ Nessun esito da {days} giorni</span>
-                    )}
-                  </div>
-                )}
-
-                {/* Articoli: una riga compatta ciascuno, badge esito a colpo
-                    d'occhio. Per cambiare esito si apre il modal — tenerlo
-                    modificabile qui gonfiava la card con 5 pulsanti per riga. */}
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {(sh.items || []).map(it => {
-                    const label = [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
-                      .filter(Boolean).join(' ')
-                    return (
-                      <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                        <span style={{ fontSize: 11, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {label || '—'}
-                        </span>
-                        <OutcomeBadge outcome={itemOutcome(it)}/>
-                      </div>
-                    )
-                  })}
+                <div style={{ fontSize: 11, color: MUTED, marginTop: 5 }}>
+                  {[fmtDate(sh.shipped_date), PURPOSE_LABELS[sh.purpose] || sh.purpose, sh.contact_name, sh.carrier]
+                    .filter(Boolean).join('  ·  ')}
                 </div>
               </div>
-            )
-          })}
+
+              {/* Pezzi */}
+              <div style={{ textAlign: 'right', flexShrink: 0, width: 80 }}>
+                <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 3 }}>PEZZI</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: CREAM }}>{samplePieces(sh)}</div>
+              </div>
+
+              {/* Valore */}
+              <div style={{ textAlign: 'right', flexShrink: 0, width: 120 }}>
+                <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 3 }}>COSTO</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: GOLD }}>
+                  {euro(sampleCostValue(sh), 2)}
+                </div>
+              </div>
+
+              {/* Azioni */}
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' }}>
+                <button style={{ ...btnStyle(false), padding: '7px 16px', fontSize: 9 }}
+                  onClick={() => openSamplePDF(sh)}>
+                  Bolla Campioni
+                </button>
+                <button style={{ ...btnGoldStyle, padding: '7px 18px', fontSize: 9 }}
+                  onClick={() => setForm(shipmentToForm(sh))}>
+                  Apri
+                </button>
+                <button disabled={deleting}
+                  style={{ padding: '7px 16px', fontSize: 9, letterSpacing: 1.5, cursor: 'pointer', borderRadius: 3,
+                    background: 'transparent', border: '1px solid rgba(196,98,58,0.35)', color: CLAY }}
+                  onClick={() => handleDelete(sh)}>
+                  Elimina
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
