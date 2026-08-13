@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, NAVY } from '../tokens.js'
 import ActIcon from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
 import { STANDBY_REASONS, sendToProspectFinder } from '../lib/prospectFinder.js'
@@ -65,12 +65,15 @@ function BtnGold({ children, onClick, disabled, flex }) {
   )
 }
 
-function BtnGhost({ children, onClick, flex, danger }) {
+function BtnGhost({ children, onClick, flex, danger, solid }) {
   return (
     <button onClick={onClick} style={{
       flex: flex || 'none', padding: '13px', borderRadius: 6,
-      background: 'transparent', border: `1px solid ${danger ? 'rgba(196,98,58,0.35)' : BORDER}`,
-      color: danger ? CLAY : MUTED, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+      background: solid ? GOLD : 'transparent',
+      border: solid ? 'none' : `1px solid ${danger ? 'rgba(196,98,58,0.35)' : BORDER}`,
+      color: solid ? NAVY : (danger ? CLAY : MUTED),
+      fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+      fontWeight: solid ? 600 : 400,
       cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif",
       WebkitTapHighlightColor: 'transparent',
     }}>{children}</button>
@@ -408,14 +411,14 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       {/* Prospect Finder — solo club: se si ferma, lo invii come
           ibernato così non lo ricontatta in automatico */}
       {!isRete && (
-        <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
+        <div style={{ background: 'rgba(184,150,90,0.08)', border: `1px solid ${GOLD}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
           <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Prospect Finder</div>
           {!hibForm ? (
             <>
               <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
                 Se questo club si ferma per ora, invialo come ibernato a Prospect Finder — non lo ricontatterà in automatico mentre lo segui tu.
               </div>
-              <BtnGhost onClick={() => setHibForm({ motivo: 'pausa' })}>Invia come ibernato</BtnGhost>
+              <BtnGhost solid onClick={() => setHibForm({ motivo: 'pausa' })}>Invia come ibernato</BtnGhost>
             </>
           ) : (
             <div>
