@@ -9,6 +9,15 @@ export const STANDBY_REASONS = [
   { value: 'escluso',          label: 'Escluso' },
 ]
 
+export function sendResultMessage(data) {
+  const base = data.action === 'updated'
+    ? 'Aggiornato su Prospect Finder (esisteva già).'
+    : 'Inviato a Prospect Finder come ibernato.'
+  const n = data.activities_synced || 0
+  if (!n) return base
+  return `${base} ${n} ${n === 1 ? 'attività copiata' : 'attività copiate'}.`
+}
+
 export async function sendToProspectFinder(prospect, standbyMotivo) {
   const res = await fetch('/api/hibernate-prospect', {
     method: 'POST',
@@ -23,6 +32,11 @@ export async function sendToProspectFinder(prospect, standbyMotivo) {
       contact_phone: prospect.contact_phone || null,
       notes: prospect.notes || null,
       standby_motivo: standbyMotivo,
+      activities: (prospect.prospect_activities || []).map(a => ({
+        type: a.type,
+        content: a.content || null,
+        created_at: a.created_at,
+      })),
     }),
   })
   const data = await res.json().catch(() => ({}))
