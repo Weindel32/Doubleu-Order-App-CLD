@@ -6,7 +6,7 @@ import ActIcon  from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
 import { shipmentFromProspect } from '../components/SampleModal.jsx'
-import { STANDBY_REASONS, sendToProspectFinder } from '../lib/prospectFinder.js'
+import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
 
 // ─── Config ──────────────────────────────────────────────────────
 const STAGE_CFG = {
@@ -260,12 +260,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
     setHibResult(null)
     try {
       const data = await sendToProspectFinder(selected, hibForm.motivo)
-      setHibResult({
-        ok: true,
-        message: data.action === 'updated'
-          ? 'Aggiornato su Prospect Finder (esisteva già).'
-          : 'Inviato a Prospect Finder come ibernato.',
-      })
+      setHibResult({ ok: true, message: sendResultMessage(data) })
       setHibForm(null)
     } catch (err) {
       setHibResult({ ok: false, message: err.message || 'Invio fallito, riprova.' })

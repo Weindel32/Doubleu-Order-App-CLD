@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, NAVY } from '../tokens.js'
 import ActIcon from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
-import { STANDBY_REASONS, sendToProspectFinder } from '../lib/prospectFinder.js'
+import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
 
 // ─── Config (allineata alla pagina desktop) ──────────────────────
 const STAGE_CFG = {
@@ -279,12 +279,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
     setHibResult(null)
     try {
       const data = await sendToProspectFinder(p, hibForm.motivo)
-      setHibResult({
-        ok: true,
-        message: data.action === 'updated'
-          ? 'Aggiornato su Prospect Finder (esisteva già).'
-          : 'Inviato a Prospect Finder come ibernato.',
-      })
+      setHibResult({ ok: true, message: sendResultMessage(data) })
       setHibForm(null)
     } catch (err) {
       setHibResult({ ok: false, message: err.message || 'Invio fallito, riprova.' })
