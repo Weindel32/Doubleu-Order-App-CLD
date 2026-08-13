@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, NAVY } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import ActIcon  from '../components/ActIcon.jsx'
@@ -607,14 +607,14 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                     per ora, lo invii come ibernato a Prospect Finder così
                     non lo ricontatta in automatico mentre lo gestisci tu. */}
                 {selected.contact_type === 'cliente' && (
-                  <div style={{ ...s.card, marginBottom:16 }}>
+                  <div style={{ ...s.card, marginBottom:16, border:`1px solid ${GOLD}`, background:'rgba(184,150,90,0.08)' }}>
                     <div style={s.cardTitle}>Prospect Finder</div>
                     {!hibForm ? (
                       <>
                         <div style={{ fontSize:12, color:MUTED, lineHeight:1.6, marginBottom:12 }}>
                           Se questo club si ferma (non ora, magari tra qualche mese) puoi inviarlo a Prospect Finder come ibernato, così non lo ricontatta in automatico mentre lo segui tu.
                         </div>
-                        <button style={{ ...btnStyle(false), padding:'6px 16px', fontSize:9 }}
+                        <button style={{ padding:'8px 18px', fontSize:9, letterSpacing:1.5, textTransform:'uppercase', fontWeight:600, border:'none', borderRadius:6, cursor:'pointer', background:GOLD, color:NAVY }}
                           onClick={() => setHibForm({ motivo:'pausa' })}>
                           Invia a Prospect Finder come ibernato
                         </button>
