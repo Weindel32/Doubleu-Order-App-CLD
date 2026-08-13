@@ -16,11 +16,11 @@ const STANDBY_REASONS = ['risposta_negativa', 'pausa', 'escluso']
 // dentro la nota così l'informazione non si perde.
 const ACT_TIPO = {
   email_sent: 'email', reply_received: 'email',
-  call: 'call', note: 'nota', sample_shipped: 'altro',
+  call: 'call', meeting: 'meeting', note: 'nota', sample_shipped: 'altro',
 }
 const ACT_LABEL = {
   email_sent: 'Email inviata', reply_received: 'Risposta ricevuta',
-  sample_shipped: 'Sample spedito', call: 'Chiamata', note: 'Nota',
+  sample_shipped: 'Sample spedito', call: 'Chiamata', meeting: 'Meeting', note: 'Nota',
 }
 
 // Copia le attività registrate in Order App sulla scheda di Prospect

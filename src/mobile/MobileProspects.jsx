@@ -22,12 +22,13 @@ const CT_CFG = {
 const CT_LABELS = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
 
 const CHANNELS   = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
-const ACT_TYPES  = ['email_sent','reply_received','sample_shipped','call','note']
+const ACT_TYPES  = ['email_sent','reply_received','sample_shipped','call','meeting','note']
 const ACT_LABELS = {
   email_sent:     'Email inviata',
   reply_received: 'Risposta ricevuta',
   sample_shipped: 'Sample spedito',
   call:           'Chiamata',
+  meeting:        'Meeting',
   note:           'Nota',
 }
 const REWARD_TYPES = ['prodotto','provvigione']
