@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import ActIcon from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
+import { STANDBY_REASONS, sendToProspectFinder } from '../lib/prospectFinder.js'
 
 // ─── Config (allineata alla pagina desktop) ──────────────────────
 const STAGE_CFG = {
@@ -238,6 +239,9 @@ function ActivityForm({ initial, showReward, onSave, onCancel }) {
 function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete }) {
   const [actForm, setActForm] = useState(null)
   const [editing, setEditing] = useState(false)
+  const [hibForm,    setHibForm]    = useState(null) // null | { motivo }
+  const [hibSending, setHibSending] = useState(false)
+  const [hibResult,  setHibResult]  = useState(null) // null | { ok, message }
 
   const isRete    = p.contact_type !== 'cliente'
   const today     = new Date().toISOString().slice(0,10)
@@ -264,6 +268,25 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
     if (!confirm(`Eliminare "${p.name}"? L'operazione non è reversibile.`)) return
     const ok = await onDelete(p.id)
     if (ok) onBack()
+  }
+
+  const handleSendToProspectFinder = async () => {
+    if (!hibForm || hibSending) return
+    setHibSending(true)
+    setHibResult(null)
+    try {
+      const data = await sendToProspectFinder(p, hibForm.motivo)
+      setHibResult({
+        ok: true,
+        message: data.action === 'updated'
+          ? 'Aggiornato su Prospect Finder (esisteva già).'
+          : 'Inviato a Prospect Finder come ibernato.',
+      })
+      setHibForm(null)
+    } catch (err) {
+      setHibResult({ ok: false, message: err.message || 'Invio fallito, riprova.' })
+    }
+    setHibSending(false)
   }
 
   if (editing) {
@@ -382,6 +405,38 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
         </div>
       )}
 
+      {/* Prospect Finder — solo club: se si ferma, lo invii come
+          ibernato così non lo ricontatta in automatico */}
+      {!isRete && (
+        <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
+          <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Prospect Finder</div>
+          {!hibForm ? (
+            <>
+              <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
+                Se questo club si ferma per ora, invialo come ibernato a Prospect Finder — non lo ricontatterà in automatico mentre lo segui tu.
+              </div>
+              <BtnGhost onClick={() => setHibForm({ motivo: 'pausa' })}>Invia come ibernato</BtnGhost>
+            </>
+          ) : (
+            <div>
+              <select style={{ ...inputStyle, marginBottom: 12 }} value={hibForm.motivo}
+                onChange={e => setHibForm(f => ({ ...f, motivo: e.target.value }))}>
+                {STANDBY_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <BtnGhost flex={1} onClick={handleSendToProspectFinder}>{hibSending ? 'Invio…' : 'Conferma invio'}</BtnGhost>
+                <BtnGhost flex={1} onClick={() => setHibForm(null)}>Annulla</BtnGhost>
+              </div>
+            </div>
+          )}
+          {hibResult && (
+            <div style={{ marginTop: 12, fontSize: 11, color: hibResult.ok ? GREEN : CLAY }}>
+              {hibResult.ok ? '✓ ' : '⚠ '}{hibResult.message}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Attività */}
       <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -458,6 +513,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
   if (selected) {
     return (
       <ProspectDetail
+        key={selected.id}
         prospect={selected} prospects={prospects}
         onBack={() => setSelectedId(null)}
         onSelectProspect={setSelectedId}

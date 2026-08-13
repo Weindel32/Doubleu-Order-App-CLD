@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
@@ -6,6 +6,7 @@ import ActIcon  from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
 import { shipmentFromProspect } from '../components/SampleModal.jsx'
+import { STANDBY_REASONS, sendToProspectFinder } from '../lib/prospectFinder.js'
 
 // ─── Config ──────────────────────────────────────────────────────
 const STAGE_CFG = {
@@ -212,6 +213,13 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const [actForm,     setActForm]     = useState(null)
   const [actSaving,   setActSaving]   = useState(false)
   const [deleting,    setDeleting]    = useState(false)
+  const [hibForm,     setHibForm]     = useState(null)  // null | { motivo }
+  const [hibSending,  setHibSending]  = useState(false)
+  const [hibResult,   setHibResult]   = useState(null)  // null | { ok, message }
+
+  // Passando da un prospect all'altro (es. dai "Club Segnalati") lo
+  // stato di invio non deve restare appeso a quello precedente.
+  useEffect(() => { setHibForm(null); setHibResult(null) }, [selectedId])
 
   const isRete   = tab === 'rete'
   const today    = new Date().toISOString().slice(0,10)
@@ -241,7 +249,29 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const totalRewards   = totalProvv + totalProd
   const reteOverdue    = rete.filter(p => p.next_action_date && p.next_action_date <= today).length
 
-  const closeModal = () => { setSelectedId(null); setEditForm(null); setActForm(null) }
+  const closeModal = () => {
+    setSelectedId(null); setEditForm(null); setActForm(null)
+    setHibForm(null); setHibResult(null)
+  }
+
+  const handleSendToProspectFinder = async () => {
+    if (!selected || !hibForm) return
+    setHibSending(true)
+    setHibResult(null)
+    try {
+      const data = await sendToProspectFinder(selected, hibForm.motivo)
+      setHibResult({
+        ok: true,
+        message: data.action === 'updated'
+          ? 'Aggiornato su Prospect Finder (esisteva già).'
+          : 'Inviato a Prospect Finder come ibernato.',
+      })
+      setHibForm(null)
+    } catch (err) {
+      setHibResult({ ok: false, message: err.message || 'Invio fallito, riprova.' })
+    }
+    setHibSending(false)
+  }
 
   const handleSaveEdit = async () => {
     if (!editForm?.name?.trim()) return
@@ -572,6 +602,49 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                     )}
                   </div>
                 </div>
+
+                {/* Prospect Finder — solo per i club: se non lo segui più
+                    per ora, lo invii come ibernato a Prospect Finder così
+                    non lo ricontatta in automatico mentre lo gestisci tu. */}
+                {selected.contact_type === 'cliente' && (
+                  <div style={{ ...s.card, marginBottom:16 }}>
+                    <div style={s.cardTitle}>Prospect Finder</div>
+                    {!hibForm ? (
+                      <>
+                        <div style={{ fontSize:12, color:MUTED, lineHeight:1.6, marginBottom:12 }}>
+                          Se questo club si ferma (non ora, magari tra qualche mese) puoi inviarlo a Prospect Finder come ibernato, così non lo ricontatta in automatico mentre lo segui tu.
+                        </div>
+                        <button style={{ ...btnStyle(false), padding:'6px 16px', fontSize:9 }}
+                          onClick={() => setHibForm({ motivo:'pausa' })}>
+                          Invia a Prospect Finder come ibernato
+                        </button>
+                      </>
+                    ) : (
+                      <div>
+                        <label style={s.label}>Motivo</label>
+                        <select style={{ ...inp, cursor:'pointer', marginBottom:12 }} value={hibForm.motivo}
+                          onChange={e => setHibForm(f => ({ ...f, motivo:e.target.value }))}>
+                          {STANDBY_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
+                        <div style={{ display:'flex', gap:8 }}>
+                          <button style={{ ...btnGoldStyle, padding:'6px 16px', fontSize:9 }}
+                            disabled={hibSending} onClick={handleSendToProspectFinder}>
+                            {hibSending ? 'Invio…' : 'Conferma invio'}
+                          </button>
+                          <button style={{ ...btnStyle(false), padding:'6px 14px', fontSize:9 }}
+                            disabled={hibSending} onClick={() => setHibForm(null)}>
+                            Annulla
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {hibResult && (
+                      <div style={{ marginTop:12, fontSize:11, color: hibResult.ok ? GREEN : CLAY }}>
+                        {hibResult.ok ? '✓ ' : '⚠ '}{hibResult.message}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Relazione */}
                 {(selected.referred_by || selected.relazione_pregressa || selected.vincolo_altro_brand) && (
