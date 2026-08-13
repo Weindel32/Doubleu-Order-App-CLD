@@ -239,7 +239,7 @@ function ActivityForm({ initial, showReward, onSave, onCancel }) {
 }
 
 // ─── Dettaglio prospect ───────────────────────────────────────────
-function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete }) {
+function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated }) {
   const [actForm, setActForm] = useState(null)
   const [editing, setEditing] = useState(false)
   const [hibForm,    setHibForm]    = useState(null) // null | { motivo }
@@ -273,12 +273,28 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
     if (ok) onBack()
   }
 
+  // Riporta in pipeline un club ibernato. Tocca solo Order App: la scheda
+  // resta su Prospect Finder, che la aggiornerà al prossimo contatto.
+  const handleReactivate = async () => {
+    if (hibSending) return
+    setHibSending(true)
+    setHibResult(null)
+    const ok = await onSetHibernated(p.id, false)
+    setHibResult(ok
+      ? { ok: true,  message: 'Riportato in pipeline.' }
+      : { ok: false, message: 'Riattivazione fallita, riprova.' })
+    setHibSending(false)
+  }
+
   const handleSendToProspectFinder = async () => {
     if (!hibForm || hibSending) return
     setHibSending(true)
     setHibResult(null)
     try {
       const data = await sendToProspectFinder(p, hibForm.motivo)
+      // Da qui lo gestisce Prospect Finder: esce dalla pipeline attiva
+      // senza essere cancellato.
+      await onSetHibernated(p.id, true)
       setHibResult({ ok: true, message: sendResultMessage(data) })
       setHibForm(null)
     } catch (err) {
@@ -408,7 +424,15 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       {!isRete && (
         <div style={{ background: 'rgba(184,150,90,0.08)', border: `1px solid ${GOLD}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
           <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Prospect Finder</div>
-          {!hibForm ? (
+          {p.hibernated_at ? (
+            <>
+              <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
+                Ibernato il {p.hibernated_at.slice(0,10).split('-').reverse().join('/')} — lo segue Prospect Finder,
+                è fuori dalla pipeline attiva.
+              </div>
+              <BtnGhost solid onClick={handleReactivate}>{hibSending ? 'Attendi…' : 'Riattiva in pipeline'}</BtnGhost>
+            </>
+          ) : !hibForm ? (
             <>
               <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
                 Se questo club si ferma per ora, invialo come ibernato a Prospect Finder — non lo ricontatterà in automatico mentre lo segui tu.
@@ -492,16 +516,21 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
 }
 
 // ─── Pagina principale ────────────────────────────────────────────
-export default function MobileProspects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete }) {
+export default function MobileProspects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated }) {
   const [tab, setTab]           = useState('club')
   const [selectedId, setSelectedId] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [showHib, setShowHib]   = useState(false)
 
   const isRete = tab === 'rete'
   const today  = new Date().toISOString().slice(0,10)
-  const clubs  = prospects.filter(p => p.contact_type === 'cliente')
-  const rete   = prospects.filter(p => p.contact_type !== 'cliente')
-  const list   = isRete ? rete : clubs
+  const allClubs = prospects.filter(p => p.contact_type === 'cliente')
+  const rete     = prospects.filter(p => p.contact_type !== 'cliente')
+  // I club ibernati sono passati a Prospect Finder: restano salvati ma
+  // fuori dalla pipeline, visibili solo attivando il loro filtro.
+  const hibCount = allClubs.filter(p => p.hibernated_at).length
+  const clubs    = allClubs.filter(p => showHib ? p.hibernated_at : !p.hibernated_at)
+  const list     = isRete ? rete : clubs
 
   const referralCount = id => prospects.filter(x => x.referred_by === id).length
   const rewardsOf = (p, type) => (p.prospect_activities || []).filter(a => a.reward_type === type).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
@@ -517,7 +546,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
         onSelectProspect={setSelectedId}
         onUpsert={onUpsert} onAddActivity={onAddActivity}
         onUpdateActivity={onUpdateActivity} onDeleteActivity={onDeleteActivity}
-        onDelete={onDelete}
+        onDelete={onDelete} onSetHibernated={onSetHibernated}
       />
     )
   }
@@ -527,7 +556,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
 
       {/* Segmented control */}
       <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: 3, marginBottom: 16 }}>
-        {[{ k:'club', label:`Club (${clubs.length})` }, { k:'rete', label:`Ambassador / Referral (${rete.length})` }].map(t => (
+        {[{ k:'club', label:`Club (${allClubs.filter(p => !p.hibernated_at).length})` }, { k:'rete', label:`Ambassador / Referral (${rete.length})` }].map(t => (
           <button key={t.k} onClick={() => { setTab(t.k); setShowForm(false) }} style={{
             flex: 1, padding: '10px 6px', borderRadius: 6, border: 'none',
             background: tab === t.k ? 'rgba(184,150,90,0.18)' : 'transparent',
@@ -540,8 +569,19 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
 
       {/* Header + nuovo */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, textTransform: 'uppercase' }}>
-          {list.length} {isRete ? 'contatti' : 'club in pipeline'}
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, textTransform: 'uppercase' }}>
+            {list.length} {isRete ? 'contatti' : (showHib ? 'ibernati' : 'club in pipeline')}
+          </div>
+          {!isRete && hibCount > 0 && (
+            <button onClick={() => setShowHib(v => !v)} style={{
+              background: showHib ? 'rgba(184,150,90,0.18)' : 'transparent',
+              border: `1px solid ${showHib ? GOLD : BORDER}`, borderRadius: 5,
+              color: showHib ? GOLD : MUTED, fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase',
+              padding: '5px 10px', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif",
+              WebkitTapHighlightColor: 'transparent',
+            }}>{showHib ? 'Torna alla pipeline' : `Ibernati (${hibCount})`}</button>
+          )}
         </div>
         {!showForm && (
           <button onClick={() => setShowForm(true)} style={{
@@ -587,7 +627,9 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM, lineHeight: 1.25 }}>{p.name}</div>
               {isRete
                 ? <Chip cfg={CT_CFG[p.contact_type] || CT_CFG.cliente}>{CT_LABELS[p.contact_type] || p.contact_type}</Chip>
-                : <Chip cfg={STAGE_CFG[p.stage] || STAGE_CFG.contatto}>{p.stage}</Chip>}
+                : p.hibernated_at
+                  ? <Chip cfg={CT_CFG.cliente}>ibernato</Chip>
+                  : <Chip cfg={STAGE_CFG[p.stage] || STAGE_CFG.contatto}>{p.stage}</Chip>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 10, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

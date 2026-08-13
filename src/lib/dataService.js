@@ -310,6 +310,19 @@ export async function upsertProspect(prospect) {
   }
 }
 
+// Segna un prospect come ibernato (inviato a Prospect Finder, che da qui
+// in poi ne gestisce il ricontatto) o lo riattiva. Aggiornamento mirato:
+// non passa da upsertProspect per non toccare stage, client_id o gli
+// altri campi — quando riattivi il club deve ritrovarsi com'era.
+export async function setProspectHibernated(prospectId, hibernated) {
+  const { error } = await supabase
+    .from('prospects')
+    .update({ hibernated_at: hibernated ? new Date().toISOString() : null })
+    .eq('id', prospectId)
+  if (error) { console.error('setProspectHibernated:', error); return false }
+  return true
+}
+
 export async function deleteProspect(prospectId) {
   // Scollega eventuali prospect segnalati da questo (FK referred_by)
   await supabase.from('prospects').update({ referred_by: null }).eq('referred_by', prospectId)

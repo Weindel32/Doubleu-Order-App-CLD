@@ -201,7 +201,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onNewQuote, shipments = [], onNewSample }) {
+export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
@@ -233,16 +233,26 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const rewardsOf    = (p, type) => (p.prospect_activities || []).filter(a => a.reward_type === type).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
   const rewardsTotal = (p)  => rewardsOf(p,'provvigione') + rewardsOf(p,'prodotto')
 
+  // I club ibernati (passati a Prospect Finder) restano nel database ma
+  // fuori dalla pipeline attiva: si vedono solo scegliendo il filtro
+  // "ibernati", che sostituisce il filtro per stage.
+  const hibernatedCount = clubs.filter(p => p.hibernated_at).length
+  const activeClubs     = clubs.filter(p => !p.hibernated_at)
+
   const filtered = (isRete ? rete : clubs).filter(p => {
     const q = search.toLowerCase()
     if (q && !p.name.toLowerCase().includes(q) && !(p.contact_email||'').toLowerCase().includes(q)) return false
-    if (!isRete && filterStage !== 'all' && p.stage        !== filterStage) return false
+    if (!isRete) {
+      if (filterStage === 'ibernati') { if (!p.hibernated_at) return false }
+      else if (p.hibernated_at) return false
+      if (filterStage !== 'all' && filterStage !== 'ibernati' && p.stage !== filterStage) return false
+    }
     if (isRete  && filterCT    !== 'all' && p.contact_type !== filterCT)    return false
     return true
   })
 
-  const pipeline     = clubs.filter(p => !['won','lost'].includes(p.stage)).reduce((s,p) => s + (parseFloat(p.deal_value_est)||0), 0)
-  const overdueCount = clubs.filter(p => p.next_action_date && p.next_action_date <= today && !['won','lost'].includes(p.stage)).length
+  const pipeline     = clubs.filter(p => !p.hibernated_at && !['won','lost'].includes(p.stage)).reduce((s,p) => s + (parseFloat(p.deal_value_est)||0), 0)
+  const overdueCount = clubs.filter(p => !p.hibernated_at && p.next_action_date && p.next_action_date <= today && !['won','lost'].includes(p.stage)).length
   const totalReferrals = rete.reduce((s,m) => s + referredBy(m.id).length, 0)
   const totalProvv     = rete.reduce((s,m) => s + rewardsOf(m,'provvigione'), 0)
   const totalProd      = rete.reduce((s,m) => s + rewardsOf(m,'prodotto'), 0)
@@ -254,12 +264,28 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
     setHibForm(null); setHibResult(null)
   }
 
+  // Riporta in pipeline un club ibernato. Tocca solo Order App: la scheda
+  // resta su Prospect Finder, che la aggiornerà al prossimo contatto.
+  const handleReactivate = async () => {
+    if (!selected || hibSending) return
+    setHibSending(true)
+    setHibResult(null)
+    const ok = await onSetHibernated(selected.id, false)
+    setHibResult(ok
+      ? { ok: true,  message: 'Riportato in pipeline.' }
+      : { ok: false, message: 'Riattivazione fallita, riprova.' })
+    setHibSending(false)
+  }
+
   const handleSendToProspectFinder = async () => {
     if (!selected || !hibForm) return
     setHibSending(true)
     setHibResult(null)
     try {
       const data = await sendToProspectFinder(selected, hibForm.motivo)
+      // Da qui in poi il club lo gestisce Prospect Finder: lo tolgo dalla
+      // pipeline attiva senza cancellarlo, resta sotto il filtro "ibernati".
+      await onSetHibernated(selected.id, true)
       setHibResult({ ok: true, message: sendResultMessage(data) })
       setHibForm(null)
     } catch (err) {
@@ -338,7 +364,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
 
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:`1px solid ${BORDER}`, marginBottom:24 }}>
-        {[{ k:'club', label:`Pipeline Club (${clubs.length})` }, { k:'rete', label:`Ambassador / Referral (${rete.length})` }].map(t => (
+        {[{ k:'club', label:`Pipeline Club (${activeClubs.length})` }, { k:'rete', label:`Ambassador / Referral (${rete.length})` }].map(t => (
           <button key={t.k} onClick={() => { setTab(t.k); setFilterStage('all'); setFilterCT('all') }}
             style={{ padding:'12px 24px', background:'transparent', border:'none', borderBottom: tab===t.k ? `2px solid ${GOLD}` : '2px solid transparent', color: tab===t.k ? GOLD : MUTED, fontSize:11, letterSpacing:2, textTransform:'uppercase', cursor:'pointer', marginBottom:-1 }}>
             {t.label}
@@ -359,8 +385,8 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
         </div>
       ) : (
         <div style={s.grid4}>
-          <StatCard label="Club"           value={clubs.length}/>
-          <StatCard label="Won"            value={clubs.filter(p => p.stage==='won').length} sub="Convertiti"/>
+          <StatCard label="Club"           value={activeClubs.length} sub={hibernatedCount ? `+${hibernatedCount} ibernati` : undefined}/>
+          <StatCard label="Won"            value={activeClubs.filter(p => p.stage==='won').length} sub="Convertiti"/>
           <StatCard label="Pipeline Est."  value={pipeline > 0 ? `€ ${pipeline.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—'} accent/>
           <StatCard label="Azioni Scadute" value={overdueCount} sub="Da completare"/>
         </div>
@@ -385,10 +411,10 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
           </div>
         ) : (
           <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-            {['all',...STAGES].map(st => (
+            {['all',...STAGES,...(hibernatedCount ? ['ibernati'] : [])].map(st => (
               <button key={st} onClick={() => setFilterStage(st)}
                 style={{ padding:'5px 12px', borderRadius:3, fontSize:9, letterSpacing:1.5, cursor:'pointer', border:`1px solid ${filterStage===st ? (STAGE_CFG[st]?.border||GOLD) : BORDER}`, background: filterStage===st ? (STAGE_CFG[st]?.bg||'rgba(184,150,90,0.12)') : 'transparent', color: filterStage===st ? (STAGE_CFG[st]?.color||GOLD) : MUTED }}>
-                {st === 'all' ? 'Tutti' : st}
+                {st === 'all' ? 'Tutti' : st === 'ibernati' ? `ibernati (${hibernatedCount})` : st}
               </button>
             ))}
           </div>
@@ -422,6 +448,11 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                   <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                     <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:CREAM, letterSpacing:0.5 }}>{p.name}</span>
                     {isRete ? <CTChip ct={p.contact_type}/> : <StageBadge stage={p.stage}/>}
+                    {p.hibernated_at && (
+                      <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:2, fontSize:9, letterSpacing:2, background:'rgba(184,150,90,0.15)', color:GOLD, border:'1px solid rgba(184,150,90,0.3)' }}>
+                        ibernato
+                      </span>
+                    )}
                   </div>
                   {sub && (
                     <div style={{ fontSize:11, color:MUTED, marginTop:5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -604,7 +635,18 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                 {selected.contact_type === 'cliente' && (
                   <div style={{ ...s.card, marginBottom:16, border:`1px solid ${GOLD}`, background:'rgba(184,150,90,0.08)' }}>
                     <div style={s.cardTitle}>Prospect Finder</div>
-                    {!hibForm ? (
+                    {selected.hibernated_at ? (
+                      <>
+                        <div style={{ fontSize:12, color:MUTED, lineHeight:1.6, marginBottom:12 }}>
+                          Ibernato il {selected.hibernated_at.slice(0,10).split('-').reverse().join('/')} — lo segue Prospect Finder,
+                          è fuori dalla pipeline attiva. Riattivalo quando torna in gioco.
+                        </div>
+                        <button style={{ ...btnGoldStyle, padding:'6px 16px', fontSize:9 }}
+                          disabled={hibSending} onClick={handleReactivate}>
+                          {hibSending ? 'Attendi…' : 'Riattiva in pipeline'}
+                        </button>
+                      </>
+                    ) : !hibForm ? (
                       <>
                         <div style={{ fontSize:12, color:MUTED, lineHeight:1.6, marginBottom:12 }}>
                           Se questo club si ferma (non ora, magari tra qualche mese) puoi inviarlo a Prospect Finder come ibernato, così non lo ricontatta in automatico mentre lo segui tu.
