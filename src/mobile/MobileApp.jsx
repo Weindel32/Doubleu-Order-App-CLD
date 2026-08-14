@@ -11,14 +11,17 @@ import MobileProspects   from './MobileProspects.jsx'
 import MobileSamples     from './MobileSamples.jsx'
 import NavIcon           from '../components/NavIcon.jsx'
 
-const TABS = [
+const PRIMARY_TABS = [
   { key: 'home',      label: 'Home',       icon: 'home' },
   { key: 'orders',    label: 'Ordini',     icon: 'orders' },
   { key: 'quotes',    label: 'Prev.',      icon: 'quotes' },
   { key: 'clients',   label: 'Clienti',    icon: 'clients' },
-  { key: 'prospects', label: 'Prosp.',     icon: 'prospects' },
-  { key: 'samples',   label: 'Campioni',   icon: 'samples' },
   { key: 'analytics', label: 'Stats',      icon: 'analytics' },
+]
+
+const MORE_TABS = [
+  { key: 'prospects', label: 'Prospect',   icon: 'prospects' },
+  { key: 'samples',   label: 'Campioni',   icon: 'samples' },
 ]
 
 export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onUpdateActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
@@ -26,6 +29,10 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
   const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [selectedQuote, setSelectedQuote] = useState(null)
+  const [moreOpen, setMoreOpen]         = useState(false)
+
+  const isMoreTab = MORE_TABS.some(t => t.key === tab)
+  const selectTab = (key) => { setTab(key); setMoreOpen(false) }
 
   const quotes = orders.filter(o => o.status === 'PREVENTIVO' && !o.lost)
   const activeOrders = orders.filter(o => o.status !== 'PREVENTIVO')
@@ -73,6 +80,39 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
         {tab === 'analytics' && <MobileAnalytics orders={orders} />}
       </div>
 
+      {/* "Altro" bottom sheet */}
+      {moreOpen && (
+        <>
+          <div onClick={() => setMoreOpen(false)} style={{
+            position: 'fixed', inset: 0, background: 'rgba(6,11,24,0.55)', zIndex: 35,
+          }} />
+          <div style={{
+            position: 'fixed', left: 0, right: 0,
+            bottom: 'calc(60px + env(safe-area-inset-bottom))',
+            background: 'rgba(16,26,50,0.99)', borderTop: `1px solid ${BORDER}`,
+            borderTopLeftRadius: 16, borderTopRightRadius: 16,
+            padding: '10px 8px calc(10px + env(safe-area-inset-bottom))',
+            zIndex: 36, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            boxShadow: '0 -8px 24px rgba(0,0,0,0.35)',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: BORDER, margin: '2px auto 12px' }} />
+            {MORE_TABS.map(t => (
+              <button key={t.key} onClick={() => selectTab(t.key)} style={{
+                width: '100%', background: 'none', border: 'none',
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '13px 14px', borderRadius: 10, cursor: 'pointer',
+                color: tab === t.key ? GOLD : CREAM,
+                fontFamily: "'Josefin Sans', sans-serif",
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+                <NavIcon name={t.icon} size={20}/>
+                <span style={{ fontSize: 14, letterSpacing: 1 }}>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Bottom Tab Bar */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -81,22 +121,36 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
         background: 'rgba(10,18,40,0.97)', borderTop: `1px solid ${BORDER}`,
         display: 'flex', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', zIndex: 30,
       }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
+        {PRIMARY_TABS.map(t => (
+          <button key={t.key} onClick={() => selectTab(t.key)} style={{
             flex: 1, background: 'none', border: 'none',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 4, cursor: 'pointer', color: tab === t.key ? GOLD : MUTED,
-            transition: 'color 0.2s', padding: '8px 0 4px',
+            transition: 'color 0.2s', padding: '8px 0 4px', position: 'relative',
             fontFamily: "'Josefin Sans', sans-serif",
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name={t.icon} size={19}/></span>
-            <span style={{ fontSize: 8.5, letterSpacing: 1, textTransform: 'uppercase' }}>{t.label}</span>
+            <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name={t.icon} size={20}/></span>
+            <span style={{ fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase' }}>{t.label}</span>
             {tab === t.key && (
               <span style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 56px)', width: 24, height: 2, background: GOLD, borderRadius: 1 }} />
             )}
           </button>
         ))}
+        <button onClick={() => setMoreOpen(o => !o)} style={{
+          flex: 1, background: 'none', border: 'none',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 4, cursor: 'pointer', color: (moreOpen || isMoreTab) ? GOLD : MUTED,
+          transition: 'color 0.2s', padding: '8px 0 4px', position: 'relative',
+          fontFamily: "'Josefin Sans', sans-serif",
+          WebkitTapHighlightColor: 'transparent',
+        }}>
+          <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name="more" size={20}/></span>
+          <span style={{ fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase' }}>Altro</span>
+          {(moreOpen || isMoreTab) && (
+            <span style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 56px)', width: 24, height: 2, background: GOLD, borderRadius: 1 }} />
+          )}
+        </button>
       </div>
     </div>
   )
