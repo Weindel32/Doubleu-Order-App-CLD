@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { orderTotal, getAllArticles, artPieceCount, isConfirmed } from '../utils/helpers.js'
 
 function fmt(n) {
