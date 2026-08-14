@@ -66,6 +66,14 @@ const PATHS = {
       <polyline points="9 22 9 12 15 12 15 22"/>
     </>
   ),
+  more: (
+    <>
+      <rect width="7" height="7" x="3" y="3" rx="1.5"/>
+      <rect width="7" height="7" x="14" y="3" rx="1.5"/>
+      <rect width="7" height="7" x="3" y="14" rx="1.5"/>
+      <rect width="7" height="7" x="14" y="14" rx="1.5"/>
+    </>
+  ),
 }
 
 export default function NavIcon({ name, size = 15 }) {
