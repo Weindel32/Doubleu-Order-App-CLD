@@ -10,7 +10,8 @@
 // un follow-up viene chiuso e poi torna aperto (esito rimesso "in
 // attesa") viene creato un nuovo task invece di riaprire quello vecchio.
 
-const TODOIST_API = 'https://api.todoist.com/rest/v2'
+// API unificata v1: le REST v2 rispondono 410 (dismesse).
+const TODOIST_API = 'https://api.todoist.com/api/v1'
 const PROJECT_NAME = 'Campionature'
 const SECTION_NAME = 'Follow up'
 
@@ -33,22 +34,41 @@ async function todoistFetch(token, path, options = {}) {
   return res.json()
 }
 
+// Le liste di v1 sono paginate e arrivano come { results, next_cursor }:
+// fermarsi alla prima pagina significherebbe non trovare un progetto (o
+// un task) più in là nell'elenco e ricrearlo a ogni salvataggio. Il caso
+// dell'array nudo resta gestito per non dipendere dalla forma esatta
+// della risposta.
+async function todoistList(token, path) {
+  const out = []
+  let cursor = null
+  for (let page = 0; page < 20; page++) {
+    const sep = path.includes('?') ? '&' : '?'
+    const data = await todoistFetch(token, cursor ? `${path}${sep}cursor=${encodeURIComponent(cursor)}` : path)
+    if (Array.isArray(data)) return data
+    out.push(...((data && data.results) || []))
+    cursor = (data && data.next_cursor) || null
+    if (!cursor) break
+  }
+  return out
+}
+
 async function findOrCreateProject(token) {
-  const projects = await todoistFetch(token, '/projects')
+  const projects = await todoistList(token, '/projects')
   const existing = projects.find(p => p.name === PROJECT_NAME)
   if (existing) return existing
   return todoistFetch(token, '/projects', { method: 'POST', body: JSON.stringify({ name: PROJECT_NAME }) })
 }
 
 async function findOrCreateSection(token, projectId) {
-  const sections = await todoistFetch(token, `/sections?project_id=${projectId}`)
+  const sections = await todoistList(token, `/sections?project_id=${projectId}`)
   const existing = sections.find(s => s.name === SECTION_NAME)
   if (existing) return existing
   return todoistFetch(token, '/sections', { method: 'POST', body: JSON.stringify({ project_id: projectId, name: SECTION_NAME }) })
 }
 
 async function findTask(token, sectionId, shipmentId) {
-  const tasks = await todoistFetch(token, `/tasks?section_id=${sectionId}`)
+  const tasks = await todoistList(token, `/tasks?section_id=${sectionId}`)
   const tag = marker(shipmentId)
   return tasks.find(t => (t.description || '').includes(tag)) || null
 }
@@ -92,7 +112,7 @@ export default async function handler(req, res) {
 
     const created = await todoistFetch(token, '/tasks', {
       method: 'POST',
-      body: JSON.stringify({ project_id: section.project_id, section_id: section.id, ...body }),
+      body: JSON.stringify({ project_id: project.id, section_id: section.id, ...body }),
     })
     return res.status(200).json({ action: 'created', taskId: created.id })
   } catch (err) {
