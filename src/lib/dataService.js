@@ -367,7 +367,7 @@ export async function deleteProspectActivity(activityId) {
 const SHIPMENT_FIELDS = [
   'client_id', 'prospect_id', 'recipient_name', 'contact_name', 'shipped_date',
   'purpose', 'return_required', 'return_due_date', 'returned_date',
-  'carrier', 'tracking', 'shipping_cost', 'follow_up_date', 'notes',
+  'carrier', 'tracking', 'shipping_cost', 'follow_up_date', 'notes', 'omaggio',
 ]
 
 export async function fetchSampleShipments() {
@@ -386,6 +386,7 @@ function shipmentRow(shipment) {
   const row = {}
   SHIPMENT_FIELDS.forEach(k => { if (shipment[k] !== undefined) row[k] = shipment[k] || null })
   row.return_required = !!shipment.return_required
+  row.omaggio         = !!shipment.omaggio
   row.shipping_cost   = parseFloat(shipment.shipping_cost) || 0
   row.purpose         = shipment.purpose || 'valutazione'
   return row

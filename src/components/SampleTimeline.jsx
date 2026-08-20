@@ -1,7 +1,7 @@
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
 import { s, btnGoldStyle } from '../tokens.js'
 import {
-  PURPOSE_LABELS, PURPOSE_CFG, OUTCOME_LABELS, OUTCOME_CFG, fmtDate, euro,
+  PURPOSE_LABELS, PURPOSE_CFG, GIFT_CFG, isGift, OUTCOME_LABELS, OUTCOME_CFG, fmtDate, euro,
   samplePieces, sampleCostValue, sampleInvested, sampleOutstanding,
   needsFollowUp, returnOverdue, returnPending, daysSince, itemOutcome,
 } from '../utils/samples.js'
@@ -24,6 +24,17 @@ export function PurposeBadge({ purpose }) {
     <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 2, fontSize: 11,
       letterSpacing: 1.5, fontWeight: 600, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
       {(PURPOSE_LABELS[purpose] || purpose || '—').toUpperCase()}
+    </span>
+  )
+}
+
+// Merce regalata: affianca il motivo, non lo sostituisce.
+export function GiftBadge() {
+  return (
+    <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 2, fontSize: 11,
+      letterSpacing: 1.5, fontWeight: 600, background: GIFT_CFG.bg, color: GIFT_CFG.color,
+      border: `1px solid ${GIFT_CFG.border}` }}>
+      OMAGGIO
     </span>
   )
 }
@@ -109,6 +120,7 @@ export default function SampleTimeline({ shipments, onOpen, onNew, emptyText = '
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 13, color: CREAM, letterSpacing: 0.5 }}>{fmtDate(sh.shipped_date)}</span>
                       <PurposeBadge purpose={sh.purpose}/>
+                      {isGift(sh) && <GiftBadge/>}
                       {overdue && <FollowUpBadge overdue/>}
                       {!overdue && followUp && <FollowUpBadge/>}
                     </div>

@@ -57,8 +57,10 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS discount_value numeric DEFAULT 0;
 -- Registra ogni invio di campioni a clienti acquisiti o prospect,
 -- così non serve più ricostruire l'informazione dalle note.
 --
--- purpose: 'valutazione' | 'misurazione' | 'fiera' | 'omaggio'
+-- purpose: 'valutazione' | 'misurazione' | 'fiera' | 'promozione'
 --          'misurazione' (set taglie) implica sempre return_required
+--          (fino alla migrazione più sotto esisteva anche 'omaggio',
+--           poi diventato un attributo a sé: vedi omaggio boolean)
 --
 -- L'esito (outcome) vive sulla singola riga articolo, non
 -- sull'invio: articoli diversi nello stesso invio possono avere
@@ -103,6 +105,7 @@ BEGIN
       shipping_cost   numeric DEFAULT 0,
       follow_up_date  text,
       notes           text,
+      omaggio         boolean DEFAULT false,
       created_at      timestamptz DEFAULT now()
     )$f$, cid_type, pid_type);
 
@@ -142,6 +145,24 @@ CREATE POLICY sample_shipments_all ON sample_shipments
 DROP POLICY IF EXISTS sample_items_all ON sample_items;
 CREATE POLICY sample_items_all ON sample_items
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- ----------------------------------------------------------------
+
+-- ----------------------------------------------------------------
+-- MIGRATION: omaggio come attributo, non come motivo (una volta sola)
+--
+-- Il motivo dell'invio e la sorte della merce sono due fatti
+-- indipendenti: un invio può essere in valutazione — con l'obiettivo
+-- di un ordine — e insieme regalato. Tenerli sullo stesso campo
+-- costringeva a sceglierne uno solo e faceva perdere l'altro.
+--
+-- Gli invii già registrati come purpose='omaggio' diventano
+-- omaggio=true con motivo 'promozione'. Il flag identifica esattamente
+-- le righe convertite, quindi la migrazione è reversibile.
+-- ----------------------------------------------------------------
+ALTER TABLE sample_shipments ADD COLUMN IF NOT EXISTS omaggio boolean DEFAULT false;
+
+UPDATE sample_shipments SET omaggio = true    WHERE purpose = 'omaggio';
+UPDATE sample_shipments SET purpose = 'promozione' WHERE purpose = 'omaggio';
 -- ----------------------------------------------------------------
 
 -- ORDINE 1: ECO VILLAGE
