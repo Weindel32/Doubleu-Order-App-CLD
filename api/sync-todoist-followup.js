@@ -97,6 +97,13 @@ export default async function handler(req, res) {
     return res.status(200).json({ action: 'created', taskId: created.id })
   } catch (err) {
     console.error('sync-todoist-followup: errore imprevisto', err)
-    return res.status(500).json({ error: 'Errore imprevisto nella sincronizzazione Todoist' })
+    // Il dettaglio (metodo, path e risposta di Todoist) torna anche al
+    // browser: senza, una sincronizzazione che fallisce è diagnosticabile
+    // solo dai log del server. Il token sta negli header, mai nel
+    // messaggio, quindi non esce nulla di riservato.
+    return res.status(500).json({
+      error: 'Errore imprevisto nella sincronizzazione Todoist',
+      detail: String(err && err.message || err).slice(0, 300),
+    })
   }
 }
