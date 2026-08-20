@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { todayISO } from '../utils/samples.js'
 
 export async function fetchClients() {
   const { data, error } = await supabase.from('clients').select('*').order('name')
@@ -444,7 +445,7 @@ export async function deleteSampleShipment(shipmentId) {
 // feedback diversi.
 export async function updateSampleItemOutcome(itemId, outcome, extraFields = {}) {
   const { error } = await supabase.from('sample_items')
-    .update({ outcome, outcome_date: new Date().toISOString().slice(0, 10), ...extraFields })
+    .update({ outcome, outcome_date: todayISO(), ...extraFields })
     .eq('id', itemId)
   if (error) { console.error('updateSampleItemOutcome:', error); return false }
   return true
@@ -455,7 +456,7 @@ export async function markSampleReturned(shipmentId, returnedDate) {
   const { error: e1 } = await supabase.from('sample_items').update({ returned: true }).eq('shipment_id', shipmentId)
   if (e1) { console.error('markSampleReturned items:', e1); return false }
   const { error: e2 } = await supabase.from('sample_shipments')
-    .update({ returned_date: returnedDate || new Date().toISOString().slice(0, 10) })
+    .update({ returned_date: returnedDate || todayISO() })
     .eq('id', shipmentId)
   if (e2) { console.error('markSampleReturned shipment:', e2); return false }
   return true
