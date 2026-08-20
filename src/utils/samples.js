@@ -61,7 +61,7 @@ export const itemNeedsRevision = (it) => !!it.revision_requested
 export const shipmentNeedsRevision = (sh) => (sh.items || []).some(itemNeedsRevision)
 
 // Giorni di silenzio dopo i quali un invio senza esito va sollecitato
-export const FOLLOW_UP_DAYS = 21
+export const FOLLOW_UP_DAYS = 10
 
 export const todayISO = () => new Date().toISOString().slice(0, 10)
 
