@@ -4,17 +4,18 @@ import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   fmtDate, euro, todayISO, addDaysISO, samplePieces, sampleCostValue,
   sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
-  daysSince, itemCostValue, itemOutcome,
+  itemCostValue, itemOutcome,
 } from '../utils/samples.js'
+import { PurposeBadge, OutcomeBadge, FollowUpBadge } from '../components/SampleTimeline.jsx'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 import DatePicker from '../components/DatePicker.jsx'
 
 const inputStyle = {
   width: '100%', background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`,
-  borderRadius: 8, padding: '12px 14px', color: CREAM, fontSize: 15,
+  borderRadius: 8, padding: '12px 14px', color: CREAM, fontSize: 16,
   outline: 'none', fontFamily: "'Josefin Sans', sans-serif", colorScheme: 'dark',
 }
-const labelStyle = { fontSize: 10, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
+const labelStyle = { fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
 const cardStyle  = { background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16 }
 
 const EMPTY_ITEM = () => ({
@@ -213,7 +214,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                 return (
                 <div key={i} style={{ ...cardStyle, borderLeft: `3px solid ${outCfg.color}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontSize: 10, letterSpacing: 2, color: GOLD }}>ARTICOLO {i + 1}</span>
+                    <span style={{ fontSize: 11, letterSpacing: 2, color: GOLD }}>ARTICOLO {i + 1}</span>
                     {form.items.length > 1 && (
                       <button onClick={() => setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }))}
                         style={{ background: 'none', border: 'none', color: CLAY, fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
@@ -325,7 +326,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
         {FILTERS.map(f => (
           <button key={f.k} onClick={() => setFilter(f.k)}
             style={{ padding: '7px 14px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
-              fontSize: 11, letterSpacing: 1, fontFamily: "'Josefin Sans', sans-serif",
+              fontSize: 12, letterSpacing: 1, fontFamily: "'Josefin Sans', sans-serif",
               border: `1px solid ${filter === f.k ? GOLD : BORDER}`,
               background: filter === f.k ? 'rgba(184,150,90,0.15)' : 'transparent',
               color: filter === f.k ? GOLD : MUTED }}>
@@ -354,8 +355,8 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                       <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 19, color: CREAM }}>
                         {recipientLabel(sh, clients, prospects)}
                       </div>
-                      <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
-                        {fmtDate(sh.shipped_date)} · {PURPOSE_LABELS[sh.purpose] || sh.purpose} · {samplePieces(sh)} pz
+                      <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>
+                        {fmtDate(sh.shipped_date)} · {samplePieces(sh)} pz
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -365,56 +366,52 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    <PurposeBadge purpose={sh.purpose}/>
+                    {overdue && <FollowUpBadge overdue/>}
+                    {!overdue && followUp && <FollowUpBadge/>}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
                     {(sh.items || []).map(it => {
-                      const c = OUTCOME_CFG[itemOutcome(it)]
                       const label = [it.sp, it.description, it.color, it.size, it.quantity > 1 ? `×${it.quantity}` : null]
                         .filter(Boolean).join(' ')
                       return (
                         <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, color: MUTED }}>{label || '—'}</span>
+                          <span style={{ fontSize: 13, color: MUTED }}>{label || '—'}</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                            {it.revision_requested && <span style={{ fontSize: 11, color: '#e8c96e' }} title="Richiede modifiche">✎</span>}
-                            <span style={{ fontSize: 8, letterSpacing: 1, padding: '1px 7px', borderRadius: 2,
-                              background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
-                              {(OUTCOME_LABELS[itemOutcome(it)] || '').toUpperCase()}
-                            </span>
+                            {it.revision_requested && <span style={{ fontSize: 13, color: '#e8c96e' }} title="Richiede modifiche">✎</span>}
+                            <OutcomeBadge outcome={itemOutcome(it)}/>
                           </div>
                         </div>
                       )
                     })}
                   </div>
-
-                  {(overdue || followUp) && (
-                    <div style={{ fontSize: 10, color: CLAY, marginTop: 6 }}>
-                      {overdue ? `⚠ Reso scaduto il ${fmtDate(sh.return_due_date)}` : `⚠ Nessun esito da ${daysSince(sh.shipped_date)} giorni`}
-                    </div>
-                  )}
                 </div>
 
                 {open && (
                   <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${BORDER}`, paddingTop: 14 }}>
                     {(sh.carrier || sh.tracking) && (
-                      <div style={{ fontSize: 11, color: MUTED, marginBottom: 10 }}>
+                      <div style={{ fontSize: 13, color: MUTED, marginBottom: 10 }}>
                         Spedito con {sh.carrier || '—'}{sh.tracking ? ` · ${sh.tracking}` : ''}
                       </div>
                     )}
-                    {sh.notes && <div style={{ fontSize: 12, color: CREAM, marginBottom: 12, lineHeight: 1.6 }}>{sh.notes}</div>}
+                    {sh.notes && <div style={{ fontSize: 13, color: CREAM, marginBottom: 12, lineHeight: 1.6 }}>{sh.notes}</div>}
 
-                    <div style={{ fontSize: 10, letterSpacing: 2, color: MUTED, marginBottom: 8 }}>ESITO PER ARTICOLO</div>
+                    <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, marginBottom: 8 }}>ESITO PER ARTICOLO</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
                       {(sh.items || []).map(it => {
                         const label = [it.sp, it.description, it.color, it.size].filter(Boolean).join(' ')
                         return (
                           <div key={it.id}>
-                            <div style={{ fontSize: 11, color: CREAM, marginBottom: 5 }}>{label || '—'}</div>
+                            <div style={{ fontSize: 13, color: CREAM, marginBottom: 5 }}>{label || '—'}</div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               {OUTCOMES.map(o => {
                                 const c = OUTCOME_CFG[o]
                                 const active = itemOutcome(it) === o
                                 return (
                                   <button key={o} onClick={() => onItemOutcome(it.id, o)}
-                                    style={{ padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 10, letterSpacing: 0.5,
+                                    style={{ padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, letterSpacing: 0.5,
                                       fontFamily: "'Josefin Sans', sans-serif",
                                       border: `1px solid ${active ? c.border : BORDER}`,
                                       background: active ? c.bg : 'transparent',
@@ -435,24 +432,24 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                         const w = window.open('', '_blank')
                         w.document.write(html); w.document.close()
                       }}
-                        style={{ flex: '1 1 100%', padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5,
+                        style={{ flex: '1 1 100%', padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 12, letterSpacing: 1.5,
                           background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }}>
                         Bolla Campioni
                       </button>
                       {returnPending(sh) && (
                         <button onClick={() => onMarkReturned(sh.id, todayISO())}
-                          style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5,
+                          style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 12, letterSpacing: 1.5,
                             background: 'transparent', border: `1px solid ${GREEN}`, color: GREEN, fontFamily: "'Josefin Sans', sans-serif" }}>
                           Segna rientrato
                         </button>
                       )}
                       <button onClick={() => setForm(toEditForm(sh))}
-                        style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5,
+                        style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 12, letterSpacing: 1.5,
                           background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }}>
                         Modifica
                       </button>
                       <button onClick={() => handleDelete(sh)}
-                        style={{ padding: '11px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5,
+                        style={{ padding: '11px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 12, letterSpacing: 1.5,
                           background: 'transparent', border: '1px solid rgba(196,98,58,0.35)', color: CLAY, fontFamily: "'Josefin Sans', sans-serif" }}>
                         Elimina
                       </button>

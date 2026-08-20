@@ -6,11 +6,13 @@ import SampleModal, { emptyShipment, shipmentToForm } from '../components/Sample
 import { exportSamplesCSV } from '../utils/exportCSV.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 import {
-  PURPOSE_LABELS, fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
-  sampleStats, recipientLabel, needsFollowUp, returnPending, shipmentNeedsRevision,
+  fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
+  sampleStats, recipientLabel, needsFollowUp, returnPending, returnOverdue,
+  shipmentNeedsRevision, shipmentOutcomeSummary, OUTCOMES,
 } from '../utils/samples.js'
+import { PurposeBadge, OutcomeBadge, FollowUpBadge } from '../components/SampleTimeline.jsx'
 
-const inp = { ...s.input }
+const inp = { ...s.input, fontSize: 13 }
 
 const VIEW_FILTERS = [
   { k: 'all',       label: 'Tutti' },
@@ -128,7 +130,7 @@ export default function Samples({
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {VIEW_FILTERS.map(f => (
             <button key={f.k} onClick={() => setFilter(f.k)}
-              style={{ padding: '5px 12px', borderRadius: 3, fontSize: 9, letterSpacing: 1.5, cursor: 'pointer',
+              style={{ padding: '6px 13px', borderRadius: 3, fontSize: 11, letterSpacing: 1.5, cursor: 'pointer',
                 border: `1px solid ${filter === f.k ? GOLD : BORDER}`,
                 background: filter === f.k ? 'rgba(184,150,90,0.12)' : 'transparent',
                 color: filter === f.k ? GOLD : MUTED }}>
@@ -159,42 +161,55 @@ export default function Samples({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {filtered.map(sh => (
+          {filtered.map(sh => {
+            const summary = shipmentOutcomeSummary(sh)
+            const outcomeEntries = OUTCOMES.filter(o => summary.counts[o]).map(o => [o, summary.counts[o]])
+            const overdue  = returnOverdue(sh)
+            const followUp = needsFollowUp(sh)
+            return (
             <div key={sh.id} className="du-card"
               style={{ padding: '24px 30px', background: 'rgba(255,255,255,0.03)',
                 border: `1px solid ${BORDER}`, borderLeft: `3px solid ${GOLD}`, borderRadius: 10,
                 display: 'flex', alignItems: 'center', gap: 36, flexWrap: 'wrap' }}>
 
-              {/* Destinatario — le altre informazioni (articoli, esiti, resi,
-                  solleciti) si vedono aprendo l'invio: qui basta il colpo
-                  d'occhio su chi, quanto e cosa fare. */}
-              <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+              {/* Destinatario, motivo, esito e follow-up: tutto lo stato
+                  rilevante si vede già dalla lista, senza aprire l'invio. */}
+              <div style={{ flex: '1 1 300px', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 21, color: CREAM, letterSpacing: 0.5 }}>
                     {recipientLabel(sh, clients, prospects)}
                   </span>
                   {sh.prospect_id && (
-                    <span style={{ fontSize: 9, letterSpacing: 1.5, color: '#7aaee8' }}>PROSPECT</span>
+                    <span style={{ fontSize: 11, letterSpacing: 1.5, color: '#7aaee8' }}>PROSPECT</span>
                   )}
                   {shipmentNeedsRevision(sh) && (
-                    <span style={{ fontSize: 9, letterSpacing: 1, color: '#e8c96e' }}>✎ DA RIVEDERE</span>
+                    <span style={{ fontSize: 11, letterSpacing: 1, color: '#e8c96e' }}>✎ DA RIVEDERE</span>
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: MUTED, marginTop: 5 }}>
-                  {[fmtDate(sh.shipped_date), PURPOSE_LABELS[sh.purpose] || sh.purpose, sh.contact_name, sh.carrier]
-                    .filter(Boolean).join('  ·  ')}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 9 }}>
+                  <PurposeBadge purpose={sh.purpose}/>
+                  {outcomeEntries.map(([outcome, count]) => (
+                    <OutcomeBadge key={outcome} outcome={outcome} count={count}/>
+                  ))}
+                  {overdue && <FollowUpBadge overdue/>}
+                  {!overdue && followUp && <FollowUpBadge/>}
+                </div>
+
+                <div style={{ fontSize: 13, color: MUTED, marginTop: 9 }}>
+                  {[fmtDate(sh.shipped_date), sh.contact_name, sh.carrier].filter(Boolean).join('  ·  ')}
                 </div>
               </div>
 
               {/* Pezzi */}
               <div style={{ textAlign: 'right', flexShrink: 0, width: 80 }}>
-                <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 3 }}>PEZZI</div>
+                <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, marginBottom: 3 }}>PEZZI</div>
                 <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: CREAM }}>{samplePieces(sh)}</div>
               </div>
 
               {/* Valore */}
               <div style={{ textAlign: 'right', flexShrink: 0, width: 120 }}>
-                <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, marginBottom: 3 }}>COSTO</div>
+                <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, marginBottom: 3 }}>COSTO</div>
                 <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: GOLD }}>
                   {euro(sampleCostValue(sh), 2)}
                 </div>
@@ -202,23 +217,23 @@ export default function Samples({
 
               {/* Azioni */}
               <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginLeft: 'auto' }}>
-                <button style={{ ...btnStyle(false), padding: '7px 16px', fontSize: 9 }}
+                <button style={{ ...btnStyle(false), padding: '7px 16px', fontSize: 11 }}
                   onClick={() => openSamplePDF(sh)}>
                   Bolla Campioni
                 </button>
-                <button style={{ ...btnGoldStyle, padding: '7px 18px', fontSize: 9 }}
+                <button style={{ ...btnGoldStyle, padding: '7px 18px', fontSize: 11 }}
                   onClick={() => setForm(shipmentToForm(sh))}>
                   Apri
                 </button>
                 <button disabled={deleting}
-                  style={{ padding: '7px 16px', fontSize: 9, letterSpacing: 1.5, cursor: 'pointer', borderRadius: 3,
+                  style={{ padding: '7px 16px', fontSize: 11, letterSpacing: 1.5, cursor: 'pointer', borderRadius: 3,
                     background: 'transparent', border: '1px solid rgba(196,98,58,0.35)', color: CLAY }}
                   onClick={() => handleDelete(sh)}>
                   Elimina
                 </button>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
