@@ -15,7 +15,20 @@ const TODOIST_API = 'https://api.todoist.com/api/v1'
 const PROJECT_NAME = 'Campionature'
 const SECTION_NAME = 'Follow up'
 
-const marker = (shipmentId) => `[order-app:${shipmentId}]`
+// Indirizzo dell'app, usato solo come contenitore del marcatore.
+const APP_URL = 'https://doubleu-order-app-cld.vercel.app'
+
+// Il marcatore non è più racchiuso tra parentesi quadre: così può stare
+// dentro un link Markdown senza confondere la sintassi. I task creati
+// prima, che scrivevano [order-app:<id>], restano ritrovabili perché la
+// ricerca è per sottostringa.
+const marker = (shipmentId) => `order-app:${shipmentId}`
+
+// Todoist rende il Markdown della descrizione: chi legge vede solo il
+// motivo dell'invio, mentre l'id — che serve a ritrovare il task ed
+// evitare doppioni — resta nell'indirizzo del link.
+const buildDescription = (shipmentId, purpose) =>
+  `[${purpose || 'Campionatura'}](${APP_URL}/#${marker(shipmentId)})`
 
 async function todoistFetch(token, path, options = {}) {
   const res = await fetch(`${TODOIST_API}${path}`, {
@@ -102,7 +115,7 @@ export default async function handler(req, res) {
     }
 
     const content = (clubName || 'Campionatura').trim() || 'Campionatura'
-    const description = `${marker(shipmentId)}${purpose ? ' · ' + purpose : ''}`
+    const description = buildDescription(shipmentId, purpose)
     const body = { content, description, ...(dueDate ? { due_date: dueDate } : {}) }
 
     if (existing) {

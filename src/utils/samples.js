@@ -63,7 +63,16 @@ export const shipmentNeedsRevision = (sh) => (sh.items || []).some(itemNeedsRevi
 // Giorni di silenzio dopo i quali un invio senza esito va sollecitato
 export const FOLLOW_UP_DAYS = 10
 
-export const todayISO = () => new Date().toISOString().slice(0, 10)
+// Le date qui sono giorni di calendario, non istanti: vanno lette nel
+// fuso di chi usa l'app. Passare da toISOString() le convertirebbe in
+// UTC, e a est di Greenwich la mezzanotte locale cade nel giorno prima:
+// il risultato uscirebbe indietro di un giorno.
+const localISO = (d) => {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+export const todayISO = () => localISO(new Date())
 
 export function fmtDate(iso) {
   if (!iso) return '—'
@@ -84,7 +93,7 @@ export const addDaysISO = (iso, days) => {
   const base = iso ? new Date(`${iso}T00:00:00`) : new Date()
   if (isNaN(base)) return ''
   base.setDate(base.getDate() + days)
-  return base.toISOString().slice(0, 10)
+  return localISO(base)
 }
 
 // ─── Pezzi e valore ──────────────────────────────────────────────
