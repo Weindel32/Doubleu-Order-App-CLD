@@ -8,7 +8,7 @@ import { generateSamplePDF, documentLanguage } from '../utils/pdfSample.js'
 import {
   fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
   sampleStats, recipientLabel, needsFollowUp, returnPending, returnOverdue,
-  shipmentNeedsRevision, shipmentOutcomeSummary, OUTCOMES, isGift,
+  shipmentNeedsRevision, shipmentOutcomeSummary, OUTCOMES, isGift, foreignCountryLabel,
 } from '../utils/samples.js'
 import { PurposeBadge, OutcomeBadge, FollowUpBadge, GiftBadge } from '../components/SampleTimeline.jsx'
 
@@ -205,6 +205,11 @@ export default function Samples({
 
                 <div style={{ fontSize: 13, color: MUTED, marginTop: 9 }}>
                   {[fmtDate(sh.shipped_date), sh.contact_name, sh.carrier].filter(Boolean).join('  ·  ')}
+                  {foreignCountryLabel(sh, clients, prospects) && (
+                    <span style={{ color: '#7aaee8' }}>
+                      {'  ·  '}{foreignCountryLabel(sh, clients, prospects)}
+                    </span>
+                  )}
                 </div>
               </div>
 

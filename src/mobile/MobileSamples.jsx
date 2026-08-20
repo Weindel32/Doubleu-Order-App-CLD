@@ -4,7 +4,7 @@ import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   fmtDate, euro, todayISO, addDaysISO, samplePieces, sampleCostValue,
   sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
-  itemCostValue, itemOutcome, isGift,
+  itemCostValue, itemOutcome, isGift, foreignCountryLabel,
 } from '../utils/samples.js'
 import { PurposeBadge, OutcomeBadge, FollowUpBadge, GiftBadge } from '../components/SampleTimeline.jsx'
 import { generateSamplePDF, documentLanguage } from '../utils/pdfSample.js'
@@ -382,6 +382,9 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                       </div>
                       <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>
                         {fmtDate(sh.shipped_date)} · {samplePieces(sh)} pz
+                        {foreignCountryLabel(sh, clients, prospects) && (
+                          <span style={{ color: '#7aaee8' }}> · {foreignCountryLabel(sh, clients, prospects)}</span>
+                        )}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>

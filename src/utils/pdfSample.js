@@ -1,4 +1,4 @@
-import { PURPOSE_LABELS, recipientLabel, isGift } from './samples.js'
+import { PURPOSE_LABELS, recipientLabel, recipientCountry, isGift } from './samples.js'
 
 // Documento da allegare alla spedizione dei campioni: elenco articoli
 // senza prezzo. Esce dall'azienda e finisce in mano al cliente, quindi
@@ -79,18 +79,6 @@ function fmtDocDate(iso, lang) {
   const date = new Date(`${iso}T00:00:00`)
   if (isNaN(date)) return iso
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-function recipientCountry(shipment, clients = [], prospects = []) {
-  if (shipment.client_id) {
-    const c = clients.find(x => String(x.id) === String(shipment.client_id))
-    if (c) return c.country || ''
-  }
-  if (shipment.prospect_id) {
-    const p = prospects.find(x => String(x.id) === String(shipment.prospect_id))
-    if (p) return p.country || ''
-  }
-  return ''
 }
 
 // I club esteri lavorano in inglese. Un destinatario fuori anagrafica

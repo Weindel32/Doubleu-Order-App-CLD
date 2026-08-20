@@ -229,5 +229,26 @@ export function recipientLabel(sh, clients = [], prospects = []) {
   return sh.recipient_name || '—'
 }
 
+// Paese del destinatario, preso dall'anagrafica: decide la lingua della
+// bolla campioni. Vuoto per chi non è in archivio.
+export function recipientCountry(sh, clients = [], prospects = []) {
+  if (sh.client_id) {
+    const c = clients.find(x => String(x.id) === String(sh.client_id))
+    if (c) return c.country || ''
+  }
+  if (sh.prospect_id) {
+    const p = prospects.find(x => String(x.id) === String(sh.prospect_id))
+    if (p) return p.country || ''
+  }
+  return ''
+}
+
+// Come nelle schede cliente: l'Italia è il caso normale e non si scrive,
+// così in elenco risalta solo chi è estero.
+export function foreignCountryLabel(sh, clients = [], prospects = []) {
+  const country = (recipientCountry(sh, clients, prospects) || '').trim()
+  return country && !/^ital/i.test(country) ? country : ''
+}
+
 export const euro = (v, decimals = 0) =>
   `€ ${(v || 0).toLocaleString('it-IT', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`
