@@ -137,18 +137,26 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
         <input style={inputStyle} type="email" inputMode="email" autoCapitalize="none" value={f.contact_email} onChange={e => set('contact_email', e.target.value)}/>
       </div>
 
+      {/* Il paese non è solo anagrafica: decide la lingua della bolla
+          campioni, che esce in inglese per i destinatari non italiani. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
         <div>
           <label style={labelStyle}>Città</label>
           <input style={inputStyle} autoCapitalize="words" value={f.city} onChange={e => set('city', e.target.value)}/>
         </div>
         <div>
-          <label style={labelStyle}>Canale</label>
-          <select style={inputStyle} value={f.channel_origin} onChange={e => set('channel_origin', e.target.value)}>
-            <option value="">—</option>
-            {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <label style={labelStyle}>Paese</label>
+          <input style={inputStyle} autoCapitalize="words" placeholder="es. Italia"
+            value={f.country || ''} onChange={e => set('country', e.target.value)}/>
         </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Canale</label>
+        <select style={inputStyle} value={f.channel_origin} onChange={e => set('channel_origin', e.target.value)}>
+          <option value="">—</option>
+          {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
 
       {!isRete && (
@@ -598,7 +606,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
         <ProspectForm
           initial={{
             name:'', contact_type: isRete ? 'segnalatore' : 'cliente', stage:'contatto',
-            contact_name:'', contact_phone:'', contact_email:'', city:'',
+            contact_name:'', contact_phone:'', contact_email:'', city:'', country:'',
             channel_origin:'', deal_value_est:'', next_action_date:'', referred_by:'', notes:'',
           }}
           isRete={isRete} prospects={prospects}
