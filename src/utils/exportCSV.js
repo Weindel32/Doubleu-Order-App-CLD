@@ -1,7 +1,7 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 import {
-  PURPOSE_LABELS, OUTCOME_LABELS, fmtDate, recipientLabel, itemOutcome,
+  PURPOSE_LABELS, OUTCOME_LABELS, fmtDate, recipientLabel, itemOutcome, isGift,
   samplePieces, sampleCostValue, samplePriceValue, sampleShipping, sampleInvested,
 } from './samples.js'
 
@@ -124,7 +124,7 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
   rows.push(['Generato il', new Date().toLocaleDateString('it-IT')])
   rows.push([])
   rows.push([
-    'Data invio', 'Destinatario', 'Tipo', 'Referente', 'Motivo',
+    'Data invio', 'Destinatario', 'Tipo', 'Referente', 'Motivo', 'Omaggio',
     'Codice DUSP', 'Descrizione', 'Colore', 'Taglia', 'Q.t\u00E0',
     'Costo un. \u20AC', 'Prezzo club un. \u20AC', 'Valore riga (costo) \u20AC', 'Reso richiesto', 'Rientrato',
     'Corriere', 'Tracking', 'Esito articolo', 'Da rivedere', 'Nota esito', 'Ordine collegato', 'Note invio',
@@ -139,6 +139,9 @@ export function exportSamplesCSV(shipments, clients = [], prospects = []) {
       sh.prospect_id ? 'Prospect' : sh.client_id ? 'Cliente' : 'Altro',
       sh.contact_name || '',
       PURPOSE_LABELS[sh.purpose] || sh.purpose || '',
+      // Colonna a sé: filtrando su questa si ottiene lo storico di
+      // quanto è stato regalato, a prescindere dal motivo dell'invio.
+      isGift(sh) ? 'Sì' : 'No',
     ]
     const shipTail = [sh.carrier || '', sh.tracking || '']
     const items = (sh.items || [])

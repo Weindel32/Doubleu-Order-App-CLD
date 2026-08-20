@@ -4,13 +4,13 @@ import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleModal, { emptyShipment, shipmentToForm } from '../components/SampleModal.jsx'
 import { exportSamplesCSV } from '../utils/exportCSV.js'
-import { generateSamplePDF } from '../utils/pdfSample.js'
+import { generateSamplePDF, documentLanguage } from '../utils/pdfSample.js'
 import {
   fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
   sampleStats, recipientLabel, needsFollowUp, returnPending, returnOverdue,
-  shipmentNeedsRevision, shipmentOutcomeSummary, OUTCOMES,
+  shipmentNeedsRevision, shipmentOutcomeSummary, OUTCOMES, isGift,
 } from '../utils/samples.js'
-import { PurposeBadge, OutcomeBadge, FollowUpBadge } from '../components/SampleTimeline.jsx'
+import { PurposeBadge, OutcomeBadge, FollowUpBadge, GiftBadge } from '../components/SampleTimeline.jsx'
 
 const inp = { ...s.input, fontSize: 13 }
 
@@ -83,8 +83,10 @@ export default function Samples({
     setForm(null)
   }
 
-  const openSamplePDF = (sh) => {
-    const html = generateSamplePDF(sh, clients, prospects)
+  const docLang = (sh) => documentLanguage(sh, clients, prospects)
+
+  const openSamplePDF = (sh, lang) => {
+    const html = generateSamplePDF(sh, clients, prospects, lang)
     const w = window.open('', '_blank')
     w.document.write(html)
     w.document.close()
@@ -108,10 +110,14 @@ export default function Samples({
         </div>
       </div>
 
-      <div style={s.grid4}>
+      {/* Cinque riquadri: a larghezze fisse si schiacciavano, così
+          vanno a capo da soli quando la finestra si stringe. */}
+      <div style={{ ...s.grid4, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <StatCard label="Invii Registrati" value={stats.count} sub={`${stats.pieces} pezzi`}/>
         <StatCard label="Investito"        value={euro(stats.invested)} accent
           sub={stats.outstanding > 0 ? `${euro(stats.outstanding)} da rientrare` : 'Costo merce non rientrata + spedizioni'}/>
+        <StatCard label="Regalato" value={euro(stats.gifted)}
+          sub={stats.giftCount > 0 ? `${stats.giftCount} invii in omaggio` : 'Nessun omaggio registrato'}/>
         <StatCard label="Conversione"
           value={stats.conversion === null ? '—' : `${stats.conversion.toFixed(0)}%`}
           sub={stats.conversion === null ? 'Nessun esito ancora' : `${stats.converted} articoli convertiti`}/>
@@ -189,6 +195,7 @@ export default function Samples({
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 9 }}>
                   <PurposeBadge purpose={sh.purpose}/>
+                  {isGift(sh) && <GiftBadge/>}
                   {outcomeEntries.map(([outcome, count]) => (
                     <OutcomeBadge key={outcome} outcome={outcome} count={count}/>
                   ))}
@@ -217,10 +224,20 @@ export default function Samples({
 
               {/* Azioni */}
               <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginLeft: 'auto' }}>
-                <button style={{ ...btnStyle(false), padding: '7px 16px', fontSize: 11 }}
-                  onClick={() => openSamplePDF(sh)}>
-                  Bolla Campioni
-                </button>
+                {/* La lingua predefinita segue il paese del destinatario;
+                    l'altra resta a un clic per i casi fuori anagrafica. */}
+                <div style={{ display: 'flex' }}>
+                  <button style={{ ...btnStyle(false), padding: '7px 16px', fontSize: 11, borderRadius: '3px 0 0 3px' }}
+                    onClick={() => openSamplePDF(sh)}>
+                    Bolla Campioni
+                  </button>
+                  <button title={docLang(sh) === 'it' ? 'Stampa in inglese' : 'Stampa in italiano'}
+                    style={{ ...btnStyle(false), padding: '7px 10px', fontSize: 11, borderRadius: '0 3px 3px 0',
+                      marginLeft: 1, letterSpacing: 1, color: GOLD }}
+                    onClick={() => openSamplePDF(sh, docLang(sh) === 'it' ? 'en' : 'it')}>
+                    {docLang(sh) === 'it' ? 'EN' : 'IT'}
+                  </button>
+                </div>
                 <button style={{ ...btnGoldStyle, padding: '7px 18px', fontSize: 11 }}
                   onClick={() => setForm(shipmentToForm(sh))}>
                   Apri

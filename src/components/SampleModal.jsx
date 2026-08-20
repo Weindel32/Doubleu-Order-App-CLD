@@ -31,7 +31,7 @@ export function emptyShipment(prefill = {}) {
     shipped_date: todayISO(), purpose: 'valutazione',
     return_required: false, return_due_date: '', returned_date: '',
     carrier: '', tracking: '', shipping_cost: '',
-    follow_up_date: '', notes: '',
+    follow_up_date: '', notes: '', omaggio: false,
     items: [EMPTY_ITEM()],
     ...prefill,
   }
@@ -55,6 +55,7 @@ export function shipmentToForm(sh) {
     return_due_date: sh.return_due_date || '',
     returned_date:   sh.returned_date   || '',
     follow_up_date:  sh.follow_up_date  || '',
+    omaggio:         !!sh.omaggio,
     contact_name:    sh.contact_name || '',
     carrier:         sh.carrier  || '',
     tracking:        sh.tracking || '',
@@ -136,9 +137,18 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
     }))
   }
 
+  // Regalare la merce e pretenderla indietro sono in contraddizione:
+  // attivare l'omaggio azzera la richiesta di reso, e la sezione Reso
+  // sparisce anche per i set misure, che altrimenti rientrano sempre.
+  const toggleGift = () => setForm(f => ({
+    ...f,
+    omaggio: !f.omaggio,
+    return_required: !f.omaggio ? false : f.return_required,
+  }))
+
   // I set misure rientrano sempre: la scelta non è modificabile.
-  const forcedReturn = alwaysReturned(form.purpose)
-  const mustReturn   = forcedReturn || form.return_required
+  const forcedReturn = alwaysReturned(form.purpose) && !form.omaggio
+  const mustReturn   = !form.omaggio && (forcedReturn || form.return_required)
 
   const choosePurpose = (purpose) => setForm(f => ({
     ...f,
@@ -233,6 +243,22 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
               Vuoto = sollecito dopo {FOLLOW_UP_DAYS} giorni
             </div>
           </div>
+        </div>
+
+        {/* L'omaggio non è un motivo alternativo: un invio in valutazione
+            può essere anche regalato, e va contato nello storico. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <div onClick={toggleGift}
+            style={{ width: 40, height: 22, borderRadius: 11, position: 'relative', flexShrink: 0, cursor: 'pointer',
+              background: form.omaggio ? CLAY : 'rgba(255,255,255,0.12)', transition: 'background 0.2s' }}>
+            <div style={{ position: 'absolute', top: 3, left: form.omaggio ? 21 : 3, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s' }}/>
+          </div>
+          <span style={{ fontSize: 13, color: form.omaggio ? CLAY : MUTED }}>
+            {form.omaggio ? 'Regalati al cliente' : 'Non regalati'}
+          </span>
+          <span style={{ fontSize: 11, color: MUTED, fontStyle: 'italic' }}>
+            — la merce resta al destinatario e non verrà fatturata
+          </span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>

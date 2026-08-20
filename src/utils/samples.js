@@ -8,13 +8,16 @@ import { GOLD, MUTED, CLAY, GREEN } from '../tokens.js'
 // Le date sono in formato ISO (yyyy-mm-dd): si ordinano e confrontano
 // come stringhe. fmtDate() le mostra all'italiana.
 
-export const PURPOSES = ['valutazione', 'misurazione', 'fiera', 'omaggio']
+// Il motivo dice perché i campioni sono partiti; se poi la merce sia
+// regalata è un fatto separato (vedi isGift): un invio in valutazione,
+// fatto per arrivare a un ordine, può essere anche un omaggio.
+export const PURPOSES = ['valutazione', 'misurazione', 'fiera', 'promozione']
 
 export const PURPOSE_LABELS = {
   valutazione: 'Valutazione',
   misurazione: 'Set misure',
   fiera:       'Fiera / Evento',
-  omaggio:     'Omaggio',
+  promozione:  'Promozione',
 }
 
 // Colori badge per motivo invio, a colpo d'occhio nelle liste.
@@ -22,8 +25,14 @@ export const PURPOSE_CFG = {
   valutazione: { color: '#7aaee8', border: 'rgba(90,130,184,0.35)',  bg: 'rgba(90,130,184,0.15)'  },
   misurazione: { color: MUTED,     border: 'rgba(138,154,181,0.3)', bg: 'rgba(138,154,181,0.12)' },
   fiera:       { color: '#e8c96e', border: 'rgba(180,140,50,0.4)',  bg: 'rgba(180,140,50,0.18)'  },
-  omaggio:     { color: CLAY,      border: 'rgba(196,98,58,0.3)',   bg: 'rgba(196,98,58,0.12)'   },
+  promozione:  { color: '#b98ad4', border: 'rgba(150,110,190,0.4)', bg: 'rgba(150,110,190,0.15)' },
 }
+
+// Merce regalata: non rientra e non verrà fatturata. Indipendente dal
+// motivo, così resta lo storico di quanto è stato dato via.
+export const isGift = (sh) => !!(sh && sh.omaggio)
+
+export const GIFT_CFG = { color: CLAY, border: 'rgba(196,98,58,0.4)', bg: 'rgba(196,98,58,0.15)' }
 
 // I set misure servono a provare le taglie e rientrano sempre.
 export const alwaysReturned = (purpose) => purpose === 'misurazione'
@@ -127,6 +136,11 @@ export const sampleOutstanding = (sh) =>
     ? (sh.items || []).reduce((v, it) => v + (it.returned ? 0 : itemCostValue(it)), 0)
     : 0
 
+// Valore regalato: quanto è stato dato via, a prezzo di costo. Sulla
+// merce soltanto — la spedizione è un costo commerciale, non un regalo
+// che finisce nelle mani del club.
+export const sampleGifted = (sh) => isGift(sh) ? sampleCostValue(sh) : 0
+
 export const allItemsReturned = (sh) =>
   (sh.items || []).length > 0 && (sh.items || []).every(it => it.returned)
 
@@ -189,6 +203,8 @@ export function sampleStats(shipments) {
     pieces:      list.reduce((n, sh) => n + samplePieces(sh), 0),
     invested:    list.reduce((v, sh) => v + sampleInvested(sh), 0),
     outstanding: list.reduce((v, sh) => v + sampleOutstanding(sh), 0),
+    gifted:      list.reduce((v, sh) => v + sampleGifted(sh), 0),
+    giftCount:   list.filter(isGift).length,
     open:        list.filter(sh => (sh.items || []).some(isItemOpen)).length,
     toFollowUp:  list.filter(needsFollowUp).length,
     toReturn:    list.filter(returnPending).length,

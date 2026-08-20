@@ -4,10 +4,10 @@ import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   fmtDate, euro, todayISO, addDaysISO, samplePieces, sampleCostValue,
   sampleStats, recipientLabel, needsFollowUp, returnOverdue, returnPending,
-  itemCostValue, itemOutcome,
+  itemCostValue, itemOutcome, isGift,
 } from '../utils/samples.js'
-import { PurposeBadge, OutcomeBadge, FollowUpBadge } from '../components/SampleTimeline.jsx'
-import { generateSamplePDF } from '../utils/pdfSample.js'
+import { PurposeBadge, OutcomeBadge, FollowUpBadge, GiftBadge } from '../components/SampleTimeline.jsx'
+import { generateSamplePDF, documentLanguage } from '../utils/pdfSample.js'
 import DatePicker from '../components/DatePicker.jsx'
 
 const inputStyle = {
@@ -30,14 +30,14 @@ const emptyForm = () => ({
   shipped_date: todayISO(), purpose: 'valutazione',
   return_required: false, return_due_date: '', returned_date: '',
   carrier: '', tracking: '', shipping_cost: '',
-  follow_up_date: '', notes: '', items: [EMPTY_ITEM()],
+  follow_up_date: '', notes: '', omaggio: false, items: [EMPTY_ITEM()],
 })
 
 const toEditForm = (sh) => ({
   ...sh,
   shipping_cost: sh.shipping_cost ? String(sh.shipping_cost) : '',
   return_due_date: sh.return_due_date || '', returned_date: sh.returned_date || '',
-  follow_up_date: sh.follow_up_date || '',
+  follow_up_date: sh.follow_up_date || '', omaggio: !!sh.omaggio,
   contact_name: sh.contact_name || '', carrier: sh.carrier || '', tracking: sh.tracking || '', notes: sh.notes || '',
   items: (sh.items || []).length > 0
     ? sh.items.map(it => ({
@@ -129,8 +129,17 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
     setOpenId(null)
   }
 
-  const mustReturn  = form ? (alwaysReturned(form.purpose) || form.return_required) : false
-  const forcedRet   = form ? alwaysReturned(form.purpose) : false
+  // Regalare la merce e pretenderla indietro sono in contraddizione:
+  // l'omaggio azzera la richiesta di reso, set misure compresi.
+  const toggleGift = () => setForm(f => ({
+    ...f,
+    omaggio: !f.omaggio,
+    return_required: !f.omaggio ? false : f.return_required,
+  }))
+
+  const isOmaggio   = form ? !!form.omaggio : false
+  const mustReturn  = form ? (!isOmaggio && (alwaysReturned(form.purpose) || form.return_required)) : false
+  const forcedRet   = form ? (alwaysReturned(form.purpose) && !isOmaggio) : false
   const canSave     = form && form.recipient_name.trim() && form.shipped_date &&
     form.items.some(it => (it.sp || '').trim() || (it.description || '').trim())
 
@@ -179,8 +188,24 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
           </div>
 
           <div style={cardStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div onClick={() => { if (!forcedRet) set('return_required', !form.return_required) }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${BORDER}` }}>
+              <div onClick={toggleGift}
+                style={{ width: 44, height: 24, borderRadius: 12, position: 'relative', flexShrink: 0, cursor: 'pointer',
+                  background: isOmaggio ? CLAY : 'rgba(255,255,255,0.12)' }}>
+                <div style={{ position: 'absolute', top: 3, left: isOmaggio ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', transition: 'left 0.2s' }}/>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: isOmaggio ? CLAY : MUTED }}>
+                  {isOmaggio ? 'Regalati al cliente' : 'Non regalati'}
+                </div>
+                <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
+                  La merce resta al destinatario
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: isOmaggio ? 0.4 : 1 }}>
+              <div onClick={() => { if (!forcedRet && !isOmaggio) set('return_required', !form.return_required) }}
                 style={{ width: 44, height: 24, borderRadius: 12, position: 'relative', flexShrink: 0,
                   cursor: forcedRet ? 'not-allowed' : 'pointer', opacity: forcedRet ? 0.6 : 1,
                   background: mustReturn ? GREEN : 'rgba(255,255,255,0.12)' }}>
@@ -368,6 +393,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                     <PurposeBadge purpose={sh.purpose}/>
+                    {isGift(sh) && <GiftBadge/>}
                     {overdue && <FollowUpBadge overdue/>}
                     {!overdue && followUp && <FollowUpBadge/>}
                   </div>
@@ -427,15 +453,25 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button onClick={() => {
-                        const html = generateSamplePDF(sh, clients, prospects)
-                        const w = window.open('', '_blank')
-                        w.document.write(html); w.document.close()
-                      }}
-                        style={{ flex: '1 1 100%', padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 12, letterSpacing: 1.5,
-                          background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }}>
-                        Bolla Campioni
-                      </button>
+                      {(() => {
+                        const lang = documentLanguage(sh, clients, prospects)
+                        const openPDF = (l) => {
+                          const html = generateSamplePDF(sh, clients, prospects, l)
+                          const w = window.open('', '_blank')
+                          w.document.write(html); w.document.close()
+                        }
+                        const btn = { padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 12, letterSpacing: 1.5,
+                          background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }
+                        return (
+                          <div style={{ display: 'flex', gap: 8, flex: '1 1 100%' }}>
+                            <button style={{ ...btn, flex: 1 }} onClick={() => openPDF(lang)}>Bolla Campioni</button>
+                            <button style={{ ...btn, flexShrink: 0, padding: '11px 16px' }}
+                              onClick={() => openPDF(lang === 'it' ? 'en' : 'it')}>
+                              {lang === 'it' ? 'EN' : 'IT'}
+                            </button>
+                          </div>
+                        )
+                      })()}
                       {returnPending(sh) && (
                         <button onClick={() => onMarkReturned(sh.id, todayISO())}
                           style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 12, letterSpacing: 1.5,
