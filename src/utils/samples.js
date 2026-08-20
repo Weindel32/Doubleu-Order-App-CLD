@@ -17,6 +17,14 @@ export const PURPOSE_LABELS = {
   omaggio:     'Omaggio',
 }
 
+// Colori badge per motivo invio, a colpo d'occhio nelle liste.
+export const PURPOSE_CFG = {
+  valutazione: { color: '#7aaee8', border: 'rgba(90,130,184,0.35)',  bg: 'rgba(90,130,184,0.15)'  },
+  misurazione: { color: MUTED,     border: 'rgba(138,154,181,0.3)', bg: 'rgba(138,154,181,0.12)' },
+  fiera:       { color: '#e8c96e', border: 'rgba(180,140,50,0.4)',  bg: 'rgba(180,140,50,0.18)'  },
+  omaggio:     { color: CLAY,      border: 'rgba(196,98,58,0.3)',   bg: 'rgba(196,98,58,0.12)'   },
+}
+
 // I set misure servono a provare le taglie e rientrano sempre.
 export const alwaysReturned = (purpose) => purpose === 'misurazione'
 

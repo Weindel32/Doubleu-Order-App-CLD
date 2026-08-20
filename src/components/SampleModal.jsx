@@ -10,7 +10,7 @@ import {
 } from '../utils/samples.js'
 import { generateSamplePDF } from '../utils/pdfSample.js'
 
-const inp = { ...s.input }
+const inp = { ...s.input, fontSize: 14 }
 
 // _key identifica la riga lato client (per lo stato "espansa/chiusa"),
 // indipendente dalla posizione nell'array e dall'id del db — non viene
@@ -174,7 +174,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
             { k: 'altro',    label: 'Altro / non in archivio' },
           ].map(t => (
             <button key={t.k} onClick={() => chooseTarget(t.k)}
-              style={{ padding: '6px 14px', borderRadius: 3, cursor: 'pointer', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase',
+              style={{ padding: '6px 14px', borderRadius: 3, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase',
                 border: `1px solid ${target === t.k ? GOLD : BORDER}`,
                 background: target === t.k ? 'rgba(184,150,90,0.15)' : 'transparent',
                 color: target === t.k ? GOLD : MUTED }}>
@@ -229,7 +229,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
           </div>
           <div>
             <DatePicker label="Follow-up" value={form.follow_up_date} onChange={v => set('follow_up_date', v)}/>
-            <div style={{ fontSize: 9, color: MUTED, marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
               Vuoto = sollecito dopo {FOLLOW_UP_DAYS} giorni
             </div>
           </div>
@@ -289,7 +289,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
       <div style={{ ...s.card, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ ...s.cardTitle, marginBottom: 0 }}>Campioni Inviati</div>
-          <button style={{ ...btnGoldStyle, padding: '4px 14px', fontSize: 9 }} onClick={addItem}>+ Riga</button>
+          <button style={{ ...btnGoldStyle, padding: '4px 14px', fontSize: 11 }} onClick={addItem}>+ Riga</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -312,7 +312,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                   {it.revision_requested && (
-                    <span title="Richiede modifiche" style={{ fontSize: 9, letterSpacing: 1, padding: '2px 8px', borderRadius: 2,
+                    <span title="Richiede modifiche" style={{ fontSize: 11, letterSpacing: 1, padding: '2px 8px', borderRadius: 2,
                       color: '#e8c96e', background: 'rgba(232,201,110,0.12)', border: '1px solid rgba(232,201,110,0.35)' }}>
                       ✎ DA RIVEDERE
                     </span>
@@ -438,19 +438,19 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}`, flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>PEZZI</div>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED }}>PEZZI</div>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: CREAM }}>{pieces}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>VALORE A COSTO</div>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED }}>VALORE A COSTO</div>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: GOLD }}>{euro(costValue, 2)}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>VALORE AL CLUB</div>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED }}>VALORE AL CLUB</div>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: '#7aaee8' }}>{euro(priceValue, 2)}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>COSTO CON SPEDIZIONE</div>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED }}>COSTO CON SPEDIZIONE</div>
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, color: GOLD }}>{euro(totalCost, 2)}</div>
           </div>
         </div>
@@ -480,7 +480,7 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
           </button>
         )}
         {!canSave && (
-          <span style={{ fontSize: 10, color: MUTED, alignSelf: 'center' }}>
+          <span style={{ fontSize: 12, color: MUTED, alignSelf: 'center' }}>
             Servono destinatario, data e almeno un articolo
           </span>
         )}
