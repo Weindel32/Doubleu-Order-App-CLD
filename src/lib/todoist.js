@@ -23,6 +23,7 @@ export async function syncFollowUpToTodoist(shipment, clubName) {
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.error || 'Sincronizzazione Todoist fallita')
+    const parts = [data.error || 'Sincronizzazione Todoist fallita', data.detail].filter(Boolean)
+    throw new Error(parts.join(' — '))
   }
 }
