@@ -15,7 +15,8 @@ import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
 import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
 import { needsAlert, isConfirmed } from './utils/helpers.js'
-import { needsFollowUp, returnOverdue } from './utils/samples.js'
+import { needsFollowUp, returnOverdue, recipientLabel } from './utils/samples.js'
+import { syncFollowUpToTodoist } from './lib/todoist.js'
 import { supabase } from './lib/supabase.js'
 
 // Telefono: schermo stretto (portrait) oppure basso e non troppo largo (landscape)
@@ -199,10 +200,21 @@ export default function App() {
   }
 
   // ── Campionature ────────────────────────────────────────────────
+  // Il task Todoist di follow-up è un riflesso dello stato dell'invio:
+  // lo si tiene allineato ad ogni salvataggio, mai in modo bloccante —
+  // se Todoist non risponde, il salvataggio in Order App resta valido.
+  const syncShipmentFollowUp = (list, shipmentId) => {
+    const sh = list.find(x => x.id === shipmentId)
+    if (!sh) return
+    syncFollowUpToTodoist(sh, recipientLabel(sh, clients, prospects))
+      .catch(err => console.error('Todoist: sincronizzazione follow-up fallita', err))
+  }
+
   const handleUpsertShipment = async (shipment) => {
     const result = await upsertSampleShipment(shipment)
     if (!result) return null
-    setShipments(await fetchSampleShipments())
+    const fresh = await fetchSampleShipments()
+    setShipments(fresh)
     // Un invio a un prospect ancora al primo contatto lo fa avanzare
     // a 'sample' (solo in avanti, come per i preventivi)
     if (shipment.prospect_id) {
@@ -212,18 +224,31 @@ export default function App() {
         await handleUpsertProspect({ ...rest, stage: 'sample' })
       }
     }
+    syncShipmentFollowUp(fresh, result.id)
     return result
   }
 
   const handleDeleteShipment = async (shipmentId) => {
+    const existing = shipments.find(x => x.id === shipmentId)
     const ok = await deleteSampleShipment(shipmentId)
-    if (ok) setShipments(await fetchSampleShipments())
+    if (ok) {
+      setShipments(await fetchSampleShipments())
+      // L'invio non esiste più: nessun articolo aperto, il task va chiuso.
+      if (existing) {
+        syncFollowUpToTodoist({ ...existing, items: [] }, recipientLabel(existing, clients, prospects))
+          .catch(err => console.error('Todoist: chiusura follow-up fallita', err))
+      }
+    }
     return ok
   }
 
   const handleSampleItemOutcome = async (itemId, outcome, extraFields) => {
     const ok = await updateSampleItemOutcome(itemId, outcome, extraFields)
-    if (ok) setShipments(await fetchSampleShipments())
+    if (!ok) return ok
+    const fresh = await fetchSampleShipments()
+    setShipments(fresh)
+    const sh = fresh.find(s => (s.items || []).some(it => it.id === itemId))
+    if (sh) syncShipmentFollowUp(fresh, sh.id)
     return ok
   }
 
