@@ -204,7 +204,10 @@ export default function Samples({
                 </div>
 
                 <div style={{ fontSize: 13, color: MUTED, marginTop: 9 }}>
-                  {[fmtDate(sh.shipped_date), sh.contact_name, sh.carrier].filter(Boolean).join('  ·  ')}
+                  {[
+                    sh.delivery_date ? `Inviato ${fmtDate(sh.shipped_date)} → consegnato ${fmtDate(sh.delivery_date)}` : `Inviato ${fmtDate(sh.shipped_date)}`,
+                    sh.contact_name, sh.carrier,
+                  ].filter(Boolean).join('  ·  ')}
                   {foreignCountryLabel(sh, clients, prospects) && (
                     <span style={{ color: '#7aaee8' }}>
                       {'  ·  '}{foreignCountryLabel(sh, clients, prospects)}

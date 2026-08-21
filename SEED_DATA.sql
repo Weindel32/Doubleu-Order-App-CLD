@@ -96,6 +96,7 @@ BEGIN
       recipient_name  text NOT NULL,
       contact_name    text,
       shipped_date    text NOT NULL,
+      delivery_date   text,
       purpose         text    DEFAULT 'valutazione',
       return_required boolean DEFAULT false,
       return_due_date text,
@@ -163,6 +164,19 @@ ALTER TABLE sample_shipments ADD COLUMN IF NOT EXISTS omaggio boolean DEFAULT fa
 
 UPDATE sample_shipments SET omaggio = true    WHERE purpose = 'omaggio';
 UPDATE sample_shipments SET purpose = 'promozione' WHERE purpose = 'omaggio';
+-- ----------------------------------------------------------------
+
+-- ----------------------------------------------------------------
+-- MIGRATION: data di consegna (esegui una volta sola)
+--
+-- Il cliente comincia a valutare quando riceve il pacco, non quando
+-- parte: per una spedizione estera il transito può mangiarsi giorni
+-- della finestra di follow-up. Se impostata, needsFollowUp() conta i
+-- FOLLOW_UP_DAYS da qui invece che da shipped_date (vedi
+-- followUpBaseDate in src/utils/samples.js); altrimenti il
+-- comportamento resta quello di prima.
+-- ----------------------------------------------------------------
+ALTER TABLE sample_shipments ADD COLUMN IF NOT EXISTS delivery_date text;
 -- ----------------------------------------------------------------
 
 -- ORDINE 1: ECO VILLAGE

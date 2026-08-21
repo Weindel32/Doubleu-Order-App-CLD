@@ -27,7 +27,7 @@ const EMPTY_ITEM = () => ({
 
 const emptyForm = () => ({
   client_id: null, prospect_id: null, recipient_name: '', contact_name: '',
-  shipped_date: todayISO(), purpose: 'valutazione',
+  shipped_date: todayISO(), delivery_date: '', purpose: 'valutazione',
   return_required: false, return_due_date: '', returned_date: '',
   carrier: '', tracking: '', shipping_cost: '',
   follow_up_date: '', notes: '', omaggio: false, items: [EMPTY_ITEM()],
@@ -36,6 +36,7 @@ const emptyForm = () => ({
 const toEditForm = (sh) => ({
   ...sh,
   shipping_cost: sh.shipping_cost ? String(sh.shipping_cost) : '',
+  delivery_date: sh.delivery_date || '',
   return_due_date: sh.return_due_date || '', returned_date: sh.returned_date || '',
   follow_up_date: sh.follow_up_date || '', omaggio: !!sh.omaggio,
   contact_name: sh.contact_name || '', carrier: sh.carrier || '', tracking: sh.tracking || '', notes: sh.notes || '',
@@ -178,6 +179,14 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
           <div>
             <label style={labelStyle}>Data invio *</label>
             <DatePicker triggerStyle={inputStyle} value={form.shipped_date} onChange={v => set('shipped_date', v)}/>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Consegna</label>
+            <DatePicker triggerStyle={inputStyle} value={form.delivery_date} onChange={v => set('delivery_date', v)}/>
+            <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
+              Quando il cliente riceve il pacco
+            </div>
           </div>
 
           <div>
@@ -381,7 +390,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                         {recipientLabel(sh, clients, prospects)}
                       </div>
                       <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>
-                        {fmtDate(sh.shipped_date)} · {samplePieces(sh)} pz
+                        {fmtDate(sh.shipped_date)}{sh.delivery_date ? ` → ${fmtDate(sh.delivery_date)}` : ''} · {samplePieces(sh)} pz
                         {foreignCountryLabel(sh, clients, prospects) && (
                           <span style={{ color: '#7aaee8' }}> · {foreignCountryLabel(sh, clients, prospects)}</span>
                         )}

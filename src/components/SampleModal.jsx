@@ -28,7 +28,7 @@ const EMPTY_ITEM = () => ({
 export function emptyShipment(prefill = {}) {
   return {
     client_id: null, prospect_id: null, recipient_name: '', contact_name: '',
-    shipped_date: todayISO(), purpose: 'valutazione',
+    shipped_date: todayISO(), delivery_date: '', purpose: 'valutazione',
     return_required: false, return_due_date: '', returned_date: '',
     carrier: '', tracking: '', shipping_cost: '',
     follow_up_date: '', notes: '', omaggio: false,
@@ -52,6 +52,7 @@ export function shipmentToForm(sh) {
   return {
     ...sh,
     shipping_cost:   sh.shipping_cost ? String(sh.shipping_cost) : '',
+    delivery_date:   sh.delivery_date || '',
     return_due_date: sh.return_due_date || '',
     returned_date:   sh.returned_date   || '',
     follow_up_date:  sh.follow_up_date  || '',
@@ -227,9 +228,15 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
       <div style={{ ...s.card, marginBottom: 16 }}>
         <div style={s.cardTitle}>Invio</div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
           <div>
             <DatePicker label="Data invio *" value={form.shipped_date} onChange={v => set('shipped_date', v)}/>
+          </div>
+          <div>
+            <DatePicker label="Consegna" value={form.delivery_date} onChange={v => set('delivery_date', v)}/>
+            <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
+              Quando il cliente riceve il pacco
+            </div>
           </div>
           <div>
             <label style={s.label}>Motivo</label>
@@ -240,7 +247,9 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
           <div>
             <DatePicker label="Follow-up" value={form.follow_up_date} onChange={v => set('follow_up_date', v)}/>
             <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
-              Vuoto = sollecito dopo {FOLLOW_UP_DAYS} giorni
+              {form.delivery_date
+                ? `Vuoto = sollecito ${FOLLOW_UP_DAYS}gg dopo la consegna`
+                : `Vuoto = sollecito ${FOLLOW_UP_DAYS}gg dopo l'invio`}
             </div>
           </div>
         </div>

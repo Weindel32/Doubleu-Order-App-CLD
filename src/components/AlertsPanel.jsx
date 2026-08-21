@@ -2,7 +2,7 @@ import { GOLD, MUTED, CREAM, CLAY } from '../tokens.js'
 import { daysUntilDelivery, needsAlert, paymentSummary, isConfirmed } from '../utils/helpers.js'
 import {
   needsFollowUp, returnOverdue, fmtDate, daysSince, recipientLabel,
-  samplePieces, PURPOSE_LABELS,
+  samplePieces, PURPOSE_LABELS, followUpBaseDate,
 } from '../utils/samples.js'
 
 export default function AlertsPanel({ orders, setView, setEditOrder, shipments = [], clients = [], prospects = [] }) {
@@ -115,7 +115,7 @@ export default function AlertsPanel({ orders, setView, setEditOrder, shipments =
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {sampleAlerts.map(sh => {
               const overdue = returnOverdue(sh)
-              const days    = daysSince(sh.shipped_date)
+              const days    = daysSince(followUpBaseDate(sh))
               const color   = overdue ? CLAY : '#7aaee8'
               return (
                 <div key={sh.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.03)', borderRadius:6, padding:'10px 14px', cursor: setView ? 'pointer' : 'default' }}

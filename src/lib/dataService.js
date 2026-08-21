@@ -365,7 +365,7 @@ export async function deleteProspectActivity(activityId) {
 // ─── CAMPIONATURE ────────────────────────────────────────────────
 
 const SHIPMENT_FIELDS = [
-  'client_id', 'prospect_id', 'recipient_name', 'contact_name', 'shipped_date',
+  'client_id', 'prospect_id', 'recipient_name', 'contact_name', 'shipped_date', 'delivery_date',
   'purpose', 'return_required', 'return_due_date', 'returned_date',
   'carrier', 'tracking', 'shipping_cost', 'follow_up_date', 'notes', 'omaggio',
 ]
