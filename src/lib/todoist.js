@@ -4,11 +4,11 @@
 // lato server. Sincronizzazione best-effort: chi chiama deve gestire
 // l'eventuale fallimento senza bloccare il salvataggio in Order App.
 
-import { isItemOpen, addDaysISO, FOLLOW_UP_DAYS, PURPOSE_LABELS } from '../utils/samples.js'
+import { isItemOpen, addDaysISO, FOLLOW_UP_DAYS, PURPOSE_LABELS, followUpBaseDate } from '../utils/samples.js'
 
 export async function syncFollowUpToTodoist(shipment, clubName) {
   const open = (shipment.items || []).some(isItemOpen)
-  const dueDate = open ? (shipment.follow_up_date || addDaysISO(shipment.shipped_date, FOLLOW_UP_DAYS)) : null
+  const dueDate = open ? (shipment.follow_up_date || addDaysISO(followUpBaseDate(shipment), FOLLOW_UP_DAYS)) : null
 
   const res = await fetch('/api/sync-todoist-followup', {
     method: 'POST',

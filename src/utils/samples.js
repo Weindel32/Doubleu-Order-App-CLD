@@ -169,13 +169,19 @@ export function shipmentOutcomeSummary(sh) {
 
 // ─── Alert ───────────────────────────────────────────────────────
 
-// Almeno un articolo ancora senza risposta dopo FOLLOW_UP_DAYS (o
-// dopo la data di follow-up impostata a mano, se presente).
+// Il cliente comincia a valutare quando riceve il pacco, non quando
+// parte: per una spedizione estera possono passare giorni di transito
+// che altrimenti si mangerebbero parte della finestra di attesa. Se la
+// consegna non è (ancora) nota, si conta comunque dall'invio.
+export const followUpBaseDate = (sh) => sh.delivery_date || sh.shipped_date
+
+// Almeno un articolo ancora senza risposta dopo FOLLOW_UP_DAYS dalla
+// consegna (o dopo la data di follow-up impostata a mano, se presente).
 export function needsFollowUp(sh) {
   const hasOpenItem = (sh.items || []).some(isItemOpen)
   if (!hasOpenItem) return false
   if (sh.follow_up_date) return sh.follow_up_date <= todayISO()
-  const days = daysSince(sh.shipped_date)
+  const days = daysSince(followUpBaseDate(sh))
   return days !== null && days >= FOLLOW_UP_DAYS
 }
 

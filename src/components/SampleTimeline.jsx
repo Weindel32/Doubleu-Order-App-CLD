@@ -3,7 +3,7 @@ import { s, btnGoldStyle } from '../tokens.js'
 import {
   PURPOSE_LABELS, PURPOSE_CFG, GIFT_CFG, isGift, OUTCOME_LABELS, OUTCOME_CFG, fmtDate, euro,
   samplePieces, sampleCostValue, sampleInvested, sampleOutstanding,
-  needsFollowUp, returnOverdue, returnPending, daysSince, itemOutcome,
+  needsFollowUp, returnOverdue, returnPending, daysSince, itemOutcome, followUpBaseDate,
 } from '../utils/samples.js'
 
 export function OutcomeBadge({ outcome, count }) {
@@ -110,7 +110,7 @@ export default function SampleTimeline({ shipments, onOpen, onNew, emptyText = '
             {list.map(sh => {
               const overdue  = returnOverdue(sh)
               const followUp = needsFollowUp(sh)
-              const days     = daysSince(sh.shipped_date)
+              const days     = daysSince(followUpBaseDate(sh))
               return (
                 <div key={sh.id} onClick={onOpen ? () => onOpen(sh) : undefined}
                   style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 6,
@@ -118,7 +118,9 @@ export default function SampleTimeline({ shipments, onOpen, onNew, emptyText = '
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13, color: CREAM, letterSpacing: 0.5 }}>{fmtDate(sh.shipped_date)}</span>
+                      <span style={{ fontSize: 13, color: CREAM, letterSpacing: 0.5 }}>
+                        {fmtDate(sh.shipped_date)}{sh.delivery_date ? ` → ${fmtDate(sh.delivery_date)}` : ''}
+                      </span>
                       <PurposeBadge purpose={sh.purpose}/>
                       {isGift(sh) && <GiftBadge/>}
                       {overdue && <FollowUpBadge overdue/>}
