@@ -514,7 +514,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
             <div style={{fontSize:9,letterSpacing:3,color:MUTED,marginBottom:14}}>{pricingMode==='kit'?'ARTICOLI NEL KIT':'ARTICOLI'}</div>
             {kit.articles.map((art,ai)=>(
               <div key={ai} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'14px',marginBottom:10}}>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 160px 1fr 1fr 1fr',gap:10,marginBottom:10}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 160px 1fr 1fr 1fr',gap:10,marginBottom:10,alignItems:'end'}}>
                   <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e=>updateArt(ki,ai,'category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
                   <SpAutocomplete
                     value={art.sp}
