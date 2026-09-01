@@ -109,7 +109,11 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  useEffect(() => { if (session) loadOrders() }, [session])
+  // Depend on the user id, not the session object: Supabase emits a new
+  // session reference (TOKEN_REFRESHED) whenever the tab regains focus,
+  // which would otherwise re-trigger loadOrders() and blow away any
+  // in-progress form (e.g. an order being filled in) via the loading screen.
+  useEffect(() => { if (session) loadOrders() }, [session?.user?.id])
 
   const loadOrders = async () => {
     setLoading(true)
