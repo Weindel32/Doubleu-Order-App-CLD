@@ -30,6 +30,12 @@ const ACT_ICON_PATHS = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </>
   ),
+  message_sent: (
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  ),
+  message_received: (
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  ),
   note: (
     <>
       <path d="M12 20h9"/>

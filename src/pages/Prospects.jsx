@@ -31,17 +31,19 @@ const LANGUAGES       = ['it','de','es','en']
 // 'sample_shipped' resta per leggere le attività registrate prima del
 // registro campionature, ma i nuovi invii si registrano lì (vedi
 // Campionature nella scheda) e non più come nota libera.
-const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','meeting','note']
+const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','meeting','message_sent','message_received','note']
 const NEW_ACT_TYPES   = ACT_TYPES.filter(t => t !== 'sample_shipped')
 const REWARD_TYPES    = ['prodotto','provvigione']
 
 const ACT_LABELS = {
-  email_sent:      'Email inviata',
-  reply_received:  'Risposta ricevuta',
-  sample_shipped:  'Sample spedito',
-  call:            'Chiamata',
-  meeting:         'Meeting',
-  note:            'Nota',
+  email_sent:        'Email inviata',
+  reply_received:    'Risposta ricevuta',
+  sample_shipped:    'Sample spedito',
+  call:              'Chiamata',
+  meeting:           'Meeting',
+  message_sent:      'Messaggio inviato',
+  message_received:  'Messaggio ricevuto',
+  note:              'Nota',
 }
 
 const EMPTY_PROSPECT = () => ({
