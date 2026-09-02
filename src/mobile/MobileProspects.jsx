@@ -201,12 +201,15 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
 function ActivityForm({ initial, showReward, onSave, onCancel }) {
   const [f, setF] = useState(initial)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const set = (k, v) => setF(x => ({ ...x, [k]: v }))
 
   const handleSave = async () => {
     setSaving(true)
-    await onSave(f)
+    setError('')
+    const ok = await onSave(f)
     setSaving(false)
+    if (!ok) setError('Salvataggio non riuscito. Riprova.')
   }
 
   return (
@@ -214,11 +217,17 @@ function ActivityForm({ initial, showReward, onSave, onCancel }) {
       <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
         {f.id ? 'Modifica Attività' : 'Nuova Attività'}
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={labelStyle}>Tipo</label>
-        <select style={inputStyle} value={f.type} onChange={e => set('type', e.target.value)}>
-          {ACT_TYPES.map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
-        </select>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+        <div>
+          <label style={labelStyle}>Tipo</label>
+          <select style={inputStyle} value={f.type} onChange={e => set('type', e.target.value)}>
+            {ACT_TYPES.map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Data</label>
+          <DatePicker value={f.date} onChange={v => set('date', v)}/>
+        </div>
       </div>
       <div style={{ marginBottom: 12 }}>
         <label style={labelStyle}>Contenuto</label>
@@ -240,6 +249,9 @@ function ActivityForm({ initial, showReward, onSave, onCancel }) {
             </div>
           )}
         </div>
+      )}
+      {error && (
+        <div style={{ fontSize: 11, color: '#ef4444', marginBottom: 10 }}>{error}</div>
       )}
       <div style={{ display: 'flex', gap: 10 }}>
         <BtnGhost flex={1} onClick={onCancel}>Annulla</BtnGhost>
@@ -268,9 +280,14 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
   }
 
   const handleSaveAct = async (f) => {
-    if (f.id) await onUpdateActivity(f.id, f)
-    else      await onAddActivity(p.id, f)
-    setActForm(null)
+    // Mezzogiorno UTC: evita che la data scelta scivoli al giorno
+    // prima/dopo quando viene poi mostrata come created_at.slice(0,10)
+    const payload = { ...f, created_at: f.date ? `${f.date}T12:00:00.000Z` : undefined }
+    const ok = f.id
+      ? await onUpdateActivity(f.id, payload)
+      : await onAddActivity(p.id, payload)
+    if (ok) setActForm(null)
+    return ok
   }
 
   const handleDeleteAct = async (act) => {
@@ -475,7 +492,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase' }}>Attività</div>
           {!actForm && (
-            <button onClick={() => setActForm({ type:'note', content:'', reward_type:'', reward_value:'' })} style={{
+            <button onClick={() => setActForm({ type:'note', content:'', reward_type:'', reward_value:'', date: new Date().toISOString().slice(0,10) })} style={{
               background: 'rgba(184,150,90,0.12)', border: `1px solid ${GOLD}`, borderRadius: 6,
               color: GOLD, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', padding: '7px 12px',
               cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
@@ -499,7 +516,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 10, color: MUTED }}>{act.created_at?.slice(0,10)}</span>
-                <button onClick={() => setActForm({ id: act.id, type: act.type || 'note', content: act.content || '', reward_type: act.reward_type || '', reward_value: act.reward_value != null ? String(act.reward_value) : '' })}
+                <button onClick={() => setActForm({ id: act.id, type: act.type || 'note', content: act.content || '', date: act.created_at ? act.created_at.slice(0,10) : new Date().toISOString().slice(0,10), reward_type: act.reward_type || '', reward_value: act.reward_value != null ? String(act.reward_value) : '' })}
                   style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: '4px 5px', display: 'inline-flex', WebkitTapHighlightColor: 'transparent' }}>
                   <ActIcon type="note" size={13}/>
                 </button>
