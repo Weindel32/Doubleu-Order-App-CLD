@@ -340,6 +340,7 @@ export async function addProspectActivity(prospectId, activity) {
     content:      activity.content  || null,
     reward_type:  activity.reward_type  || null,
     reward_value: activity.reward_value ? parseFloat(activity.reward_value) : null,
+    ...(activity.created_at ? { created_at: activity.created_at } : {}),
   }).select().single()
   if (error) { console.error('addProspectActivity:', error); return null }
   return data
@@ -351,6 +352,7 @@ export async function updateProspectActivity(activityId, activity) {
     content:      activity.content  || null,
     reward_type:  activity.reward_type  || null,
     reward_value: activity.reward_value ? parseFloat(activity.reward_value) : null,
+    ...(activity.created_at ? { created_at: activity.created_at } : {}),
   }).eq('id', activityId)
   if (error) { console.error('updateProspectActivity:', error); return false }
   return true

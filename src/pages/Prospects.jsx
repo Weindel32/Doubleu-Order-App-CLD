@@ -53,7 +53,7 @@ const EMPTY_PROSPECT = () => ({
   contact_type:'cliente', referred_by:'', vincolo_altro_brand:false,
   relazione_pregressa:'',
 })
-const EMPTY_ACTIVITY = () => ({ type:'note', content:'', reward_type:'', reward_value:'' })
+const EMPTY_ACTIVITY = () => ({ type:'note', content:'', reward_type:'', reward_value:'', date: new Date().toISOString().slice(0,10) })
 
 // ─── Sub-components ───────────────────────────────────────────────
 function StageBadge({ stage }) {
@@ -324,9 +324,13 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
     if (!actForm || !selectedId) return
     setActSaving(true)
     setActError('')
+    // La data scelta si salva a mezzogiorno UTC: evita che, a seconda
+    // del fuso dell'utente, la data visualizzata (created_at.slice(0,10))
+    // scivoli al giorno prima o dopo quello selezionato.
+    const payload = { ...actForm, created_at: actForm.date ? `${actForm.date}T12:00:00.000Z` : undefined }
     const ok = actForm.id
-      ? await onUpdateActivity(actForm.id, actForm)
-      : await onAddActivity(selectedId, actForm)
+      ? await onUpdateActivity(actForm.id, payload)
+      : await onAddActivity(selectedId, payload)
     setActSaving(false)
     if (!ok) { setActError('Salvataggio non riuscito. Riprova.'); return }
     setActForm(null)
@@ -338,6 +342,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
       id:           act.id,
       type:         act.type || 'note',
       content:      act.content || '',
+      date:         act.created_at ? act.created_at.slice(0,10) : new Date().toISOString().slice(0,10),
       reward_type:  act.reward_type || '',
       reward_value: act.reward_value != null ? String(act.reward_value) : '',
     })
@@ -742,12 +747,18 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                       {actForm.id && (
                         <div style={{ fontSize:9, color:GOLD, letterSpacing:2, marginBottom:10 }}>MODIFICA ATTIVITÀ</div>
                       )}
-                      <div style={{ marginBottom:10 }}>
-                        <label style={s.label}>Tipo</label>
-                        <select style={{ ...inp, cursor:'pointer' }} value={actForm.type} onChange={e => setActForm(f => ({ ...f, type:e.target.value }))}>
-                          {ACT_TYPES.filter(t => NEW_ACT_TYPES.includes(t) || actForm.type === t)
-                            .map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
-                        </select>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                        <div>
+                          <label style={s.label}>Tipo</label>
+                          <select style={{ ...inp, cursor:'pointer' }} value={actForm.type} onChange={e => setActForm(f => ({ ...f, type:e.target.value }))}>
+                            {ACT_TYPES.filter(t => NEW_ACT_TYPES.includes(t) || actForm.type === t)
+                              .map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={s.label}>Data</label>
+                          <DatePicker value={actForm.date} onChange={v => setActForm(f => ({ ...f, date:v }))}/>
+                        </div>
                       </div>
                       <div style={{ marginBottom:10 }}>
                         <label style={s.label}>Contenuto</label>
