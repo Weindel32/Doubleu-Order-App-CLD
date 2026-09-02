@@ -215,6 +215,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const [newForm,     setNewForm]     = useState(null)
   const [actForm,     setActForm]     = useState(null)
   const [actSaving,   setActSaving]   = useState(false)
+  const [actError,    setActError]    = useState('')
   const [deleting,    setDeleting]    = useState(false)
   const [hibForm,     setHibForm]     = useState(null)  // null | { motivo }
   const [hibSending,  setHibSending]  = useState(false)
@@ -263,7 +264,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const reteOverdue    = rete.filter(p => p.next_action_date && p.next_action_date <= today).length
 
   const closeModal = () => {
-    setSelectedId(null); setEditForm(null); setActForm(null)
+    setSelectedId(null); setEditForm(null); setActForm(null); setActError('')
     setHibForm(null); setHibResult(null)
   }
 
@@ -322,13 +323,17 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const handleSaveAct = async () => {
     if (!actForm || !selectedId) return
     setActSaving(true)
-    if (actForm.id) await onUpdateActivity(actForm.id, actForm)
-    else            await onAddActivity(selectedId, actForm)
-    setActForm(null)
+    setActError('')
+    const ok = actForm.id
+      ? await onUpdateActivity(actForm.id, actForm)
+      : await onAddActivity(selectedId, actForm)
     setActSaving(false)
+    if (!ok) { setActError('Salvataggio non riuscito. Riprova.'); return }
+    setActForm(null)
   }
 
   const handleEditAct = (act) => {
+    setActError('')
     setActForm({
       id:           act.id,
       type:         act.type || 'note',
@@ -726,7 +731,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                     <div style={s.cardTitle}>Attività</div>
                     {!actForm && (
-                      <button style={{ ...btnGoldStyle, padding:'4px 14px', fontSize:9 }} onClick={() => setActForm(EMPTY_ACTIVITY())}>
+                      <button style={{ ...btnGoldStyle, padding:'4px 14px', fontSize:9 }} onClick={() => { setActError(''); setActForm(EMPTY_ACTIVITY()) }}>
                         + Aggiungi
                       </button>
                     )}
@@ -765,11 +770,14 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                           )}
                         </div>
                       )}
+                      {actError && (
+                        <div style={{ fontSize:11, color:'#ef4444', marginBottom:10 }}>{actError}</div>
+                      )}
                       <div style={{ display:'flex', gap:8 }}>
                         <button style={{ ...btnGoldStyle, padding:'6px 18px', fontSize:9 }} onClick={handleSaveAct} disabled={actSaving}>
                           {actSaving ? 'Salvataggio…' : 'Salva'}
                         </button>
-                        <button style={{ ...btnStyle(false), padding:'6px 14px', fontSize:9 }} onClick={() => setActForm(null)}>Annulla</button>
+                        <button style={{ ...btnStyle(false), padding:'6px 14px', fontSize:9 }} onClick={() => { setActError(''); setActForm(null) }}>Annulla</button>
                       </div>
                     </div>
                   )}

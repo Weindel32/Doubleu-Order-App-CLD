@@ -201,12 +201,15 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
 function ActivityForm({ initial, showReward, onSave, onCancel }) {
   const [f, setF] = useState(initial)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const set = (k, v) => setF(x => ({ ...x, [k]: v }))
 
   const handleSave = async () => {
     setSaving(true)
-    await onSave(f)
+    setError('')
+    const ok = await onSave(f)
     setSaving(false)
+    if (!ok) setError('Salvataggio non riuscito. Riprova.')
   }
 
   return (
@@ -241,6 +244,9 @@ function ActivityForm({ initial, showReward, onSave, onCancel }) {
           )}
         </div>
       )}
+      {error && (
+        <div style={{ fontSize: 11, color: '#ef4444', marginBottom: 10 }}>{error}</div>
+      )}
       <div style={{ display: 'flex', gap: 10 }}>
         <BtnGhost flex={1} onClick={onCancel}>Annulla</BtnGhost>
         <BtnGold flex={2} onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</BtnGold>
@@ -268,9 +274,11 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
   }
 
   const handleSaveAct = async (f) => {
-    if (f.id) await onUpdateActivity(f.id, f)
-    else      await onAddActivity(p.id, f)
-    setActForm(null)
+    const ok = f.id
+      ? await onUpdateActivity(f.id, f)
+      : await onAddActivity(p.id, f)
+    if (ok) setActForm(null)
+    return ok
   }
 
   const handleDeleteAct = async (act) => {
