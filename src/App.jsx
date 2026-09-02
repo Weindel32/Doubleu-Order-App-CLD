@@ -109,7 +109,12 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  useEffect(() => { if (session) loadOrders() }, [session])
+  // Dipende solo dall'id utente, non dall'oggetto session: Supabase
+  // emette un nuovo oggetto session (stesso utente) ad ogni refresh
+  // del token, incluso quando la tab torna visibile — dipendere da
+  // `session` avrebbe ricaricato tutti i dati e mostrato la schermata
+  // di caricamento sopra la UI corrente, perdendo il lavoro in corso.
+  useEffect(() => { if (session) loadOrders() }, [session?.user?.id])
 
   const loadOrders = async () => {
     setLoading(true)
