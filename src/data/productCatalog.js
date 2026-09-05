@@ -80,4 +80,21 @@ export const PRODUCT_CATALOG = [
 
   // ── POLO ─────────────────────────────────────────────────────────
   { code: 'DUSP 139',   description: 'Polo senza bottoni',   category: 'Polo' },
+
+  // ── LS24 ─────────────────────────────────────────────────────────
+  { code: 'LS304',   description: 'T-Shirt Slam Uomo',                  category: 'T-Shirt Bsc' },
+  { code: 'LS305',   description: 'T-Shirt Slam Donna',                 category: 'T-Shirt Bsc' },
+  { code: 'LS427',   description: 'T-Shirt Imola Uomo',                 category: 'T-Shirt Bsc' },
+  { code: 'LS428',   description: 'T-Shirt Imola Donna',                category: 'T-Shirt Bsc' },
+  { code: 'LS6554',  description: 'T-Shirt Cotone BGL 155gr Bianca',    category: 'T-Shirt Bsc' },
+  { code: 'LS6554',  description: 'T-Shirt Cotone BGL 155gr Colorata',  category: 'T-Shirt Bsc' },
+  { code: 'LS0307',  description: 'Gonnellino Tech',                   category: 'Skirt' },
+  { code: 'LS321',   description: 'Gonnellino Cotone',                 category: 'Skirt' },
+  { code: 'LS356',   description: 'Pantaloncino ANY',                  category: 'Short' },
+  { code: 'LS306',   description: 'Pantaloncino MRY',                  category: 'Short' },
+  { code: 'LS5092',  description: 'Piumino Smanicato',                 category: 'Giacca' },
+  { code: 'LS1070',  description: 'Sweatshirt garzata',                category: 'Sweatshirt' },
+  { code: 'LS1067',  description: 'Hoodie',                            category: 'Hoodie' },
+  { code: 'LS1105',  description: 'Zip Hoodie (leggera)',              category: 'Zip Hoodie' },
+  { code: 'LS1174',  description: 'Pantalone felpa',                   category: 'Sweatpants' },
 ]
