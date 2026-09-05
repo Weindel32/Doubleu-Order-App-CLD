@@ -16,6 +16,12 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS province text;
 -- ----------------------------------------------------------------
 
 -- ----------------------------------------------------------------
+-- MIGRATION: codice fiscale cliente (esegui una volta sola)
+-- ----------------------------------------------------------------
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS fiscal_code text;
+-- ----------------------------------------------------------------
+
+-- ----------------------------------------------------------------
 -- MIGRATION: articoli in omaggio (esegui una volta sola)
 -- ----------------------------------------------------------------
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS omaggio integer DEFAULT 0;

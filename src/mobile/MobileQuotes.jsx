@@ -9,7 +9,7 @@ export default function MobileQuotes({ quotes, onSelectQuote }) {
   return (
     <div style={{ padding: '20px 16px' }}>
 
-      <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
+      <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
         {quotes.length} preventivi
       </div>
 
@@ -32,7 +32,7 @@ export default function MobileQuotes({ quotes, onSelectQuote }) {
                 {q.client}
               </div>
               <span style={{
-                fontSize: 8, letterSpacing: 2, color: CLAY,
+                fontSize: 11, letterSpacing: 2, color: CLAY,
                 border: '1px solid rgba(196,98,58,0.35)',
                 background: 'rgba(196,98,58,0.08)',
                 padding: '3px 8px', borderRadius: 3,
@@ -40,10 +40,10 @@ export default function MobileQuotes({ quotes, onSelectQuote }) {
               }}>PREV.</span>
             </div>
 
-            <div style={{ fontSize: 10, color: MUTED, marginBottom: 10 }}>{q.id} · {q.date}</div>
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>{q.id} · {q.date}</div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 9, color: MUTED, letterSpacing: 1 }}>
+              <span style={{ fontSize: 11, color: MUTED, letterSpacing: 1 }}>
                 {q.pricingMode === 'kit'
                   ? `${kitCount} kit · ${artCount} articoli`
                   : `${artCount} articoli`}
@@ -57,7 +57,7 @@ export default function MobileQuotes({ quotes, onSelectQuote }) {
       })}
 
       {quotes.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 12, color: MUTED }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 13, color: MUTED }}>
           Nessun preventivo
         </div>
       )}
