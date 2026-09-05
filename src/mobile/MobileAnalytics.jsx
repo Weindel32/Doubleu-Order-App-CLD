@@ -8,7 +8,7 @@ function fmt(n) {
 
 function SectionTitle({ children }) {
   return (
-    <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
+    <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
       {children}
     </div>
   )
@@ -53,12 +53,12 @@ function MonthlyChart({ monthlyByYear }) {
   return (
     <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', marginBottom: 20, position: 'relative' }} ref={containerRef}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase' }}>Fatturato Mensile</div>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase' }}>Fatturato Mensile</div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {years.map(year => {
             const st = getStyle(year)
             return (
-              <span key={year} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 8, color: MUTED, letterSpacing: 2 }}>
+              <span key={year} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: MUTED, letterSpacing: 2 }}>
                 <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 1, background: st.dot }} />
                 {year}
               </span>
@@ -98,7 +98,7 @@ function MonthlyChart({ monthlyByYear }) {
                   )
                 })}
               </div>
-              <span style={{ fontSize: 7, color: MUTED, letterSpacing: 1, textTransform: 'uppercase' }}>{m}</span>
+              <span style={{ fontSize: 10, color: MUTED, letterSpacing: 1, textTransform: 'uppercase' }}>{m}</span>
             </div>
           )
         })}
@@ -108,7 +108,7 @@ function MonthlyChart({ monthlyByYear }) {
           position: 'absolute', left: tooltip.x, top: Math.max(tooltip.y - 48, 8),
           transform: 'translateX(-50%)', background: 'rgba(10,18,40,0.95)',
           border: `1px solid ${BORDER}`, borderRadius: 4, padding: '6px 12px',
-          fontSize: 11, color: CREAM, letterSpacing: 0.5, whiteSpace: 'pre',
+          fontSize: 12, color: CREAM, letterSpacing: 0.5, whiteSpace: 'pre',
           lineHeight: 1.7, pointerEvents: 'none', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
         }}>
           {tooltip.text}
@@ -174,7 +174,7 @@ export default function MobileAnalytics({ orders }) {
     return (
       <div style={{ padding: '60px 20px', textAlign: 'center' }}>
         <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: MUTED, marginBottom: 8 }}>Nessun dato ancora</div>
-        <div style={{ fontSize: 10, color: MUTED, letterSpacing: 1 }}>I grafici appariranno una volta inseriti gli ordini</div>
+        <div style={{ fontSize: 12, color: MUTED, letterSpacing: 1 }}>I grafici appariranno una volta inseriti gli ordini</div>
       </div>
     )
   }
@@ -185,18 +185,18 @@ export default function MobileAnalytics({ orders }) {
       {/* KPI strip */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px' }}>
-          <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Fatturato {currentYear}</div>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Fatturato {currentYear}</div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, color: GOLD, lineHeight: 1 }}>{fmt(currentYearRevenue)}</div>
         </div>
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px' }}>
-          <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Pezzi Prodotti</div>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Pezzi Prodotti</div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, color: CREAM, lineHeight: 1 }}>{totalPieces}</div>
         </div>
         <div style={{ background: SURFACE, border: `1px solid rgba(196,98,58,0.35)`, borderRadius: 10, padding: '16px', gridColumn: '1 / -1' }}>
-          <div style={{ fontSize: 9, letterSpacing: 2, color: CLAY, textTransform: 'uppercase', marginBottom: 4 }}>Pezzi in Omaggio</div>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: CLAY, textTransform: 'uppercase', marginBottom: 4 }}>Pezzi in Omaggio</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
             <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, color: CLAY, lineHeight: 1 }}>{totalOmaggio}</div>
-            {totalPieces > 0 && <div style={{ fontSize: 11, color: MUTED }}>{Math.round(totalOmaggio / totalPieces * 100)}% del totale prodotto</div>}
+            {totalPieces > 0 && <div style={{ fontSize: 12, color: MUTED }}>{Math.round(totalOmaggio / totalPieces * 100)}% del totale prodotto</div>}
           </div>
         </div>
       </div>
@@ -210,14 +210,14 @@ export default function MobileAnalytics({ orders }) {
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
           <div style={{ display: 'flex' }}>
             <div style={{ flex: 1, padding: '16px', borderRight: `1px solid rgba(184,150,90,0.12)` }}>
-              <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Istituzionale</div>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Istituzionale</div>
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: GOLD }}>{fmt(istituzionale)}</div>
-              <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{pctIst}%</div>
+              <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{pctIst}%</div>
             </div>
             <div style={{ flex: 1, padding: '16px' }}>
-              <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Soci / Shop</div>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Soci / Shop</div>
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: CLAY }}>{fmt(sociShop)}</div>
-              <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{pctSoci}%</div>
+              <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{pctSoci}%</div>
             </div>
           </div>
           <div style={{ height: 3, display: 'flex' }}>
@@ -235,15 +235,15 @@ export default function MobileAnalytics({ orders }) {
             <div style={{ display: 'flex', marginBottom: 14 }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
                 <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GREEN, lineHeight: 1 }}>{convertedCount}</div>
-                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Convertiti</div>
+                <div style={{ fontSize: 11, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Convertiti</div>
               </div>
               <div style={{ flex: 1, textAlign: 'center' }}>
                 <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: '#ef4444', lineHeight: 1 }}>{lostCount}</div>
-                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Persi</div>
+                <div style={{ fontSize: 11, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Persi</div>
               </div>
               <div style={{ flex: 1, textAlign: 'center' }}>
                 <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: CLAY, lineHeight: 1 }}>{openCount}</div>
-                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Aperti</div>
+                <div style={{ fontSize: 11, letterSpacing: 1, color: MUTED, textTransform: 'uppercase', marginTop: 4 }}>Aperti</div>
               </div>
             </div>
             {decidedCount > 0 && (
@@ -255,18 +255,18 @@ export default function MobileAnalytics({ orders }) {
                   </div>
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: conversionRate >= 50 ? GREEN : '#ef4444' }}>{conversionRate}%</span>
                 </div>
-                <div style={{ fontSize: 8, letterSpacing: 1, color: MUTED, marginTop: 6 }}>tasso di conversione sui preventivi decisi</div>
+                <div style={{ fontSize: 11, letterSpacing: 1, color: MUTED, marginTop: 6 }}>tasso di conversione sui preventivi decisi</div>
               </>
             )}
             {lossReasonRows.length > 0 && (
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid rgba(255,255,255,0.06)` }}>
-                <div style={{ fontSize: 8, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 10 }}>Motivi di perdita</div>
+                <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 10 }}>Motivi di perdita</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lossReasonRows.map(([reason, count]) => (
                     <div key={reason}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <span style={{ fontSize: 10, color: CREAM }}>{reason}</span>
-                        <span style={{ fontSize: 11, color: '#ef4444' }}>{count}</span>
+                        <span style={{ fontSize: 12, color: CREAM }}>{reason}</span>
+                        <span style={{ fontSize: 12, color: '#ef4444' }}>{count}</span>
                       </div>
                       <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${Math.round((count / maxLossReason) * 100)}%`, background: 'rgba(239,68,68,0.6)', borderRadius: 2 }} />

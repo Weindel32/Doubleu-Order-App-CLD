@@ -57,11 +57,11 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
       }}>
         <div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: CREAM, letterSpacing: 4, lineHeight: 1 }}>DOUBLEU</div>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
+          <div style={{ fontSize: 12, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
         </div>
         <button onClick={onLogout} style={{
           background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.3)',
-          borderRadius: 4, color: CLAY, fontSize: 11, letterSpacing: 2,
+          borderRadius: 4, color: CLAY, fontSize: 12, letterSpacing: 2,
           textTransform: 'uppercase', padding: '8px 14px', cursor: 'pointer',
           fontFamily: "'Josefin Sans', sans-serif",
         }}>Esci</button>
@@ -131,7 +131,7 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
             WebkitTapHighlightColor: 'transparent',
           }}>
             <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name={t.icon} size={20}/></span>
-            <span style={{ fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase' }}>{t.label}</span>
+            <span style={{ fontSize: 11.5, letterSpacing: 0.5, textTransform: 'uppercase' }}>{t.label}</span>
             {tab === t.key && (
               <span style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 56px)', width: 24, height: 2, background: GOLD, borderRadius: 1 }} />
             )}
@@ -146,7 +146,7 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
           WebkitTapHighlightColor: 'transparent',
         }}>
           <span style={{ lineHeight: 1, display: 'inline-flex' }}><NavIcon name="more" size={20}/></span>
-          <span style={{ fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase' }}>Altro</span>
+          <span style={{ fontSize: 11.5, letterSpacing: 0.5, textTransform: 'uppercase' }}>Altro</span>
           {(moreOpen || isMoreTab) && (
             <span style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 56px)', width: 24, height: 2, background: GOLD, borderRadius: 1 }} />
           )}
