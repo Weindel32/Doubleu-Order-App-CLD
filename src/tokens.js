@@ -2,8 +2,8 @@
 export const NAVY    = '#1a2744'
 export const CREAM   = '#f5f0e8'
 export const CLAY    = '#c4623a'
-export const GOLD    = '#b8965a'
-export const MUTED   = '#a7b7d6'
+export const GOLD    = '#c9a565'
+export const MUTED   = '#9fb3e0'
 export const GREEN   = '#4a9e6e'
 export const SURFACE = 'rgba(255,255,255,0.04)'
 export const BORDER  = 'rgba(184,150,90,0.18)'
@@ -81,7 +81,7 @@ export const s = {
     padding: '10px 14px', color: CREAM, fontSize: 12, letterSpacing: 0.5,
     outline: 'none', width: '100%', colorScheme: 'dark',
   },
-  label: { fontSize: 11, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' },
+  label: { fontSize: 11, letterSpacing: 1.5, fontWeight: 600, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' },
 }
 
 export const badgeStyle = (status) => {

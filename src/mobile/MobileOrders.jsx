@@ -52,7 +52,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
         })}
       </div>
 
-      <div style={{ fontSize: 12, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
         {filtered.length} ordini
       </div>
 
@@ -74,7 +74,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
               <span style={badgeStyle(o.status)}>{o.status}</span>
             </div>
 
-            <div style={{ fontSize: 13, color: MUTED, marginBottom: 8 }}>{o.id} · {o.date}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: MUTED, marginBottom: 8 }}>{o.id} · {o.date}</div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               {o.deliveryDate ? (
@@ -94,7 +94,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
       })}
 
       {filtered.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 13, color: MUTED }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 13, fontWeight: 600, color: MUTED }}>
           Nessun ordine
         </div>
       )}

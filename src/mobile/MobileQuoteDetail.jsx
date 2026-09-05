@@ -8,7 +8,7 @@ function fmt(n) {
 
 function SectionTitle({ children }) {
   return (
-    <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
+    <div style={{ fontSize: 11, letterSpacing: 3, fontWeight: 600, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
       {children}
     </div>
   )
@@ -21,7 +21,7 @@ function InfoRow({ label, value, valueColor, href }) {
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 10,
     }}>
-      <span style={{ fontSize: 12, color: MUTED, letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: MUTED, letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
       {href
         ? <a href={href} style={{ fontSize: 13, color: valueColor || GOLD, textDecoration: 'none', textAlign: 'right' }}>{value}</a>
         : <span style={{ fontSize: 13, color: valueColor || CREAM, textAlign: 'right', maxWidth: '65%' }}>{value}</span>
@@ -56,7 +56,7 @@ export default function MobileQuoteDetail({ quote, onBack }) {
         position: 'sticky', top: 0, zIndex: 20,
       }}>
         <button onClick={onBack} style={{
-          background: 'none', border: 'none', color: GOLD, fontSize: 28,
+          background: 'none', border: 'none', fontWeight: 600, color: GOLD, fontSize: 28,
           cursor: 'pointer', padding: '0 8px 0 0', lineHeight: 1,
           WebkitTapHighlightColor: 'transparent',
         }}>‹</button>
@@ -64,7 +64,7 @@ export default function MobileQuoteDetail({ quote, onBack }) {
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {quote.client}
           </div>
-          <div style={{ fontSize: 11, color: GOLD, letterSpacing: 2 }}>{quote.id}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: GOLD, letterSpacing: 2 }}>{quote.id}</div>
         </div>
         <span style={{
           fontSize: 11, letterSpacing: 2, color: CLAY,
@@ -125,12 +125,12 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(kitTotal)}</div>
-                      {qty > 0 && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {kit.price} × {qty} pers.</div>}
+                      {qty > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, marginTop: 2 }}>€ {kit.price} × {qty} pers.</div>}
                     </div>
                   </div>
                   {(kit.articles || []).map((art, ai) => (
                     <div key={ai} style={{
-                      fontSize: 12, color: MUTED,
+                      fontSize: 12, fontWeight: 600, color: MUTED,
                       paddingTop: 6, marginTop: 4,
                       borderTop: '1px solid rgba(255,255,255,0.04)',
                     }}>
@@ -158,9 +158,9 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1, marginRight: 12 }}>
                       <div style={{ fontSize: 14, color: CREAM }}>{art.description}</div>
-                      {art.color && <div style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>{art.color}</div>}
-                      {art.sp    && <div style={{ fontSize: 11,  color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
-                      {art.notes && <div style={{ fontSize: 12, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
+                      {art.color && <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, marginTop: 3 }}>{art.color}</div>}
+                      {art.sp    && <div style={{ fontSize: 11,  fontWeight: 600, color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
+                      {art.notes && <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
                       {artDiscountApplied(quote, art) > 0 && (
                         <div style={{ fontSize: 12, color: CLAY, marginTop: 4 }}>
                           sconto{art.discountType !== 'importo' ? ` ${parseFloat(art.discountValue) || 0}%` : ''} · − {fmt(artDiscountApplied(quote, art))}
@@ -171,10 +171,10 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                       {artTotal > 0
                         ? <>
                             <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(artTotal)}</div>
-                            <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {art.price} × {qty} pz</div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, marginTop: 2 }}>€ {art.price} × {qty} pz</div>
                           </>
                         : art.price
-                          ? <div style={{ fontSize: 14, color: GOLD }}>€ {art.price} / pz</div>
+                          ? <div style={{ fontSize: 14, fontWeight: 600, color: GOLD }}>€ {art.price} / pz</div>
                           : null
                       }
                     </div>
@@ -197,7 +197,7 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                 paddingBottom: 8, marginBottom: 8,
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
               }}>
-                <span style={{ fontSize: 12, color: MUTED }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: MUTED }}>
                   {kit.name || `Kit ${ki + 1}`}
                   {kitDiscountApplied(quote, kit) > 0 && (
                     <span style={{ color: CLAY }}> · sconto − {fmt(kitDiscountApplied(quote, kit))}</span>
@@ -216,7 +216,7 @@ export default function MobileQuoteDetail({ quote, onBack }) {
           )}
           {quote.ivaEnabled && <InfoRow label={`IVA ${quote.ivaRate || 22}%`} value={fmt(iva)} />}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(184,150,90,0.2)', marginTop: 4 }}>
-            <span style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale Preventivo</span>
+            <span style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600, color: GOLD }}>Totale Preventivo</span>
             <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD }}>{fmt(total)}</span>
           </div>
         </div>

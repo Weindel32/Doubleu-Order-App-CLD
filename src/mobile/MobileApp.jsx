@@ -57,7 +57,7 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
       }}>
         <div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: CREAM, letterSpacing: 4, lineHeight: 1 }}>DOUBLEU</div>
-          <div style={{ fontSize: 12, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
+          <div style={{ fontSize: 12, letterSpacing: 3, fontWeight: 600, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
         </div>
         <button onClick={onLogout} style={{
           background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.3)',

@@ -15,7 +15,7 @@ const inputStyle = {
   borderRadius: 8, padding: '12px 14px', color: CREAM, fontSize: 16,
   outline: 'none', fontFamily: "'Josefin Sans', sans-serif", colorScheme: 'dark',
 }
-const labelStyle = { fontSize: 12, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
+const labelStyle = { fontSize: 12, letterSpacing: 2, fontWeight: 600, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
 const cardStyle  = { background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16 }
 
 const EMPTY_ITEM = () => ({
@@ -153,7 +153,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
             {form.id ? 'Modifica invio' : 'Nuovo invio'}
           </div>
           <button onClick={() => setForm(null)}
-            style={{ background: 'none', border: 'none', color: MUTED, fontSize: 26, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            style={{ background: 'none', border: 'none', fontWeight: 600, color: MUTED, fontSize: 26, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -184,7 +184,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
           <div>
             <label style={labelStyle}>Consegna</label>
             <DatePicker triggerStyle={inputStyle} value={form.delivery_date} onChange={v => set('delivery_date', v)}/>
-            <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, marginTop: 4 }}>
               Quando il cliente riceve il pacco
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                 <div style={{ fontSize: 14, color: isOmaggio ? CLAY : MUTED }}>
                   {isOmaggio ? 'Regalati al cliente' : 'Non regalati'}
                 </div>
-                <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, marginTop: 2 }}>
                   La merce resta al destinatario
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={labelStyle}>Campioni inviati</span>
               <button onClick={() => setForm(f => ({ ...f, items: [...f.items, EMPTY_ITEM()] }))}
-                style={{ background: 'transparent', border: `1px solid ${GOLD}`, borderRadius: 6, color: GOLD, fontSize: 12, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer' }}>
+                style={{ background: 'transparent', border: `1px solid ${GOLD}`, borderRadius: 6, fontWeight: 600, color: GOLD, fontSize: 12, letterSpacing: 1, padding: '5px 12px', cursor: 'pointer' }}>
                 + Riga
               </button>
             </div>
@@ -248,7 +248,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                 return (
                 <div key={i} style={{ ...cardStyle, borderLeft: `3px solid ${outCfg.color}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, letterSpacing: 2, color: GOLD }}>ARTICOLO {i + 1}</span>
+                    <span style={{ fontSize: 12, letterSpacing: 2, fontWeight: 600, color: GOLD }}>ARTICOLO {i + 1}</span>
                     {form.items.length > 1 && (
                       <button onClick={() => setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }))}
                         style={{ background: 'none', border: 'none', color: CLAY, fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
@@ -298,8 +298,8 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
               )})}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 13, color: MUTED }}>
-              <span>Costo: <span style={{ color: GOLD }}>{euro(form.items.reduce((v, it) => v + itemCostValue(it), 0), 2)}</span></span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 13, fontWeight: 600, color: MUTED }}>
+              <span>Costo: <span style={{ fontWeight: 600, color: GOLD }}>{euro(form.items.reduce((v, it) => v + itemCostValue(it), 0), 2)}</span></span>
             </div>
           </div>
 
@@ -342,12 +342,12 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, color: CREAM, letterSpacing: 1 }}>Campionature</div>
-          <div style={{ fontSize: 12, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginTop: 3 }}>
+          <div style={{ fontSize: 12, letterSpacing: 2, fontWeight: 600, color: GOLD, textTransform: 'uppercase', marginTop: 3 }}>
             {stats.count} invii · {euro(stats.invested)}
           </div>
         </div>
         <button onClick={() => setForm(emptyForm())}
-          style={{ background: 'transparent', border: `1px solid ${GOLD}`, borderRadius: 8, color: GOLD,
+          style={{ background: 'transparent', border: `1px solid ${GOLD}`, borderRadius: 8, fontWeight: 600, color: GOLD,
             fontSize: 12, letterSpacing: 1.5, padding: '9px 14px', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif" }}>
           + Invio
         </button>
@@ -370,7 +370,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '50px 0', color: MUTED }}>
+        <div style={{ textAlign: 'center', padding: '50px 0', fontWeight: 600, color: MUTED }}>
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20 }}>
             {list.length === 0 ? 'Nessuna campionatura' : 'Nessun risultato'}
           </div>
@@ -389,7 +389,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                       <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 19, color: CREAM }}>
                         {recipientLabel(sh, clients, prospects)}
                       </div>
-                      <div style={{ fontSize: 14, color: MUTED, marginTop: 4 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: MUTED, marginTop: 4 }}>
                         {fmtDate(sh.shipped_date)}{sh.delivery_date ? ` → ${fmtDate(sh.delivery_date)}` : ''} · {samplePieces(sh)} pz
                         {foreignCountryLabel(sh, clients, prospects) && (
                           <span style={{ color: '#7aaee8' }}> · {foreignCountryLabel(sh, clients, prospects)}</span>
@@ -416,7 +416,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                         .filter(Boolean).join(' ')
                       return (
                         <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 14, color: MUTED }}>{label || '—'}</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: MUTED }}>{label || '—'}</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
                             {it.revision_requested && <span style={{ fontSize: 14, color: '#e8c96e' }} title="Richiede modifiche">✎</span>}
                             <OutcomeBadge outcome={itemOutcome(it)}/>
@@ -430,13 +430,13 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                 {open && (
                   <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${BORDER}`, paddingTop: 14 }}>
                     {(sh.carrier || sh.tracking) && (
-                      <div style={{ fontSize: 14, color: MUTED, marginBottom: 10 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: MUTED, marginBottom: 10 }}>
                         Spedito con {sh.carrier || '—'}{sh.tracking ? ` · ${sh.tracking}` : ''}
                       </div>
                     )}
                     {sh.notes && <div style={{ fontSize: 14, color: CREAM, marginBottom: 12, lineHeight: 1.6 }}>{sh.notes}</div>}
 
-                    <div style={{ fontSize: 12, letterSpacing: 2, color: MUTED, marginBottom: 8 }}>ESITO PER ARTICOLO</div>
+                    <div style={{ fontSize: 12, letterSpacing: 2, fontWeight: 600, color: MUTED, marginBottom: 8 }}>ESITO PER ARTICOLO</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
                       {(sh.items || []).map(it => {
                         const label = [it.sp, it.description, it.color, it.size].filter(Boolean).join(' ')
@@ -473,7 +473,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                           w.document.write(html); w.document.close()
                         }
                         const btn = { padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 13, letterSpacing: 1.5,
-                          background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }
+                          background: 'transparent', border: `1px solid ${GOLD}`, fontWeight: 600, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }
                         return (
                           <div style={{ display: 'flex', gap: 8, flex: '1 1 100%' }}>
                             <button style={{ ...btn, flex: 1 }} onClick={() => openPDF(lang)}>Bolla Campioni</button>
@@ -493,7 +493,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                       )}
                       <button onClick={() => setForm(toEditForm(sh))}
                         style={{ flex: 1, padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 13, letterSpacing: 1.5,
-                          background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }}>
+                          background: 'transparent', border: `1px solid ${GOLD}`, fontWeight: 600, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }}>
                         Modifica
                       </button>
                       <button onClick={() => handleDelete(sh)}
