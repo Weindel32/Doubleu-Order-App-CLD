@@ -91,7 +91,7 @@ function PaymentQuick({ order, onPaymentToggle }) {
   )
 }
 
-export default function Orders({ orders, setView, setEditOrder, onDelete, onOrdersChange, initialFilter = 'Tutti' }) {
+export default function Orders({ orders, setView, setEditOrder, onReorder, onDelete, onOrdersChange, initialFilter = 'Tutti' }) {
   const [filter, setFilter]   = useState(initialFilter)
   const [search, setSearch]   = useState('')
   const [sortBy, setSortBy]   = useState('date')
@@ -216,6 +216,7 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
                   <td style={s.td}>
                     <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                       <button style={{...btnGoldStyle,padding:'4px 8px',fontSize:8}} onClick={()=>{setEditOrder(o);setView('new')}}>Apri</button>
+                      <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(74,158,110,0.35)',background:'rgba(74,158,110,0.08)',color:GREEN,borderRadius:3,cursor:'pointer'}} onClick={()=>onReorder(o)} title="Nuovo ordine con gli stessi articoli, colori e prezzi">↻ Riordina</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(196,98,58,0.4)',background:'rgba(196,98,58,0.08)',color:CLAY,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateProductionPDF,o)}>Prod.</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:`1px solid rgba(184,150,90,0.3)`,background:'rgba(184,150,90,0.06)',color:GOLD,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateClientPDF,o)}>Cliente</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)',color:'#7aaee8',borderRadius:3,cursor:'pointer'}} onClick={()=>o.status==='CONSEGNA PARZIALE'?setBollaOrder(o):openPDF(generateDeliveryPDF,o)}>Bolla</button>

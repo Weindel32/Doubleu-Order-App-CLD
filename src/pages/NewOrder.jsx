@@ -61,43 +61,50 @@ function ClientSearch({ clients, onSelect, inputStyle }) {
   )
 }
 
-export default function NewOrder({ editOrder, setView, onSaved, prefillClient, clients = [], onUpsertClient }) {
-  const [step,setStep]             = useState(prefillClient ? 2 : 1)
-  const [club,setClub]             = useState(prefillClient?.name || editOrder?.client || '')
-  const [clientEmail,setEmail]     = useState(prefillClient?.email || editOrder?.clientEmail || '')
-  const [clientPhone,setPhone]     = useState(prefillClient?.phone || editOrder?.clientPhone || '')
-  const [clientAddress,setAddress] = useState(prefillClient?.address || editOrder?.clientAddress || '')
-  const [clientCity,setCity]       = useState(prefillClient?.city || editOrder?.clientCity || '')
-  const [clientCountry,setCountry] = useState(prefillClient?.country || editOrder?.clientCountry || 'Italia')
-  const [clientContact,setContact] = useState(prefillClient?.contact || editOrder?.clientContact || '')
+export default function NewOrder({ editOrder, setView, onSaved, prefillClient, reorderFrom, clients = [], onUpsertClient }) {
+  // Un riordino non è una modifica: è un ordine nuovo che riparte dai dati
+  // di uno passato (articoli, colori, prezzi da riconfermare), ma con
+  // quantità/taglie/date/pagamenti azzerati (già così in buildReorderSeed).
+  // `src` serve solo per inizializzare lo stato una volta: editOrder ed
+  // editOrder?.id restano l'unica fonte usata per decidere update vs
+  // create al salvataggio, quindi un riordino crea sempre un ordine nuovo.
+  const src = editOrder || reorderFrom
+  const [step,setStep]             = useState((prefillClient || reorderFrom) ? 2 : 1)
+  const [club,setClub]             = useState(prefillClient?.name || src?.client || '')
+  const [clientEmail,setEmail]     = useState(prefillClient?.email || src?.clientEmail || '')
+  const [clientPhone,setPhone]     = useState(prefillClient?.phone || src?.clientPhone || '')
+  const [clientAddress,setAddress] = useState(prefillClient?.address || src?.clientAddress || '')
+  const [clientCity,setCity]       = useState(prefillClient?.city || src?.clientCity || '')
+  const [clientCountry,setCountry] = useState(prefillClient?.country || src?.clientCountry || 'Italia')
+  const [clientContact,setContact] = useState(prefillClient?.contact || src?.clientContact || '')
   const [orderDate,setOrderDate]   = useState(editOrder ? fromItalianDate(editOrder.date) : new Date().toISOString().split('T')[0])
   const [deliveryDate,setDelivery]       = useState(editOrder ? fromItalianDate(editOrder.deliveryDate)||'' : '')
   const [actualDeliveryDate,setActualDelivery] = useState(editOrder ? fromItalianDate(editOrder.actualDeliveryDate)||'' : '')
-  const [alertDays,setAlertDays]   = useState(editOrder?.alertDays ?? 7)
+  const [alertDays,setAlertDays]   = useState(src?.alertDays ?? 7)
   const [status,setStatus]         = useState(editOrder?.status || 'PREVENTIVO')
   const [cancelReason,setCancelReason] = useState(editOrder?.cancelReason || '')
   const [cancelDate,setCancelDate] = useState(editOrder?.cancelDate || null)
-  const [clientNotes,setCN]        = useState(editOrder?.notes || '')
-  const [productionNotes,setPN]    = useState(editOrder?.productionNotes || '')
-  const [showTotal,setShowTotal]   = useState(editOrder?.showTotalInClientPDF ?? true)
-  const [pricingMode,setPM]        = useState(editOrder?.pricingMode || 'singolo')
-  const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
+  const [clientNotes,setCN]        = useState(src?.notes || '')
+  const [productionNotes,setPN]    = useState(src?.productionNotes || '')
+  const [showTotal,setShowTotal]   = useState(src?.showTotalInClientPDF ?? true)
+  const [pricingMode,setPM]        = useState(src?.pricingMode || 'singolo')
+  const [ivaEnabled,setIvaEnabled] = useState(src?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
   const [shipping,setShipping]     = useState(editOrder?.shipping ?? '')
-  const [discountMode,setDiscountMode]   = useState(editOrder?.discountMode || (editOrder?.discountValue ? 'ordine' : 'nessuno'))
-  const [discountType,setDiscountType]   = useState(editOrder?.discountType || 'percentuale')
-  const [discountValue,setDiscountValue] = useState(editOrder?.discountValue || '')
-  const [orderNote,setOrderNote]         = useState(editOrder?.orderNote || '')
+  const [discountMode,setDiscountMode]   = useState(src?.discountMode || (src?.discountValue ? 'ordine' : 'nessuno'))
+  const [discountType,setDiscountType]   = useState(src?.discountType || 'percentuale')
+  const [discountValue,setDiscountValue] = useState(src?.discountValue || '')
+  const [orderNote,setOrderNote]         = useState(src?.orderNote || '')
   const [invoiceNumber,setInvoiceNumber] = useState(editOrder?.invoiceNumber || '')
-  const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
-  const [orderType,setOrderType]   = useState(editOrder?.orderType || 'istituzionale')
+  const [kits,setKits]             = useState(src?.kits || [emptyKit()])
+  const [orderType,setOrderType]   = useState(src?.orderType || 'istituzionale')
   const [payments,setPayments]     = useState(editOrder?.payments || [])
   const [saving,setSaving]         = useState(false)
   const [saveError,setSaveError]   = useState(null)
   const [showBollaModal,setShowBollaModal] = useState(false)
 
   // ── Bozza recuperabile ───────────────────────────────────────────
-  const draftKey = `duOrderDraft:${editOrder?.id || 'new'}`
+  const draftKey = `duOrderDraft:${editOrder?.id || (reorderFrom ? `reorder-${reorderFrom.sourceId}` : 'new')}`
   const draftSnapshot = {
     club, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     orderDate, deliveryDate, actualDeliveryDate, alertDays, status, cancelReason, cancelDate,
@@ -370,8 +377,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
     <div style={{maxWidth:960}}>
       <div style={s.topBar}>
         <div>
-          <div style={s.pageTitle}>{editOrder?'Modifica Ordine':'Nuovo Ordine'}{prefillClient?' · '+prefillClient.name:''}</div>
-          <div style={s.pageSub}>{editOrder?.id||'Nuovo'} · {toItalianDate(orderDate)}</div>
+          <div style={s.pageTitle}>{editOrder?'Modifica Ordine':reorderFrom?'Riordino':'Nuovo Ordine'}{prefillClient?' · '+prefillClient.name:''}{reorderFrom?' · '+(club||'—'):''}</div>
+          <div style={s.pageSub}>{reorderFrom?`Da ordine ${reorderFrom.sourceId}`:(editOrder?.id||'Nuovo')} · {toItalianDate(orderDate)}</div>
           <div style={{marginTop:6}}><SaveStatusBadge isDirty={isDirty}/></div>
         </div>
         <div style={{textAlign:'right'}}>
@@ -495,6 +502,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
 
       {/* ── STEP 2 ── */}
       {step===2 && <div>
+        {reorderFrom && (
+          <div style={{...s.card, background:'rgba(184,150,90,0.07)', border:`1px solid rgba(184,150,90,0.25)`}}>
+            <div style={{fontSize:12,color:CREAM}}>
+              Articoli, colori e prezzi ripresi dall'ordine <strong>{reorderFrom.sourceId}</strong> — verifica i prezzi prima di confermare, potrebbero essere cambiati nel frattempo. Quantità e taglie sono vuote: vanno compilate per questo riordino.
+            </div>
+          </div>
+        )}
         <div style={s.card}>
           <div style={s.cardTitle}>Modalità Pricing</div>
           <div style={{display:'flex',gap:10,marginBottom:16}}>
