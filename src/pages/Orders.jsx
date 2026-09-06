@@ -111,8 +111,12 @@ export default function Orders({ orders, setView, setEditOrder, onDelete, onOrde
   const filtered = orders
     .filter(o => {
       if (o.status === 'PREVENTIVO') return false
-      const matchFilter = filter === 'Tutti' ||
-        (filter === 'Da Incassare' ? paymentSummary(o).pending > 0 : o.status === filter.toUpperCase())
+      let matchFilter
+      if (filter === 'Tutti') matchFilter = true
+      else if (filter === 'Da Incassare') {
+        const ps = paymentSummary(o)
+        matchFilter = ps.pending > 0 || ps.residual > 0
+      } else matchFilter = o.status === filter.toUpperCase()
       const matchSearch = !search || o.client.toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase())
       return matchFilter && matchSearch
     })

@@ -10,6 +10,8 @@
 // un follow-up viene chiuso e poi torna aperto (esito rimesso "in
 // attesa") viene creato un nuovo task invece di riaprire quello vecchio.
 
+import { requireUser } from './_auth.js'
+
 // API unificata v1: le REST v2 rispondono 410 (dismesse).
 const TODOIST_API = 'https://api.todoist.com/api/v1'
 const PROJECT_NAME = 'Campionature'
@@ -91,6 +93,9 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ error: 'Metodo non consentito' })
   }
+
+  const user = await requireUser(req, res)
+  if (!user) return
 
   const token = process.env.TODOIST_API_TOKEN
   if (!token) {

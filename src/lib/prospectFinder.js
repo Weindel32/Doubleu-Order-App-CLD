@@ -3,6 +3,8 @@
 // ancora clienti. Passa dalla funzione serverless api/hibernate-prospect.js,
 // che tiene la chiave di servizio di Prospect Finder lato server.
 
+import { authHeader } from './supabase.js'
+
 export const STANDBY_REASONS = [
   { value: 'pausa',            label: 'Pausa — richiamare più avanti' },
   { value: 'risposta_negativa', label: 'Risposta negativa' },
@@ -21,7 +23,7 @@ export function sendResultMessage(data) {
 export async function sendToProspectFinder(prospect, standbyMotivo) {
   const res = await fetch('/api/hibernate-prospect', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({
       name: prospect.name,
       city: prospect.city || null,
