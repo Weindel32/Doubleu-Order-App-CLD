@@ -8,6 +8,8 @@ import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js
 import SpAutocomplete from '../components/SpAutocomplete.jsx'
 import DiscountFields from '../components/DiscountFields.jsx'
 import DatePicker, { toItalianDate } from '../components/DatePicker.jsx'
+import { DraftBanner, SaveStatusBadge } from '../components/DraftStatus.jsx'
+import { useDraftRecovery } from '../hooks/useDraftRecovery.js'
 
 const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Taglie', 'Riepilogo']
 
@@ -79,6 +81,36 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
   const [saving, setSaving]           = useState(false)
   const [saveError, setSaveError]     = useState(null)
 
+  // ── Bozza recuperabile ───────────────────────────────────────────
+  const draftKey = `duQuoteDraft:${editOrder?.id || 'new'}`
+  const draftSnapshot = {
+    club, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    orderDate, clientNotes, pricingMode, ivaEnabled, discountMode, discountType, discountValue,
+    orderNote, kits, step,
+  }
+  const restoreDraft = (data) => {
+    if (!data) return
+    setClub(data.club ?? '')
+    setEmail(data.clientEmail ?? '')
+    setPhone(data.clientPhone ?? '')
+    setAddress(data.clientAddress ?? '')
+    setCity(data.clientCity ?? '')
+    setCountry(data.clientCountry ?? 'Italia')
+    setContact(data.clientContact ?? '')
+    setOrderDate(data.orderDate ?? new Date().toISOString().split('T')[0])
+    setCN(data.clientNotes ?? '')
+    setPM(data.pricingMode ?? 'singolo')
+    setIvaEnabled(data.ivaEnabled ?? false)
+    setDiscountMode(data.discountMode ?? 'nessuno')
+    setDiscountType(data.discountType ?? 'percentuale')
+    setDiscountValue(data.discountValue ?? '')
+    setOrderNote(data.orderNote ?? '')
+    setKits(data.kits?.length ? data.kits : [emptyKit()])
+    setStep(data.step ?? 1)
+  }
+  const { pendingDraft, acceptDraft, discardDraft, isDirty, markSaved, confirmDiscardIfDirty } =
+    useDraftRecovery(draftKey, draftSnapshot, restoreDraft)
+
   const allArticles = kits.flatMap(k => k.articles)
 
   const quoteObj = () => ({
@@ -128,6 +160,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
         const id = await generateOrderId(orderDate)
         const order = { ...quoteObj(), id }
         await createOrder(order)
+        markSaved()
         quoteForPDF = { ...order }
       } catch {}
     }
@@ -150,6 +183,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
       const order = { ...quoteObj(), id }
       const ok    = isEdit ? await updateOrder(order) : await createOrder(order)
       if (ok) {
+        markSaved()
         if (onUpsertClient && club.trim()) {
           await onUpsertClient(club.trim(), {
             email: clientEmail, phone: clientPhone,
@@ -250,12 +284,15 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
         <div>
           <div style={s.pageTitle}>{isEdit ? 'Modifica Preventivo' : 'Nuovo Preventivo'}{prefillClient ? ' · ' + prefillClient.name : ''}</div>
           <div style={s.pageSub}>{editOrder?.id || 'Nuovo'} · {toItalianDate(orderDate)}</div>
+          <div style={{ marginTop: 6 }}><SaveStatusBadge isDirty={isDirty}/></div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 4 }}>ARTICOLI</div>
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 32, color: GOLD, lineHeight: 1 }}>{allArticles.length}</div>
         </div>
       </div>
+
+      <DraftBanner pendingDraft={pendingDraft} onAccept={acceptDraft} onDiscard={discardDraft}/>
 
       <div style={{ display: 'flex', marginBottom: 36 }}>
         {STEPS.map((label, i) => (
@@ -314,7 +351,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
             <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={clientNotes} onChange={e => setCN(e.target.value)} placeholder="Es. Prezzi validi 30 giorni, personalizzazione colori club inclusa..."/>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-            <button style={btnStyle(false)} onClick={() => setView('quotes')}>Annulla</button>
+            <button style={btnStyle(false)} onClick={() => confirmDiscardIfDirty() && setView('quotes')}>Annulla</button>
             <button style={btnStyle(true)} onClick={() => setStep(2)}>Continua →</button>
           </div>
         </div>

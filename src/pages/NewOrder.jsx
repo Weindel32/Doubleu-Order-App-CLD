@@ -13,6 +13,8 @@ import BollaModal                from '../components/BollaModal.jsx'
 import SpAutocomplete            from '../components/SpAutocomplete.jsx'
 import DiscountFields            from '../components/DiscountFields.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
+import { DraftBanner, SaveStatusBadge } from '../components/DraftStatus.jsx'
+import { useDraftRecovery }      from '../hooks/useDraftRecovery.js'
 
 const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riepilogo']
 
@@ -93,6 +95,49 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
   const [saving,setSaving]         = useState(false)
   const [saveError,setSaveError]   = useState(null)
   const [showBollaModal,setShowBollaModal] = useState(false)
+
+  // ── Bozza recuperabile ───────────────────────────────────────────
+  const draftKey = `duOrderDraft:${editOrder?.id || 'new'}`
+  const draftSnapshot = {
+    club, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    orderDate, deliveryDate, actualDeliveryDate, alertDays, status, cancelReason, cancelDate,
+    clientNotes, productionNotes, showTotal, pricingMode, ivaEnabled, shipping,
+    discountMode, discountType, discountValue, orderNote, invoiceNumber, kits, orderType, payments, step,
+  }
+  const restoreDraft = (data) => {
+    if (!data) return
+    setClub(data.club ?? '')
+    setEmail(data.clientEmail ?? '')
+    setPhone(data.clientPhone ?? '')
+    setAddress(data.clientAddress ?? '')
+    setCity(data.clientCity ?? '')
+    setCountry(data.clientCountry ?? 'Italia')
+    setContact(data.clientContact ?? '')
+    setOrderDate(data.orderDate ?? new Date().toISOString().split('T')[0])
+    setDelivery(data.deliveryDate ?? '')
+    setActualDelivery(data.actualDeliveryDate ?? '')
+    setAlertDays(data.alertDays ?? 7)
+    setStatus(data.status ?? 'PREVENTIVO')
+    setCancelReason(data.cancelReason ?? '')
+    setCancelDate(data.cancelDate ?? null)
+    setCN(data.clientNotes ?? '')
+    setPN(data.productionNotes ?? '')
+    setShowTotal(data.showTotal ?? true)
+    setPM(data.pricingMode ?? 'singolo')
+    setIvaEnabled(data.ivaEnabled ?? false)
+    setShipping(data.shipping ?? '')
+    setDiscountMode(data.discountMode ?? 'nessuno')
+    setDiscountType(data.discountType ?? 'percentuale')
+    setDiscountValue(data.discountValue ?? '')
+    setOrderNote(data.orderNote ?? '')
+    setInvoiceNumber(data.invoiceNumber ?? '')
+    setKits(data.kits?.length ? data.kits : [emptyKit()])
+    setOrderType(data.orderType ?? 'istituzionale')
+    setPayments(data.payments ?? [])
+    setStep(data.step ?? 1)
+  }
+  const { pendingDraft, acceptDraft, discardDraft, isDirty, markSaved, confirmDiscardIfDirty } =
+    useDraftRecovery(draftKey, draftSnapshot, restoreDraft)
 
   const allArticles = kits.flatMap(k=>k.articles)
   const totalPieces = allArticles.reduce((s,a)=>s+artPieceCount(a),0)
@@ -214,6 +259,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
       const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces }
       const ok = editOrder ? await updateOrder(order) : await createOrder(order)
       if (ok) {
+        markSaved()
         if (onUpsertClient && club.trim()) {
           await onUpsertClient(club.trim(), {
             email: clientEmail, phone: clientPhone,
@@ -326,12 +372,15 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
         <div>
           <div style={s.pageTitle}>{editOrder?'Modifica Ordine':'Nuovo Ordine'}{prefillClient?' · '+prefillClient.name:''}</div>
           <div style={s.pageSub}>{editOrder?.id||'Nuovo'} · {toItalianDate(orderDate)}</div>
+          <div style={{marginTop:6}}><SaveStatusBadge isDirty={isDirty}/></div>
         </div>
         <div style={{textAlign:'right'}}>
           <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:4}}>PEZZI TOTALI</div>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,color:GOLD,lineHeight:1}}>{totalPieces}</div>
         </div>
       </div>
+
+      <DraftBanner pendingDraft={pendingDraft} onAccept={acceptDraft} onDiscard={discardDraft}/>
 
       <div style={{display:'flex',marginBottom:36}}>
         {STEPS.map((label,i)=>(
@@ -439,7 +488,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
           </label>
         </div>
         <div style={{display:'flex',justifyContent:'flex-end',gap:12,marginTop:8}}>
-          <button style={btnStyle(false)} onClick={()=>setView('orders')}>Annulla</button>
+          <button style={btnStyle(false)} onClick={()=>confirmDiscardIfDirty() && setView('orders')}>Annulla</button>
           <button style={btnStyle(true)} onClick={()=>setStep(2)}>Continua →</button>
         </div>
       </div>}
