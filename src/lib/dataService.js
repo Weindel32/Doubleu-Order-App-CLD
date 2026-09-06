@@ -114,8 +114,8 @@ export async function fetchOrders() {
   return full
 }
 
-export async function createOrder(order) {
-  const { error } = await supabase.from('orders').insert({
+function buildOrderPayload(order) {
+  return {
     id: order.id, client: order.client,
     client_email: order.clientEmail || null, client_phone: order.clientPhone || null,
     client_address: order.clientAddress || null, client_city: order.clientCity || null,
@@ -135,87 +135,51 @@ export async function createOrder(order) {
     notes: order.notes || '', production_notes: order.productionNotes || '',
     show_total_in_client_pdf: order.showTotalInClientPDF || false,
     order_type: order.orderType || 'istituzionale',
+  }
+}
+
+function buildKitsPayload(order) {
+  return (order.kits || []).map(kit => ({
+    name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null,
+    discount_type: kit.discountType || 'percentuale', discount_value: parseFloat(kit.discountValue) || 0,
+    articles: (kit.articles || []).map(art => ({
+      sp: art.sp, category: art.category, line: art.line,
+      description: art.description, color: art.color, price: art.price || null,
+      notes: art.notes || null, delivered: art.delivered || false,
+      omaggio: art.omaggio || 0,
+      discount_type: art.discountType || 'percentuale', discount_value: parseFloat(art.discountValue) || 0,
+      sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}), ...(art.sizes?.uni ? { __uni: parseInt(art.sizes.uni) } : {}) },
+      sizes_kids: art.sizes?.kids || {},
+    })),
+  }))
+}
+
+function buildPaymentsPayload(order) {
+  return (order.payments || []).map(p => ({
+    id: p.id || `p${Date.now()}${Math.random()}`,
+    type: p.type, amount: p.amount, date: p.date, method: p.method, note: p.note, paid: p.paid,
+  }))
+}
+
+// Salva ordine + kit + articoli + pagamenti in un'unica transazione lato database (RPC save_order_atomic):
+// se una qualsiasi insert fallisce, l'intera operazione va in rollback e non resta nulla di parziale.
+export async function createOrder(order) {
+  const { error } = await supabase.rpc('save_order_atomic', {
+    p_order: buildOrderPayload(order),
+    p_kits: buildKitsPayload(order),
+    p_payments: buildPaymentsPayload(order),
   })
   if (error) { console.error('createOrder:', error); return false }
-  for (let ki = 0; ki < order.kits.length; ki++) {
-    const kit = order.kits[ki]
-    const { data: kitData, error: kitErr } = await supabase.from('kits')
-      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki,
-        discount_type: kit.discountType || 'percentuale', discount_value: parseFloat(kit.discountValue) || 0 })
-      .select().single()
-    if (kitErr) { console.error('createKit:', kitErr); continue }
-    for (const art of kit.articles) {
-      await supabase.from('articles').insert({
-        kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
-        description: art.description, color: art.color, price: art.price || null,
-        notes: art.notes || null, delivered: art.delivered || false,
-        omaggio: art.omaggio || 0,
-        discount_type: art.discountType || 'percentuale', discount_value: parseFloat(art.discountValue) || 0,
-        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}), ...(art.sizes?.uni ? { __uni: parseInt(art.sizes.uni) } : {}) },
-        sizes_kids: art.sizes?.kids || {},
-      })
-    }
-  }
-  for (const p of (order.payments || [])) {
-    await supabase.from('payments').insert({
-      id: p.id, order_id: order.id, type: p.type, amount: p.amount,
-      date: p.date, method: p.method, note: p.note, paid: p.paid,
-    })
-  }
   return true
 }
 
 export async function updateOrder(order) {
-  const { error } = await supabase.from('orders').update({
-    client: order.client,
-    client_email: order.clientEmail || null, client_phone: order.clientPhone || null,
-    client_address: order.clientAddress || null, client_city: order.clientCity || null,
-    client_country: order.clientCountry || 'Italia', client_contact: order.clientContact || null,
-    date: order.date, delivery_date: order.deliveryDate || null, actual_delivery_date: order.actualDeliveryDate || null, alert_days: order.alertDays || 7,
-    status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
-    lost: order.lost || false, lost_reason: order.lostReason || null, lost_date: order.lostDate || null,
-    cancel_reason: order.cancelReason || null, cancel_date: order.cancelDate || null,
-    converted_from_quote: order.convertedFromQuote || false,
-    kit_quantity: order.kitQuantity || null,
-    iva_enabled: order.ivaEnabled || false, iva_rate: order.ivaRate || 22,
-    shipping: order.shipping || 0,
-    discount_mode: order.discountMode || 'ordine',
-    discount_type: order.discountType || 'percentuale', discount_value: parseFloat(order.discountValue) || 0,
-    order_note: order.orderNote || null,
-    invoice_number: order.invoiceNumber || null,
-    notes: order.notes || '', production_notes: order.productionNotes || '',
-    show_total_in_client_pdf: order.showTotalInClientPDF || false,
-    order_type: order.orderType || 'istituzionale',
-  }).eq('id', order.id)
+  const { error } = await supabase.rpc('save_order_atomic', {
+    p_order: buildOrderPayload(order),
+    p_kits: buildKitsPayload(order),
+    p_payments: buildPaymentsPayload(order),
+  })
   if (error) { console.error('updateOrder:', error); return false }
-  await supabase.from('kits').delete().eq('order_id', order.id)
-  for (let ki = 0; ki < order.kits.length; ki++) {
-    const kit = order.kits[ki]
-    const { data: kitData, error: kitErr } = await supabase.from('kits')
-      .insert({ order_id: order.id, name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null, position: ki,
-        discount_type: kit.discountType || 'percentuale', discount_value: parseFloat(kit.discountValue) || 0 })
-      .select().single()
-    if (kitErr) { console.error('updateKit:', kitErr); continue }
-    for (const art of kit.articles) {
-      await supabase.from('articles').insert({
-        kit_id: kitData.id, sp: art.sp, category: art.category, line: art.line,
-        description: art.description, color: art.color, price: art.price || null,
-        notes: art.notes || null, delivered: art.delivered || false,
-        omaggio: art.omaggio || 0,
-        discount_type: art.discountType || 'percentuale', discount_value: parseFloat(art.discountValue) || 0,
-        sizes_adult: { ...(art.sizes?.adult || {}), ...(art.estimatedQty ? { __qty: parseInt(art.estimatedQty) } : {}), ...(art.sizes?.uni ? { __uni: parseInt(art.sizes.uni) } : {}) },
-        sizes_kids: art.sizes?.kids || {},
-      })
-    }
-  }
-  await supabase.from('payments').delete().eq('order_id', order.id)
-  for (const p of (order.payments || [])) {
-    await supabase.from('payments').insert({
-      id: p.id || `p${Date.now()}${Math.random()}`,
-      order_id: order.id, type: p.type, amount: p.amount,
-      date: p.date, method: p.method, note: p.note, paid: p.paid,
-    })
-  }
   return true
 }
 
