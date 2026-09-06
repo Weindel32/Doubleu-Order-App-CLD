@@ -1,14 +1,15 @@
 // ─── BRAND TOKENS ────────────────────────────────────────────────
-export const NAVY    = '#1a2744'
+export const NAVY    = '#111d38'
 export const CREAM   = '#f5f0e8'
 export const CLAY    = '#c4623a'
 export const GOLD    = '#b8965a'
 export const MUTED   = '#a7b7d6'
 export const GREEN   = '#4a9e6e'
 export const WHITE   = '#ffffff'
-// Card più leggibili: bordo e sfondo un po' più marcati rispetto allo sfondo pagina.
-export const SURFACE = 'rgba(255,255,255,0.06)'
-export const BORDER  = 'rgba(184,150,90,0.28)'
+// Sfondo pieno e distinto invece di un overlay quasi impercettibile sopra
+// NAVY: una card deve staccarsi subito dallo sfondo pagina, non intuirsi.
+export const SURFACE = '#28355a'
+export const BORDER  = 'rgba(255,255,255,0.14)'
 
 // ─── ORDER STATUS ─────────────────────────────────────────────────
 export const ORDER_STATUSES = ['PREVENTIVO', 'CONFERMATO', 'IN PRODUZIONE', 'CONSEGNA PARZIALE', 'CONSEGNATO', 'ANNULLATO']
