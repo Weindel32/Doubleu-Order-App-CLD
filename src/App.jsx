@@ -15,6 +15,7 @@ import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
 import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
 import { needsAlert, isConfirmed } from './utils/helpers.js'
+import { buildReorderSeed } from './utils/reorder.js'
 import { needsFollowUp, returnOverdue, recipientLabel } from './utils/samples.js'
 import { syncFollowUpToTodoist } from './lib/todoist.js'
 import { supabase } from './lib/supabase.js'
@@ -89,6 +90,7 @@ export default function App() {
   const [view, setView]               = useState('dashboard')
   const [editOrder, setEditOrder]     = useState(null)
   const [prefillClient, setPrefill]   = useState(null)
+  const [reorderFrom, setReorderFrom] = useState(null)
   const [quoteProspect, setQuoteProspect] = useState(null)
   const [orders, setOrders]           = useState([])
   const [clients, setClients]         = useState([])
@@ -278,19 +280,21 @@ export default function App() {
   const [ordersFilter, setOrdersFilter] = useState('Tutti')
 
   const navigate  = (v) => { if (v === 'orders') setOrdersFilter('Tutti'); if (v !== 'newQuote') setQuoteProspect(null); if (v !== 'samples') setSampleDraft(null); setView(v); window.scrollTo(0, 0) }
-  const goToOrder = (order) => { setEditOrder(order); setPrefill(null); navigate('new') }
-  const goToQuote = (quote) => { setEditOrder(quote); setPrefill(null); navigate('newQuote') }
+  const goToOrder = (order) => { setEditOrder(order); setPrefill(null); setReorderFrom(null); navigate('new') }
+  const goToQuote = (quote) => { setEditOrder(quote); setPrefill(null); setReorderFrom(null); navigate('newQuote') }
   const navigateToOrders = (filter) => { setOrdersFilter(filter); setView('orders'); window.scrollTo(0, 0) }
 
   const handleNewOrderFromClient = (clientData) => {
     setEditOrder(null)
     setPrefill(clientData)
+    setReorderFrom(null)
     navigate('new')
   }
 
   const handleNewQuoteFromClient = (clientData) => {
     setEditOrder(null)
     setPrefill(clientData)
+    setReorderFrom(null)
     navigate('newQuote')
   }
 
@@ -305,6 +309,7 @@ export default function App() {
       city:    prospect.city    || '',
       country: prospect.country || 'Italia',
     })
+    setReorderFrom(null)
     setQuoteProspect(prospect)
     navigate('newQuote')
   }
@@ -312,6 +317,17 @@ export default function App() {
   const handleConvertToOrder = (quote) => {
     setEditOrder({ ...quote, status: 'CONFERMATO', convertedFromQuote: true, lost: false })
     setPrefill(null)
+    setReorderFrom(null)
+    navigate('new')
+  }
+
+  // Riordino: stesso kit/articoli/colori/prezzi di un ordine passato, ma
+  // quantità e taglie ripartono da zero (i nuovi allievi di metà stagione
+  // non hanno la stessa distribuzione taglie dei primi iscritti).
+  const handleReorder = (order) => {
+    setEditOrder(null)
+    setPrefill(null)
+    setReorderFrom(buildReorderSeed(order))
     navigate('new')
   }
 
@@ -390,12 +406,12 @@ export default function App() {
       <main style={s.main}>
         {view === 'dashboard'  && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders} onNavigateToQuotes={() => navigate('quotes')} shipments={shipments} clients={clients} prospects={prospects}/>}
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote}/>}
-        {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
+        {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onReorder={handleReorder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder} shipments={shipments} onNewSample={handleNewSample}/>}
         {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample}/>}
         {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
         {view === 'analytics'  && <Analytics orders={orders} shipments={shipments}/>}
-        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
+        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
         {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}
       </main>
     </div>
