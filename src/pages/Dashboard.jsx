@@ -25,7 +25,13 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     .sort((a,b) => parseDate(b.date) - parseDate(a.date))
     .slice(0, 5)
   const totalRev  = confirmed.reduce((a, o) => a + orderTotal(o), 0)
-  const totalPending = confirmed.reduce((s,o)=>s+paymentSummary(o).pending,0)
+  // "Da incassare" deve coprire tutto ciò che manca da riscuotere: sia le
+  // rate già pianificate (pending) sia il saldo non ancora programmato
+  // (residual) — un ordine senza pagamenti pianificati non va escluso solo
+  // perché non ha rate in calendario.
+  const totalPending  = confirmed.reduce((s,o)=>s+paymentSummary(o).pending,0)
+  const totalResidual = confirmed.reduce((s,o)=>s+paymentSummary(o).residual,0)
+  const totalToCollect = totalPending + totalResidual
 
   // ── Yearly comparison ─────────────────────────────────────────
   const revenueByYear = confirmed.reduce((acc, o) => {
@@ -72,7 +78,9 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
         <StatCard label="Preventivi"    value={quote.length}     sub="In attesa"           onClick={onNavigateToQuotes || undefined} />
         <StatCard label="Confermati"    value={confirmed.length} sub={`${totalRev.toLocaleString('it-IT',{maximumFractionDigits:0})} €`} accent onClick={navigateToOrders ? () => navigateToOrders('Confermato')    : undefined} />
         <StatCard label="In Produzione" value={inProd.length}    sub="Ordini attivi"       onClick={navigateToOrders ? () => navigateToOrders('In Produzione')  : undefined} />
-        <StatCard label="Da Incassare"  value={`€ ${totalPending.toLocaleString('it-IT',{maximumFractionDigits:0})}`} sub="Pagamenti in sospeso" onClick={navigateToOrders ? () => navigateToOrders('Da Incassare') : undefined} />
+        <StatCard label="Da Incassare"  value={`€ ${totalToCollect.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
+          sub={`${totalPending.toLocaleString('it-IT',{maximumFractionDigits:0})} € attesi · ${totalResidual.toLocaleString('it-IT',{maximumFractionDigits:0})} € da pianificare`}
+          onClick={navigateToOrders ? () => navigateToOrders('Da Incassare') : undefined} />
       </div>
 
       {/* ── Yearly comparison ────────────────────────────────── */}
