@@ -5,6 +5,7 @@
 // l'eventuale fallimento senza bloccare il salvataggio in Order App.
 
 import { isItemOpen, addDaysISO, FOLLOW_UP_DAYS, PURPOSE_LABELS, followUpBaseDate } from '../utils/samples.js'
+import { authHeader } from './supabase.js'
 
 export async function syncFollowUpToTodoist(shipment, clubName) {
   const open = (shipment.items || []).some(isItemOpen)
@@ -12,7 +13,7 @@ export async function syncFollowUpToTodoist(shipment, clubName) {
 
   const res = await fetch('/api/sync-todoist-followup', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({
       shipmentId: shipment.id,
       clubName,

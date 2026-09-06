@@ -8,6 +8,8 @@
 // "prospects" di quel progetto — nessuna altra tabella, nessuna
 // modifica di schema, nessuna cancellazione.
 
+import { requireUser } from './_auth.js'
+
 const PROSPECT_FINDER_URL = 'https://bliljqmgzzxshvhyzzos.supabase.co'
 const STANDBY_REASONS = ['risposta_negativa', 'pausa', 'escluso']
 
@@ -64,6 +66,9 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ error: 'Metodo non consentito' })
   }
+
+  const user = await requireUser(req, res)
+  if (!user) return
 
   const serviceKey = process.env.PROSPECT_FINDER_SERVICE_KEY
   if (!serviceKey) {
