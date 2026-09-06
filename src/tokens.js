@@ -5,8 +5,10 @@ export const CLAY    = '#c4623a'
 export const GOLD    = '#b8965a'
 export const MUTED   = '#a7b7d6'
 export const GREEN   = '#4a9e6e'
-export const SURFACE = 'rgba(255,255,255,0.04)'
-export const BORDER  = 'rgba(184,150,90,0.18)'
+export const WHITE   = '#ffffff'
+// Card più leggibili: bordo e sfondo un po' più marcati rispetto allo sfondo pagina.
+export const SURFACE = 'rgba(255,255,255,0.06)'
+export const BORDER  = 'rgba(184,150,90,0.28)'
 
 // ─── ORDER STATUS ─────────────────────────────────────────────────
 export const ORDER_STATUSES = ['PREVENTIVO', 'CONFERMATO', 'IN PRODUZIONE', 'CONSEGNA PARZIALE', 'CONSEGNATO', 'ANNULLATO']
@@ -21,13 +23,17 @@ export const LOSS_REASONS = [
   'Altro',
 ]
 
+// `solid` è il colore pieno usato dai badge di stato (badgeStyle): scurito
+// rispetto al colore "di famiglia" (usato altrove come tinta/testo) quanto
+// basta perché il testo bianco sopra resti leggibile — verificato a un
+// contrasto reale di almeno 4.5:1, non semplicemente più scuro a occhio.
 export const STATUS_COLORS = {
-  'PREVENTIVO':        { bg: 'rgba(196,98,58,0.18)',  color: '#c4623a', border: 'rgba(196,98,58,0.4)'  },
-  'CONFERMATO':        { bg: 'rgba(184,150,90,0.15)', color: '#b8965a', border: 'rgba(184,150,90,0.3)' },
-  'IN PRODUZIONE':     { bg: 'rgba(90,130,184,0.18)', color: '#7aaee8', border: 'rgba(90,130,184,0.4)' },
-  'CONSEGNA PARZIALE': { bg: 'rgba(180,140,50,0.18)', color: '#e8c96e', border: 'rgba(180,140,50,0.4)' },
-  'CONSEGNATO':        { bg: 'rgba(74,158,110,0.18)', color: '#4a9e6e', border: 'rgba(74,158,110,0.4)' },
-  'ANNULLATO':         { bg: 'rgba(138,143,156,0.16)', color: '#9298a6', border: 'rgba(138,143,156,0.4)' },
+  'PREVENTIVO':        { bg: 'rgba(196,98,58,0.18)',  color: '#c4623a', border: 'rgba(196,98,58,0.4)',  solid: '#b85c37' },
+  'CONFERMATO':        { bg: 'rgba(184,150,90,0.15)', color: '#b8965a', border: 'rgba(184,150,90,0.3)', solid: '#8c7244' },
+  'IN PRODUZIONE':     { bg: 'rgba(90,130,184,0.18)', color: '#7aaee8', border: 'rgba(90,130,184,0.4)', solid: '#53769e' },
+  'CONSEGNA PARZIALE': { bg: 'rgba(180,140,50,0.18)', color: '#e8c96e', border: 'rgba(180,140,50,0.4)', solid: '#877540' },
+  'CONSEGNATO':        { bg: 'rgba(74,158,110,0.18)', color: '#4a9e6e', border: 'rgba(74,158,110,0.4)', solid: '#3d825a' },
+  'ANNULLATO':         { bg: 'rgba(138,143,156,0.16)', color: '#9298a6', border: 'rgba(138,143,156,0.4)', solid: '#6f747e' },
 }
 
 // ─── CONSTANTS ───────────────────────────────────────────────────
@@ -65,7 +71,7 @@ export const s = {
   grid3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 },
   grid4: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 16 },
   statCard: (accent) => ({
-    background: accent ? `linear-gradient(135deg, ${CLAY}, #a0502e)` : SURFACE,
+    background: accent ? CLAY : SURFACE,
     border: accent ? 'none' : `1px solid ${BORDER}`,
     borderRadius: 10, padding: '24px 28px',
   }),
@@ -84,20 +90,22 @@ export const s = {
   label: { fontSize: 11, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' },
 }
 
+// Tinta piena e testo bianco, non più sfondo trasparente + testo colorato:
+// un badge di stato deve leggersi a colpo d'occhio in una tabella densa.
 export const badgeStyle = (status) => {
   const sc = STATUS_COLORS[status] || STATUS_COLORS['PREVENTIVO']
   return {
     display: 'inline-block', padding: '3px 10px', borderRadius: 2,
-    fontSize: 10, letterSpacing: 1.5, fontWeight: 600,
-    background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`,
+    fontSize: 10, letterSpacing: 1.5, fontWeight: 700,
+    background: sc.solid, color: WHITE, border: 'none',
   }
 }
 
 export const btnStyle = (primary) => ({
   padding: '10px 24px', borderRadius: 3, border: 'none', cursor: 'pointer',
   fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600,
-  background: primary ? `linear-gradient(135deg, ${CLAY}, #a0502e)` : 'rgba(255,255,255,0.06)',
-  color: primary ? CREAM : MUTED, transition: 'all 0.2s',
+  background: primary ? CLAY : 'rgba(255,255,255,0.06)',
+  color: primary ? WHITE : MUTED, transition: 'all 0.2s',
 })
 
 export const btnGoldStyle = {
