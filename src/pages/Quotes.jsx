@@ -108,7 +108,7 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
           <div style={s.pageTitle}>Preventivi</div>
           <div style={s.pageSub}>{activeQuotes.length} attiv{activeQuotes.length === 1 ? 'o' : 'i'} · {lostQuotes.length} pers{lostQuotes.length === 1 ? 'o' : 'i'}</div>
         </div>
-        <button style={{ ...btnStyle(true), background: `linear-gradient(135deg, ${CLAY}, #a0502e)` }}
+        <button style={btnStyle(true)}
           onClick={() => { setEditOrder(null); setView('newQuote') }}>+ Nuovo Preventivo</button>
       </div>
 
@@ -130,7 +130,7 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
               : (activeQuotes.length === 0 ? 'Nessun preventivo ancora' : 'Nessun risultato')}
           </div>
           {!isLostTab && activeQuotes.length === 0 && (
-            <button style={{ ...btnStyle(true), background: `linear-gradient(135deg, ${CLAY}, #a0502e)` }}
+            <button style={btnStyle(true)}
               onClick={() => { setEditOrder(null); setView('newQuote') }}>+ Crea Primo Preventivo</button>
           )}
         </div>

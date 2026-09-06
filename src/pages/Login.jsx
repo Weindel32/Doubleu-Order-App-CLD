@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { GOLD, MUTED, CREAM, CLAY, BORDER } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, WHITE } from '../tokens.js'
 
 export default function Login() {
   const [email, setEmail]       = useState('')
@@ -165,10 +165,10 @@ export default function Login() {
               style={{
                 width: '100%',
                 padding: '14px',
-                background: loading ? 'rgba(184,150,90,0.4)' : `linear-gradient(135deg, ${CLAY}, #a0502e)`,
+                background: loading ? 'rgba(184,150,90,0.4)' : CLAY,
                 border: 'none',
                 borderRadius: 4,
-                color: CREAM,
+                color: WHITE,
                 fontSize: 10,
                 letterSpacing: 3,
                 textTransform: 'uppercase',

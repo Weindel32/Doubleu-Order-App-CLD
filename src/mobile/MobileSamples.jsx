@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER, CATEGORIES } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER, CATEGORIES, WHITE } from '../tokens.js'
 import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   fmtDate, euro, todayISO, addDaysISO, samplePieces, sampleCostValue,
@@ -326,8 +326,8 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
 
           <button onClick={handleSave} disabled={saving || !canSave}
             style={{ width: '100%', padding: '15px', borderRadius: 8, border: 'none', marginTop: 4,
-              background: canSave ? `linear-gradient(135deg, ${CLAY}, #a0502e)` : 'rgba(255,255,255,0.06)',
-              color: canSave ? CREAM : MUTED, fontSize: 13, letterSpacing: 2, textTransform: 'uppercase',
+              background: canSave ? CLAY : 'rgba(255,255,255,0.06)',
+              color: canSave ? WHITE : MUTED, fontSize: 13, letterSpacing: 2, textTransform: 'uppercase',
               fontWeight: 600, cursor: canSave ? 'pointer' : 'not-allowed', fontFamily: "'Josefin Sans', sans-serif" }}>
             {saving ? 'Salvataggio…' : 'Salva invio'}
           </button>
