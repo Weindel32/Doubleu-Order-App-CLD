@@ -60,8 +60,8 @@ function BtnGold({ children, onClick, disabled, flex }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
       flex: flex || 'none', padding: '13px', borderRadius: 6,
-      background: disabled ? 'rgba(184,150,90,0.3)' : 'linear-gradient(135deg, #b8965a, #9a7a45)',
-      border: 'none', color: CREAM, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
+      background: disabled ? 'rgba(184,150,90,0.3)' : GOLD,
+      border: 'none', color: NAVY, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
       cursor: disabled ? 'default' : 'pointer', fontFamily: "'Josefin Sans', sans-serif", fontWeight: 600,
       WebkitTapHighlightColor: 'transparent',
     }}>{children}</button>

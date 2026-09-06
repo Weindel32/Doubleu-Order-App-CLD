@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, NAVY } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
 import { orderTotal, parseDate, isConfirmed } from '../utils/helpers.js'
 
@@ -167,8 +167,8 @@ function NewClientForm({ onSave, onCancel }) {
         }}>Annulla</button>
         <button onClick={handleSave} disabled={saving} style={{
           flex: 2, padding: '13px', borderRadius: 6,
-          background: saving ? 'rgba(184,150,90,0.3)' : `linear-gradient(135deg, #b8965a, #9a7a45)`,
-          border: 'none', color: CREAM,
+          background: saving ? 'rgba(184,150,90,0.3)' : GOLD,
+          border: 'none', color: NAVY,
           fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
           cursor: saving ? 'default' : 'pointer',
           fontFamily: "'Josefin Sans', sans-serif", fontWeight: 600,
