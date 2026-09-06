@@ -53,31 +53,54 @@ export async function renameClient(oldName, newName, fields) {
   return true
 }
 
+// Prima versione: una query per gli ordini, poi per ciascun ordine una
+// query per i kit e per ciascun kit una query per gli articoli, più una
+// query pagamenti per ordine — con N ordini e M kit erano fino a
+// 1 + N + M + N richieste separate ad ogni avvio. Ora le tabelle
+// figlie si caricano in blocco (3 query totali, indipendenti dal
+// numero di ordini) e si raggruppano lato client.
 export async function fetchOrders() {
   const { data: orders, error } = await supabase
     .from('orders').select('*').order('created_at', { ascending: false })
   if (error) { console.error('fetchOrders:', error); return [] }
+  if (!orders.length) return []
 
-  const full = await Promise.all(orders.map(async (order) => {
-    const { data: kits } = await supabase
-      .from('kits').select('*').eq('order_id', order.id).order('position')
-    const kitsWithArticles = await Promise.all((kits || []).map(async (kit) => {
-      const { data: articles } = await supabase
-        .from('articles').select('*').eq('kit_id', kit.id)
-      return {
-        ...kit,
-        articles: (articles || []).map(a => ({
-          ...a, notes: a.notes || '',
-          delivered: a.delivered || false,
-          omaggio: a.omaggio || 0,
-          discountType: a.discount_type || 'percentuale', discountValue: a.discount_value || 0,
-          estimatedQty: (a.sizes_adult || {}).__qty || null,
-          sizes: { adult: (({ __qty, __uni, ...rest }) => rest)(a.sizes_adult || {}), kids: a.sizes_kids || {}, uni: (a.sizes_adult || {}).__uni || 0 }
-        }))
-      }
+  const orderIds = orders.map(o => o.id)
+  const [{ data: allKits, error: kitsErr }, { data: allPayments, error: paymentsErr }] = await Promise.all([
+    supabase.from('kits').select('*').in('order_id', orderIds).order('position'),
+    supabase.from('payments').select('*').in('order_id', orderIds),
+  ])
+  if (kitsErr) console.error('fetchOrders (kits):', kitsErr)
+  if (paymentsErr) console.error('fetchOrders (payments):', paymentsErr)
+
+  const kitIds = (allKits || []).map(k => k.id)
+  let allArticles = []
+  if (kitIds.length) {
+    const { data, error: articlesErr } = await supabase.from('articles').select('*').in('kit_id', kitIds)
+    if (articlesErr) console.error('fetchOrders (articles):', articlesErr)
+    allArticles = data || []
+  }
+
+  const articlesByKit = {}
+  for (const a of allArticles) (articlesByKit[a.kit_id] ||= []).push(a)
+  const kitsByOrder = {}
+  for (const k of (allKits || [])) (kitsByOrder[k.order_id] ||= []).push(k)
+  const paymentsByOrder = {}
+  for (const p of (allPayments || [])) (paymentsByOrder[p.order_id] ||= []).push(p)
+
+  const full = orders.map((order) => {
+    const kitsWithArticles = (kitsByOrder[order.id] || []).map((kit) => ({
+      ...kit,
+      articles: (articlesByKit[kit.id] || []).map(a => ({
+        ...a, notes: a.notes || '',
+        delivered: a.delivered || false,
+        omaggio: a.omaggio || 0,
+        discountType: a.discount_type || 'percentuale', discountValue: a.discount_value || 0,
+        estimatedQty: (a.sizes_adult || {}).__qty || null,
+        sizes: { adult: (({ __qty, __uni, ...rest }) => rest)(a.sizes_adult || {}), kids: a.sizes_kids || {}, uni: (a.sizes_adult || {}).__uni || 0 }
+      }))
     }))
-    const { data: payments } = await supabase
-      .from('payments').select('*').eq('order_id', order.id)
+    const payments = paymentsByOrder[order.id] || []
     return {
       id: order.id, client: order.client, clientId: order.client_id || null,
       clientEmail: order.client_email || '', clientPhone: order.client_phone || '',
@@ -102,9 +125,9 @@ export async function fetchOrders() {
         ...k, quantity: k.quantity || null,
         discountType: k.discount_type || 'percentuale', discountValue: k.discount_value || 0,
       })),
-      payments: payments || [],
+      payments,
     }
-  }))
+  })
   const parseDate = str => {
     if (!str) return 0
     const [d, m, y] = str.split('/')
