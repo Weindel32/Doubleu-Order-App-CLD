@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, STATUS_COLORS, GREEN } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, STATUS_COLORS, GREEN, WHITE } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
 import { needsAlert, daysUntilDelivery, paymentSummary, orderTotal, isConfirmed } from '../utils/helpers.js'
 
@@ -108,17 +108,17 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
               const sc = STATUS_COLORS[status]
               return (
                 <div key={status} onClick={() => onGoToOrders(status)} style={{
-                  background: sc.bg,
-                  border: `1px solid ${sc.border}`,
+                  background: sc.solid,
+                  border: 'none',
                   borderRadius: 10,
                   padding: '16px',
                   cursor: 'pointer',
                   WebkitTapHighlightColor: 'transparent',
                   position: 'relative',
                 }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: sc.color, lineHeight: 1 }}>{count}</div>
-                  <div style={{ fontSize: 12, letterSpacing: 1.5, color: sc.color, textTransform: 'uppercase', marginTop: 6, opacity: 0.85 }}>{status}</div>
-                  <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 13, color: sc.color, opacity: 0.5 }}>›</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: WHITE, lineHeight: 1 }}>{count}</div>
+                  <div style={{ fontSize: 12, letterSpacing: 1.5, color: WHITE, textTransform: 'uppercase', marginTop: 6, opacity: 0.85 }}>{status}</div>
+                  <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 13, color: WHITE, opacity: 0.6 }}>›</div>
                 </div>
               )
             })}
