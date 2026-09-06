@@ -137,6 +137,8 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
       fiscal_code: selected.fiscal_code || '',
       email:       selected.email      || '',
       phone:       selected.phone      || '',
+      address:     selected.address    || '',
+      contact:     selected.contact    || '',
       shop_attivo: selected.shop_attivo || false,
     })
   }
@@ -154,6 +156,8 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
       fiscal_code: editForm.fiscal_code || null,
       email:       editForm.email      || null,
       phone:       editForm.phone      || null,
+      address:     editForm.address    || null,
+      contact:     editForm.contact    || null,
       shop_attivo: editForm.shop_attivo || false,
     })
     setEditForm(null)
@@ -187,6 +191,8 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
       fiscal_code: newForm.fiscal_code || null,
       email:      newForm.email      || null,
       phone:      newForm.phone      || null,
+      address:    newForm.address    || null,
+      contact:    newForm.contact    || null,
     })
     setNewForm(null)
     setNewSaving(false)
@@ -200,7 +206,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
           <div style={s.pageSub}>Anagrafica e storico commerciale</div>
         </div>
         <button style={{ ...btnGoldStyle, marginTop:8 }}
-          onClick={() => setNewForm({ name:'', category:'', city:'', province:'', country:'Italia', vat_number:'', fiscal_code:'', email:'', phone:'' })}>
+          onClick={() => setNewForm({ name:'', category:'', city:'', province:'', country:'Italia', vat_number:'', fiscal_code:'', email:'', phone:'', address:'', contact:'' })}>
           + Nuovo Cliente
         </button>
       </div>
@@ -422,6 +428,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                         <input style={inp} value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone:e.target.value }))}/>
                       </div>
                       <div>
+                        <label style={s.label}>Referente</label>
+                        <input style={inp} value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact:e.target.value }))} placeholder="Es. Mario Rossi"/>
+                      </div>
+                      <div style={{ gridColumn:'span 2' }}>
+                        <label style={s.label}>Indirizzo</label>
+                        <input style={inp} value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address:e.target.value }))} placeholder="Via Roma 1"/>
+                      </div>
+                      <div>
                         <label style={s.label}>Città</label>
                         <input style={inp} value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city:e.target.value }))}/>
                       </div>
@@ -452,12 +466,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                     {selected.email      && <InfoField label="EMAIL"    value={selected.email}/>}
                     {selected.phone      && <InfoField label="TELEFONO" value={selected.phone}/>}
+                    {selected.contact    && <InfoField label="REFERENTE" value={selected.contact}/>}
+                    {selected.address    && <InfoField label="INDIRIZZO" value={selected.address}/>}
                     {selected.vat_number && <InfoField label="P.IVA"    value={selected.vat_number}/>}
                     {selected.fiscal_code && <InfoField label="CODICE FISCALE" value={selected.fiscal_code}/>}
                     {selected.city       && <InfoField label="CITTÀ"     value={selected.city}/>}
                     {selected.province   && <InfoField label="PROVINCIA" value={selected.province}/>}
                     {selected.country    && <InfoField label="PAESE"     value={selected.country}/>}
-                    {!selected.email && !selected.phone && !selected.vat_number && !selected.fiscal_code && (
+                    {!selected.email && !selected.phone && !selected.contact && !selected.vat_number && !selected.fiscal_code && (
                       <div style={{ gridColumn:'span 2', fontSize:12, color:MUTED, fontStyle:'italic' }}>
                         Nessun dato anagrafico — clicca Modifica per aggiungere
                       </div>
@@ -625,6 +641,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
               <div>
                 <label style={s.label}>Telefono</label>
                 <input style={inp} value={newForm.phone} onChange={e => setNewForm(f => ({ ...f, phone:e.target.value }))}/>
+              </div>
+              <div>
+                <label style={s.label}>Referente</label>
+                <input style={inp} value={newForm.contact} onChange={e => setNewForm(f => ({ ...f, contact:e.target.value }))} placeholder="Es. Mario Rossi"/>
+              </div>
+              <div style={{ gridColumn:'span 2' }}>
+                <label style={s.label}>Indirizzo</label>
+                <input style={inp} value={newForm.address} onChange={e => setNewForm(f => ({ ...f, address:e.target.value }))} placeholder="Via Roma 1"/>
               </div>
               <div>
                 <label style={s.label}>Città</label>
