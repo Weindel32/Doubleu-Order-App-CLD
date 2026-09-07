@@ -31,17 +31,19 @@ const LANGUAGES       = ['it','de','es','en']
 // 'sample_shipped' resta per leggere le attività registrate prima del
 // registro campionature, ma i nuovi invii si registrano lì (vedi
 // Campionature nella scheda) e non più come nota libera.
-const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','meeting','note']
+const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','meeting','message_sent','message_received','note']
 const NEW_ACT_TYPES   = ACT_TYPES.filter(t => t !== 'sample_shipped')
 const REWARD_TYPES    = ['prodotto','provvigione']
 
 const ACT_LABELS = {
-  email_sent:      'Email inviata',
-  reply_received:  'Risposta ricevuta',
-  sample_shipped:  'Sample spedito',
-  call:            'Chiamata',
-  meeting:         'Meeting',
-  note:            'Nota',
+  email_sent:        'Email inviata',
+  reply_received:    'Risposta ricevuta',
+  sample_shipped:    'Sample spedito',
+  call:              'Chiamata',
+  meeting:           'Meeting',
+  message_sent:      'Messaggio inviato',
+  message_received:  'Messaggio ricevuto',
+  note:              'Nota',
 }
 
 const EMPTY_PROSPECT = () => ({
@@ -51,7 +53,7 @@ const EMPTY_PROSPECT = () => ({
   contact_type:'cliente', referred_by:'', vincolo_altro_brand:false,
   relazione_pregressa:'',
 })
-const EMPTY_ACTIVITY = () => ({ type:'note', content:'', reward_type:'', reward_value:'' })
+const EMPTY_ACTIVITY = () => ({ type:'note', content:'', reward_type:'', reward_value:'', date: new Date().toISOString().slice(0,10) })
 
 // ─── Sub-components ───────────────────────────────────────────────
 function StageBadge({ stage }) {
@@ -213,6 +215,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const [newForm,     setNewForm]     = useState(null)
   const [actForm,     setActForm]     = useState(null)
   const [actSaving,   setActSaving]   = useState(false)
+  const [actError,    setActError]    = useState('')
   const [deleting,    setDeleting]    = useState(false)
   const [hibForm,     setHibForm]     = useState(null)  // null | { motivo }
   const [hibSending,  setHibSending]  = useState(false)
@@ -261,7 +264,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const reteOverdue    = rete.filter(p => p.next_action_date && p.next_action_date <= today).length
 
   const closeModal = () => {
-    setSelectedId(null); setEditForm(null); setActForm(null)
+    setSelectedId(null); setEditForm(null); setActForm(null); setActError('')
     setHibForm(null); setHibResult(null)
   }
 
@@ -320,17 +323,26 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
   const handleSaveAct = async () => {
     if (!actForm || !selectedId) return
     setActSaving(true)
-    if (actForm.id) await onUpdateActivity(actForm.id, actForm)
-    else            await onAddActivity(selectedId, actForm)
-    setActForm(null)
+    setActError('')
+    // La data scelta si salva a mezzogiorno UTC: evita che, a seconda
+    // del fuso dell'utente, la data visualizzata (created_at.slice(0,10))
+    // scivoli al giorno prima o dopo quello selezionato.
+    const payload = { ...actForm, created_at: actForm.date ? `${actForm.date}T12:00:00.000Z` : undefined }
+    const ok = actForm.id
+      ? await onUpdateActivity(actForm.id, payload)
+      : await onAddActivity(selectedId, payload)
     setActSaving(false)
+    if (!ok) { setActError('Salvataggio non riuscito. Riprova.'); return }
+    setActForm(null)
   }
 
   const handleEditAct = (act) => {
+    setActError('')
     setActForm({
       id:           act.id,
       type:         act.type || 'note',
       content:      act.content || '',
+      date:         act.created_at ? act.created_at.slice(0,10) : new Date().toISOString().slice(0,10),
       reward_type:  act.reward_type || '',
       reward_value: act.reward_value != null ? String(act.reward_value) : '',
     })
@@ -724,7 +736,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                     <div style={s.cardTitle}>Attività</div>
                     {!actForm && (
-                      <button style={{ ...btnGoldStyle, padding:'4px 14px', fontSize:9 }} onClick={() => setActForm(EMPTY_ACTIVITY())}>
+                      <button style={{ ...btnGoldStyle, padding:'4px 14px', fontSize:9 }} onClick={() => { setActError(''); setActForm(EMPTY_ACTIVITY()) }}>
                         + Aggiungi
                       </button>
                     )}
@@ -735,12 +747,18 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                       {actForm.id && (
                         <div style={{ fontSize:9, color:GOLD, letterSpacing:2, marginBottom:10 }}>MODIFICA ATTIVITÀ</div>
                       )}
-                      <div style={{ marginBottom:10 }}>
-                        <label style={s.label}>Tipo</label>
-                        <select style={{ ...inp, cursor:'pointer' }} value={actForm.type} onChange={e => setActForm(f => ({ ...f, type:e.target.value }))}>
-                          {ACT_TYPES.filter(t => NEW_ACT_TYPES.includes(t) || actForm.type === t)
-                            .map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
-                        </select>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                        <div>
+                          <label style={s.label}>Tipo</label>
+                          <select style={{ ...inp, cursor:'pointer' }} value={actForm.type} onChange={e => setActForm(f => ({ ...f, type:e.target.value }))}>
+                            {ACT_TYPES.filter(t => NEW_ACT_TYPES.includes(t) || actForm.type === t)
+                              .map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={s.label}>Data</label>
+                          <DatePicker value={actForm.date} onChange={v => setActForm(f => ({ ...f, date:v }))}/>
+                        </div>
                       </div>
                       <div style={{ marginBottom:10 }}>
                         <label style={s.label}>Contenuto</label>
@@ -763,11 +781,14 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                           )}
                         </div>
                       )}
+                      {actError && (
+                        <div style={{ fontSize:11, color:'#ef4444', marginBottom:10 }}>{actError}</div>
+                      )}
                       <div style={{ display:'flex', gap:8 }}>
                         <button style={{ ...btnGoldStyle, padding:'6px 18px', fontSize:9 }} onClick={handleSaveAct} disabled={actSaving}>
                           {actSaving ? 'Salvataggio…' : 'Salva'}
                         </button>
-                        <button style={{ ...btnStyle(false), padding:'6px 14px', fontSize:9 }} onClick={() => setActForm(null)}>Annulla</button>
+                        <button style={{ ...btnStyle(false), padding:'6px 14px', fontSize:9 }} onClick={() => { setActError(''); setActForm(null) }}>Annulla</button>
                       </div>
                     </div>
                   )}

@@ -22,21 +22,23 @@ const CT_CFG = {
 const CT_LABELS = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
 
 const CHANNELS   = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
-const ACT_TYPES  = ['email_sent','reply_received','sample_shipped','call','meeting','note']
+const ACT_TYPES  = ['email_sent','reply_received','sample_shipped','call','meeting','message_sent','message_received','note']
 const ACT_LABELS = {
-  email_sent:     'Email inviata',
-  reply_received: 'Risposta ricevuta',
-  sample_shipped: 'Sample spedito',
-  call:           'Chiamata',
-  meeting:        'Meeting',
-  note:           'Nota',
+  email_sent:       'Email inviata',
+  reply_received:   'Risposta ricevuta',
+  sample_shipped:   'Sample spedito',
+  call:             'Chiamata',
+  meeting:          'Meeting',
+  message_sent:     'Messaggio inviato',
+  message_received: 'Messaggio ricevuto',
+  note:             'Nota',
 }
 const REWARD_TYPES = ['prodotto','provvigione']
 
 const fmt = n => '€ ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
 // ─── UI helpers ───────────────────────────────────────────────────
-const labelStyle = { fontSize: 9, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
+const labelStyle = { fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
 
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
@@ -48,7 +50,7 @@ const inputStyle = {
 
 function Chip({ cfg, children }) {
   return (
-    <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:2, fontSize:8, letterSpacing:2, textTransform:'uppercase', background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}` }}>
+    <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:2, fontSize: 11, letterSpacing:2, textTransform:'uppercase', background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}` }}>
       {children}
     </span>
   )
@@ -58,8 +60,8 @@ function BtnGold({ children, onClick, disabled, flex }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
       flex: flex || 'none', padding: '13px', borderRadius: 6,
-      background: disabled ? 'rgba(184,150,90,0.3)' : 'linear-gradient(135deg, #b8965a, #9a7a45)',
-      border: 'none', color: CREAM, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+      background: disabled ? 'rgba(184,150,90,0.3)' : GOLD,
+      border: 'none', color: NAVY, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
       cursor: disabled ? 'default' : 'pointer', fontFamily: "'Josefin Sans', sans-serif", fontWeight: 600,
       WebkitTapHighlightColor: 'transparent',
     }}>{children}</button>
@@ -73,7 +75,7 @@ function BtnGhost({ children, onClick, flex, danger, solid }) {
       background: solid ? GOLD : 'transparent',
       border: solid ? 'none' : `1px solid ${danger ? 'rgba(196,98,58,0.35)' : BORDER}`,
       color: solid ? NAVY : (danger ? CLAY : MUTED),
-      fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+      fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
       fontWeight: solid ? 600 : 400,
       cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif",
       WebkitTapHighlightColor: 'transparent',
@@ -99,7 +101,7 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
 
   return (
     <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 16px', marginBottom: 20 }}>
-      <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 18 }}>
+      <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 18 }}>
         {f.id ? 'Modifica' : 'Nuovo'} {isRete ? 'Contatto' : 'Club'}
       </div>
 
@@ -107,7 +109,7 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
         <label style={labelStyle}>Nome{isRete ? '' : ' Club'} *</label>
         <input style={inputStyle} value={f.name} autoCapitalize="words"
           onChange={e => { set('name', e.target.value); setError('') }}/>
-        {error ? <div style={{ fontSize: 10, color: CLAY, marginTop: 5 }}>{error}</div> : null}
+        {error ? <div style={{ fontSize: 12, color: CLAY, marginTop: 5 }}>{error}</div> : null}
       </div>
 
       {isRete && (
@@ -199,24 +201,33 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
 function ActivityForm({ initial, showReward, onSave, onCancel }) {
   const [f, setF] = useState(initial)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const set = (k, v) => setF(x => ({ ...x, [k]: v }))
 
   const handleSave = async () => {
     setSaving(true)
-    await onSave(f)
+    setError('')
+    const ok = await onSave(f)
     setSaving(false)
+    if (!ok) setError('Salvataggio non riuscito. Riprova.')
   }
 
   return (
     <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
-      <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
+      <div style={{ fontSize: 11, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
         {f.id ? 'Modifica Attività' : 'Nuova Attività'}
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={labelStyle}>Tipo</label>
-        <select style={inputStyle} value={f.type} onChange={e => set('type', e.target.value)}>
-          {ACT_TYPES.map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
-        </select>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+        <div>
+          <label style={labelStyle}>Tipo</label>
+          <select style={inputStyle} value={f.type} onChange={e => set('type', e.target.value)}>
+            {ACT_TYPES.map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Data</label>
+          <DatePicker value={f.date} onChange={v => set('date', v)}/>
+        </div>
       </div>
       <div style={{ marginBottom: 12 }}>
         <label style={labelStyle}>Contenuto</label>
@@ -238,6 +249,9 @@ function ActivityForm({ initial, showReward, onSave, onCancel }) {
             </div>
           )}
         </div>
+      )}
+      {error && (
+        <div style={{ fontSize: 12, color: '#ef4444', marginBottom: 10 }}>{error}</div>
       )}
       <div style={{ display: 'flex', gap: 10 }}>
         <BtnGhost flex={1} onClick={onCancel}>Annulla</BtnGhost>
@@ -266,9 +280,14 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
   }
 
   const handleSaveAct = async (f) => {
-    if (f.id) await onUpdateActivity(f.id, f)
-    else      await onAddActivity(p.id, f)
-    setActForm(null)
+    // Mezzogiorno UTC: evita che la data scelta scivoli al giorno
+    // prima/dopo quando viene poi mostrata come created_at.slice(0,10)
+    const payload = { ...f, created_at: f.date ? `${f.date}T12:00:00.000Z` : undefined }
+    const ok = f.id
+      ? await onUpdateActivity(f.id, payload)
+      : await onAddActivity(p.id, payload)
+    if (ok) setActForm(null)
+    return ok
   }
 
   const handleDeleteAct = async (act) => {
@@ -340,7 +359,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       <button onClick={onBack} style={{
         background: 'none', border: 'none', color: GOLD, cursor: 'pointer', padding: '20px 0 10px',
         display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Josefin Sans', sans-serif",
-        fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', WebkitTapHighlightColor: 'transparent',
+        fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', WebkitTapHighlightColor: 'transparent',
       }}>‹ Prospects</button>
 
       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, color: CREAM, lineHeight: 1.2, marginBottom: 8 }}>
@@ -349,13 +368,13 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
         <Chip cfg={CT_CFG[p.contact_type] || CT_CFG.cliente}>{CT_LABELS[p.contact_type] || p.contact_type}</Chip>
         {!isRete && <Chip cfg={STAGE_CFG[p.stage] || STAGE_CFG.contatto}>{p.stage}</Chip>}
-        {p.channel_origin && <span style={{ fontSize: 10, color: MUTED, alignSelf: 'center' }}>{p.channel_origin}</span>}
+        {p.channel_origin && <span style={{ fontSize: 12, color: MUTED, alignSelf: 'center' }}>{p.channel_origin}</span>}
       </div>
 
       {/* Stage advance — solo club */}
       {!isRete && (
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Avanza Stage</div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Avanza Stage</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {STAGES.map(st => {
               const c = STAGE_CFG[st]
@@ -364,7 +383,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
                 <button key={st} onClick={() => handleStageClick(st)} style={{
                   padding: '9px 13px', borderRadius: 5, border: `1px solid ${active ? c.border : BORDER}`,
                   background: active ? c.bg : 'transparent', color: active ? c.color : MUTED,
-                  cursor: 'pointer', fontSize: 9, letterSpacing: 1.5, fontWeight: active ? 700 : 400,
+                  cursor: 'pointer', fontSize: 11, letterSpacing: 1.5, fontWeight: active ? 700 : 400,
                   fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
                 }}>{st}</button>
               )
@@ -376,11 +395,11 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       {/* Club segnalati — solo rete */}
       {isRete && (
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
             Club Segnalati ({referred.length})
           </div>
           {referred.length === 0 ? (
-            <div style={{ fontSize: 11, color: MUTED, fontStyle: 'italic' }}>Nessuna segnalazione ancora</div>
+            <div style={{ fontSize: 12, color: MUTED, fontStyle: 'italic' }}>Nessuna segnalazione ancora</div>
           ) : referred.map(c => (
             <div key={c.id} onClick={() => onSelectProspect(c.id)} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
@@ -397,24 +416,24 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       {/* Contatti */}
       {(p.contact_name || p.contact_phone || p.contact_email || p.city || p.deal_value_est || p.next_action_date) && (
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Contatto</div>
-          {p.contact_name && <div style={{ fontSize: 11, color: MUTED, marginBottom: 8 }}>Referente: {p.contact_name}</div>}
+          <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Contatto</div>
+          {p.contact_name && <div style={{ fontSize: 12, color: MUTED, marginBottom: 8 }}>Referente: {p.contact_name}</div>}
           {p.contact_phone && (
             <a href={`tel:${p.contact_phone}`} style={{ display: 'block', fontSize: 16, color: GOLD, textDecoration: 'none', marginBottom: 8, fontFamily: "'Cormorant Garamond', serif" }}>
               {p.contact_phone}
             </a>
           )}
           {p.contact_email && (
-            <a href={`mailto:${p.contact_email}`} style={{ display: 'block', fontSize: 12, color: GOLD, textDecoration: 'none', marginBottom: 8 }}>
+            <a href={`mailto:${p.contact_email}`} style={{ display: 'block', fontSize: 13, color: GOLD, textDecoration: 'none', marginBottom: 8 }}>
               {p.contact_email}
             </a>
           )}
-          {p.city && <div style={{ fontSize: 11, color: MUTED, marginBottom: 8 }}>{[p.city, p.province, p.country].filter(Boolean).join(', ')}</div>}
+          {p.city && <div style={{ fontSize: 12, color: MUTED, marginBottom: 8 }}>{[p.city, p.province, p.country].filter(Boolean).join(', ')}</div>}
           {p.deal_value_est && (
-            <div style={{ fontSize: 11, color: MUTED }}>Valore est.: <span style={{ color: GOLD }}>{fmt(parseFloat(p.deal_value_est))}</span></div>
+            <div style={{ fontSize: 12, color: MUTED }}>Valore est.: <span style={{ color: GOLD }}>{fmt(parseFloat(p.deal_value_est))}</span></div>
           )}
           {p.next_action_date && (
-            <div style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>
               Prossima azione: <span style={{ color: p.next_action_date <= today ? CLAY : CREAM }}>{p.next_action_date}</span>
             </div>
           )}
@@ -423,8 +442,8 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
 
       {p.notes && (
         <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 10 }}>Note</div>
-          <div style={{ fontSize: 12, color: CREAM, lineHeight: 1.7 }}>{p.notes}</div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 10 }}>Note</div>
+          <div style={{ fontSize: 13, color: CREAM, lineHeight: 1.7 }}>{p.notes}</div>
         </div>
       )}
 
@@ -432,10 +451,10 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
           ibernato così non lo ricontatta in automatico */}
       {!isRete && (
         <div style={{ background: 'rgba(184,150,90,0.08)', border: `1px solid ${GOLD}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Prospect Finder</div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Prospect Finder</div>
           {p.hibernated_at ? (
             <>
-              <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
                 Ibernato il {p.hibernated_at.slice(0,10).split('-').reverse().join('/')} — lo segue Prospect Finder,
                 è fuori dalla pipeline attiva.
               </div>
@@ -443,7 +462,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
             </>
           ) : !hibForm ? (
             <>
-              <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6, marginBottom: 12 }}>
                 Se questo club si ferma per ora, invialo come ibernato a Prospect Finder — non lo ricontatterà in automatico mentre lo segui tu.
               </div>
               <BtnGhost solid onClick={() => setHibForm({ motivo: 'pausa' })}>Invia come ibernato</BtnGhost>
@@ -461,7 +480,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
             </div>
           )}
           {hibResult && (
-            <div style={{ marginTop: 12, fontSize: 11, color: hibResult.ok ? GREEN : CLAY }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: hibResult.ok ? GREEN : CLAY }}>
               {hibResult.ok ? '✓ ' : '⚠ '}{hibResult.message}
             </div>
           )}
@@ -471,11 +490,11 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       {/* Attività */}
       <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: GOLD, textTransform: 'uppercase' }}>Attività</div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase' }}>Attività</div>
           {!actForm && (
-            <button onClick={() => setActForm({ type:'note', content:'', reward_type:'', reward_value:'' })} style={{
+            <button onClick={() => setActForm({ type:'note', content:'', reward_type:'', reward_value:'', date: new Date().toISOString().slice(0,10) })} style={{
               background: 'rgba(184,150,90,0.12)', border: `1px solid ${GOLD}`, borderRadius: 6,
-              color: GOLD, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', padding: '7px 12px',
+              color: GOLD, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', padding: '7px 12px',
               cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
             }}>+ Aggiungi</button>
           )}
@@ -486,18 +505,18 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
         )}
 
         {activities.length === 0 && !actForm ? (
-          <div style={{ fontSize: 11, color: MUTED, fontStyle: 'italic', textAlign: 'center', padding: '14px 0' }}>
+          <div style={{ fontSize: 12, color: MUTED, fontStyle: 'italic', textAlign: 'center', padding: '14px 0' }}>
             Nessuna attività registrata
           </div>
         ) : activities.map(act => (
           <div key={act.id} style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 6, borderLeft: `3px solid ${STAGE_CFG.contatto.border}`, marginBottom: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 11, color: GOLD, letterSpacing: 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 12, color: GOLD, letterSpacing: 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
                 <ActIcon type={act.type}/>{ACT_LABELS[act.type] || act.type}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 10, color: MUTED }}>{act.created_at?.slice(0,10)}</span>
-                <button onClick={() => setActForm({ id: act.id, type: act.type || 'note', content: act.content || '', reward_type: act.reward_type || '', reward_value: act.reward_value != null ? String(act.reward_value) : '' })}
+                <span style={{ fontSize: 12, color: MUTED }}>{act.created_at?.slice(0,10)}</span>
+                <button onClick={() => setActForm({ id: act.id, type: act.type || 'note', content: act.content || '', date: act.created_at ? act.created_at.slice(0,10) : new Date().toISOString().slice(0,10), reward_type: act.reward_type || '', reward_value: act.reward_value != null ? String(act.reward_value) : '' })}
                   style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: '4px 5px', display: 'inline-flex', WebkitTapHighlightColor: 'transparent' }}>
                   <ActIcon type="note" size={13}/>
                 </button>
@@ -505,9 +524,9 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
                   style={{ background: 'none', border: 'none', color: CLAY, fontSize: 17, cursor: 'pointer', lineHeight: 1, padding: '2px 5px', WebkitTapHighlightColor: 'transparent' }}>×</button>
               </div>
             </div>
-            {act.content && <div style={{ fontSize: 12, color: CREAM, lineHeight: 1.6 }}>{act.content}</div>}
+            {act.content && <div style={{ fontSize: 13, color: CREAM, lineHeight: 1.6 }}>{act.content}</div>}
             {act.reward_type && (
-              <div style={{ marginTop: 6, fontSize: 10, color: GREEN }}>
+              <div style={{ marginTop: 6, fontSize: 12, color: GREEN }}>
                 Riconoscimento: {act.reward_type}{act.reward_value != null ? ` · ${fmt(parseFloat(act.reward_value))}` : ''}
               </div>
             )}
@@ -569,7 +588,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
           <button key={t.k} onClick={() => { setTab(t.k); setShowForm(false) }} style={{
             flex: 1, padding: '10px 6px', borderRadius: 6, border: 'none',
             background: tab === t.k ? 'rgba(184,150,90,0.18)' : 'transparent',
-            color: tab === t.k ? GOLD : MUTED, fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase',
+            color: tab === t.k ? GOLD : MUTED, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
             cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif", fontWeight: tab === t.k ? 700 : 400,
             WebkitTapHighlightColor: 'transparent',
           }}>{t.label}</button>
@@ -579,14 +598,14 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
       {/* Header + nuovo */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <div style={{ fontSize: 9, color: MUTED, letterSpacing: 2, textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: 'uppercase' }}>
             {list.length} {isRete ? 'contatti' : (showHib ? 'ibernati' : 'club in pipeline')}
           </div>
           {!isRete && hibCount > 0 && (
             <button onClick={() => setShowHib(v => !v)} style={{
               background: showHib ? 'rgba(184,150,90,0.18)' : 'transparent',
               border: `1px solid ${showHib ? GOLD : BORDER}`, borderRadius: 5,
-              color: showHib ? GOLD : MUTED, fontSize: 9, letterSpacing: 1.2, textTransform: 'uppercase',
+              color: showHib ? GOLD : MUTED, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
               padding: '5px 10px', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif",
               WebkitTapHighlightColor: 'transparent',
             }}>{showHib ? 'Torna alla pipeline' : `Ibernati (${hibCount})`}</button>
@@ -595,7 +614,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
         {!showForm && (
           <button onClick={() => setShowForm(true)} style={{
             background: 'rgba(184,150,90,0.12)', border: `1px solid ${GOLD}`, borderRadius: 6,
-            color: GOLD, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', padding: '8px 14px',
+            color: GOLD, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', padding: '8px 14px',
             cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
           }}>+ Nuovo</button>
         )}
@@ -641,19 +660,19 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
                   : <Chip cfg={STAGE_CFG[p.stage] || STAGE_CFG.contatto}>{p.stage}</Chip>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 10, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {[p.contact_name, p.city].filter(Boolean).join(' · ') || p.channel_origin || ''}
               </div>
               <div style={{ display: 'flex', gap: 12, flexShrink: 0, alignItems: 'center' }}>
                 {isRete ? (
                   <>
-                    <span style={{ fontSize: 10, color: nRef > 0 ? GREEN : MUTED }}>{nRef} segnalaz.</span>
-                    {(provv + prod) > 0 && <span style={{ fontSize: 10, color: GOLD }}>{fmt(provv + prod)}</span>}
+                    <span style={{ fontSize: 12, color: nRef > 0 ? GREEN : MUTED }}>{nRef} segnalaz.</span>
+                    {(provv + prod) > 0 && <span style={{ fontSize: 12, color: GOLD }}>{fmt(provv + prod)}</span>}
                   </>
                 ) : (
                   <>
-                    {p.next_action_date && <span style={{ fontSize: 10, color: overdue ? CLAY : MUTED }}>{p.next_action_date}</span>}
-                    {p.deal_value_est && <span style={{ fontSize: 12, color: GOLD, fontFamily: "'Cormorant Garamond', serif" }}>{fmt(parseFloat(p.deal_value_est))}</span>}
+                    {p.next_action_date && <span style={{ fontSize: 12, color: overdue ? CLAY : MUTED }}>{p.next_action_date}</span>}
+                    {p.deal_value_est && <span style={{ fontSize: 13, color: GOLD, fontFamily: "'Cormorant Garamond', serif" }}>{fmt(parseFloat(p.deal_value_est))}</span>}
                   </>
                 )}
               </div>

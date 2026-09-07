@@ -1,6 +1,6 @@
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
-import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert, isConfirmed } from '../utils/helpers.js'
+import { orderTotal, orderIVA, paymentSummary, daysUntilDelivery, needsAlert, isConfirmed } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -25,21 +25,44 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     .sort((a,b) => parseDate(b.date) - parseDate(a.date))
     .slice(0, 5)
   const totalRev  = confirmed.reduce((a, o) => a + orderTotal(o), 0)
-  const totalPending = confirmed.reduce((s,o)=>s+paymentSummary(o).pending,0)
+  // "Da incassare" deve coprire tutto ciò che manca da riscuotere: sia le
+  // rate già pianificate (pending) sia il saldo non ancora programmato
+  // (residual) — un ordine senza pagamenti pianificati non va escluso solo
+  // perché non ha rate in calendario.
+  const totalPending  = confirmed.reduce((s,o)=>s+paymentSummary(o).pending,0)
+  const totalResidual = confirmed.reduce((s,o)=>s+paymentSummary(o).residual,0)
+  const totalToCollect = totalPending + totalResidual
 
   // ── Yearly comparison ─────────────────────────────────────────
+  // Tre numeri diversi, non intercambiabili per decidere: valore ordini
+  // (il totale confermato, IVA e spedizione comprese quando presenti),
+  // ricavi al netto IVA (imponibile + spedizione, esclusa l'IVA che non
+  // è mai un ricavo aziendale) e incassato (i pagamenti segnati come
+  // ricevuti, per data del pagamento — non della data dell'ordine, così
+  // una rata saldata l'anno dopo conta nell'anno in cui è arrivata).
   const revenueByYear = confirmed.reduce((acc, o) => {
     const match = o.date?.match(/(\d{4})/)
     if (!match) return acc
     const y = match[1]
-    acc[y] = (acc[y] || 0) + orderTotal(o)
+    if (!acc[y]) acc[y] = { value: 0, net: 0 }
+    acc[y].value += orderTotal(o)
+    acc[y].net   += orderTotal(o) - orderIVA(o)
+    return acc
+  }, {})
+  const collectedByYear = confirmed.reduce((acc, o) => {
+    (o.payments || []).filter(p => p.paid).forEach(p => {
+      const match = p.date?.match(/(\d{4})/)
+      if (!match) return
+      const y = match[1]
+      acc[y] = (acc[y] || 0) + (parseFloat(p.amount) || 0)
+    })
     return acc
   }, {})
   const yearEntries = Object.entries(revenueByYear).sort(([a],[b])=>a-b)
-  const maxRev  = Math.max(...yearEntries.map(([,v])=>v), 1)
+  const maxRev  = Math.max(...yearEntries.map(([,v])=>v.value), 1)
   const lastTwo = yearEntries.slice(-2)
-  const growth  = lastTwo.length === 2 && lastTwo[0][1] > 0
-    ? ((lastTwo[1][1] - lastTwo[0][1]) / lastTwo[0][1] * 100).toFixed(0)
+  const growth  = lastTwo.length === 2 && lastTwo[0][1].value > 0
+    ? ((lastTwo[1][1].value - lastTwo[0][1].value) / lastTwo[0][1].value * 100).toFixed(0)
     : null
 
   const top3 = Object.values(
@@ -72,7 +95,9 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
         <StatCard label="Preventivi"    value={quote.length}     sub="In attesa"           onClick={onNavigateToQuotes || undefined} />
         <StatCard label="Confermati"    value={confirmed.length} sub={`${totalRev.toLocaleString('it-IT',{maximumFractionDigits:0})} €`} accent onClick={navigateToOrders ? () => navigateToOrders('Confermato')    : undefined} />
         <StatCard label="In Produzione" value={inProd.length}    sub="Ordini attivi"       onClick={navigateToOrders ? () => navigateToOrders('In Produzione')  : undefined} />
-        <StatCard label="Da Incassare"  value={`€ ${totalPending.toLocaleString('it-IT',{maximumFractionDigits:0})}`} sub="Pagamenti in sospeso" onClick={navigateToOrders ? () => navigateToOrders('Da Incassare') : undefined} />
+        <StatCard label="Da Incassare"  value={`€ ${totalToCollect.toLocaleString('it-IT',{maximumFractionDigits:0})}`}
+          sub={`${totalPending.toLocaleString('it-IT',{maximumFractionDigits:0})} € attesi · ${totalResidual.toLocaleString('it-IT',{maximumFractionDigits:0})} € da pianificare`}
+          onClick={navigateToOrders ? () => navigateToOrders('Da Incassare') : undefined} />
       </div>
 
       {/* ── Yearly comparison ────────────────────────────────── */}
@@ -87,19 +112,26 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
             )}
           </div>
           <div style={{display:'flex',gap:20,alignItems:'flex-end'}}>
-            {yearEntries.map(([year,rev])=>(
+            {yearEntries.map(([year,data])=>(
               <div key={year} style={{flex:1}}>
                 <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
                   <span style={{fontSize:11,color:MUTED,letterSpacing:2}}>{year}</span>
                   <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GOLD}}>
-                    € {rev.toLocaleString('it-IT',{maximumFractionDigits:0})}
+                    € {data.value.toLocaleString('it-IT',{maximumFractionDigits:0})}
                   </span>
                 </div>
                 <div style={{height:8,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${(rev/maxRev)*100}%`,background:`linear-gradient(90deg,${GOLD},${CLAY})`,borderRadius:4,transition:'width 0.6s'}}/>
+                  <div style={{height:'100%',width:`${(data.value/maxRev)*100}%`,background:`linear-gradient(90deg,${GOLD},${CLAY})`,borderRadius:4,transition:'width 0.6s'}}/>
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontSize:10,color:MUTED}}>
+                  <span>Netto IVA € {data.net.toLocaleString('it-IT',{maximumFractionDigits:0})}</span>
+                  <span>Incassato € {(collectedByYear[year]||0).toLocaleString('it-IT',{maximumFractionDigits:0})}</span>
                 </div>
               </div>
             ))}
+          </div>
+          <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${BORDER}`,fontSize:10,color:MUTED,lineHeight:1.6}}>
+            Barra = valore ordini confermati (IVA e spedizione comprese) · Netto IVA = imponibile + spedizione, esclusa l'IVA · Incassato = pagamenti segnati come ricevuti, contati nell'anno in cui sono stati incassati
           </div>
         </div>
       )}

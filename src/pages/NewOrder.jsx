@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
-         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount } from '../utils/helpers.js'
+         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -13,6 +13,8 @@ import BollaModal                from '../components/BollaModal.jsx'
 import SpAutocomplete            from '../components/SpAutocomplete.jsx'
 import DiscountFields            from '../components/DiscountFields.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
+import { DraftBanner, SaveStatusBadge } from '../components/DraftStatus.jsx'
+import { useDraftRecovery }      from '../hooks/useDraftRecovery.js'
 
 const STEPS = ['Club & Note', 'Pricing & Articoli', 'Taglie', 'Pagamenti', 'Riepilogo']
 
@@ -21,7 +23,7 @@ const emptyArticle = () => ({
   delivered: false, omaggio: 0, discountType:'percentuale', discountValue:'',
   sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])), uni:0 }
 })
-const emptyKit = () => ({ name:'', price:'', quantity:'', discountType:'percentuale', discountValue:'', articles:[emptyArticle()] })
+const emptyKit = () => ({ name:'', price:'', quantity:'', omaggio:'', discountType:'percentuale', discountValue:'', articles:[emptyArticle()] })
 
 function ClientSearch({ clients, onSelect, inputStyle }) {
   const [query, setQuery] = useState('')
@@ -59,40 +61,90 @@ function ClientSearch({ clients, onSelect, inputStyle }) {
   )
 }
 
-export default function NewOrder({ editOrder, setView, onSaved, prefillClient, clients = [], onUpsertClient }) {
-  const [step,setStep]             = useState(prefillClient ? 2 : 1)
-  const [club,setClub]             = useState(prefillClient?.name || editOrder?.client || '')
-  const [clientEmail,setEmail]     = useState(prefillClient?.email || editOrder?.clientEmail || '')
-  const [clientPhone,setPhone]     = useState(prefillClient?.phone || editOrder?.clientPhone || '')
-  const [clientAddress,setAddress] = useState(prefillClient?.address || editOrder?.clientAddress || '')
-  const [clientCity,setCity]       = useState(prefillClient?.city || editOrder?.clientCity || '')
-  const [clientCountry,setCountry] = useState(prefillClient?.country || editOrder?.clientCountry || 'Italia')
-  const [clientContact,setContact] = useState(prefillClient?.contact || editOrder?.clientContact || '')
+export default function NewOrder({ editOrder, setView, onSaved, prefillClient, reorderFrom, clients = [], onUpsertClient }) {
+  // Un riordino non è una modifica: è un ordine nuovo che riparte dai dati
+  // di uno passato (articoli, colori, prezzi da riconfermare), ma con
+  // quantità/taglie/date/pagamenti azzerati (già così in buildReorderSeed).
+  // `src` serve solo per inizializzare lo stato una volta: editOrder ed
+  // editOrder?.id restano l'unica fonte usata per decidere update vs
+  // create al salvataggio, quindi un riordino crea sempre un ordine nuovo.
+  const src = editOrder || reorderFrom
+  const [step,setStep]             = useState((prefillClient || reorderFrom) ? 2 : 1)
+  const [club,setClub]             = useState(prefillClient?.name || src?.client || '')
+  const [clientEmail,setEmail]     = useState(prefillClient?.email || src?.clientEmail || '')
+  const [clientPhone,setPhone]     = useState(prefillClient?.phone || src?.clientPhone || '')
+  const [clientAddress,setAddress] = useState(prefillClient?.address || src?.clientAddress || '')
+  const [clientCity,setCity]       = useState(prefillClient?.city || src?.clientCity || '')
+  const [clientCountry,setCountry] = useState(prefillClient?.country || src?.clientCountry || 'Italia')
+  const [clientContact,setContact] = useState(prefillClient?.contact || src?.clientContact || '')
   const [orderDate,setOrderDate]   = useState(editOrder ? fromItalianDate(editOrder.date) : new Date().toISOString().split('T')[0])
   const [deliveryDate,setDelivery]       = useState(editOrder ? fromItalianDate(editOrder.deliveryDate)||'' : '')
   const [actualDeliveryDate,setActualDelivery] = useState(editOrder ? fromItalianDate(editOrder.actualDeliveryDate)||'' : '')
-  const [alertDays,setAlertDays]   = useState(editOrder?.alertDays ?? 7)
+  const [alertDays,setAlertDays]   = useState(src?.alertDays ?? 7)
   const [status,setStatus]         = useState(editOrder?.status || 'PREVENTIVO')
   const [cancelReason,setCancelReason] = useState(editOrder?.cancelReason || '')
   const [cancelDate,setCancelDate] = useState(editOrder?.cancelDate || null)
-  const [clientNotes,setCN]        = useState(editOrder?.notes || '')
-  const [productionNotes,setPN]    = useState(editOrder?.productionNotes || '')
-  const [showTotal,setShowTotal]   = useState(editOrder?.showTotalInClientPDF ?? true)
-  const [pricingMode,setPM]        = useState(editOrder?.pricingMode || 'singolo')
-  const [ivaEnabled,setIvaEnabled] = useState(editOrder?.ivaEnabled || false)
+  const [clientNotes,setCN]        = useState(src?.notes || '')
+  const [productionNotes,setPN]    = useState(src?.productionNotes || '')
+  const [showTotal,setShowTotal]   = useState(src?.showTotalInClientPDF ?? true)
+  const [pricingMode,setPM]        = useState(src?.pricingMode || 'singolo')
+  const [ivaEnabled,setIvaEnabled] = useState(src?.ivaEnabled || false)
   const [ivaRate]                  = useState(22)
   const [shipping,setShipping]     = useState(editOrder?.shipping ?? '')
-  const [discountMode,setDiscountMode]   = useState(editOrder?.discountMode || (editOrder?.discountValue ? 'ordine' : 'nessuno'))
-  const [discountType,setDiscountType]   = useState(editOrder?.discountType || 'percentuale')
-  const [discountValue,setDiscountValue] = useState(editOrder?.discountValue || '')
-  const [orderNote,setOrderNote]         = useState(editOrder?.orderNote || '')
+  const [discountMode,setDiscountMode]   = useState(src?.discountMode || (src?.discountValue ? 'ordine' : 'nessuno'))
+  const [discountType,setDiscountType]   = useState(src?.discountType || 'percentuale')
+  const [discountValue,setDiscountValue] = useState(src?.discountValue || '')
+  const [orderNote,setOrderNote]         = useState(src?.orderNote || '')
   const [invoiceNumber,setInvoiceNumber] = useState(editOrder?.invoiceNumber || '')
-  const [kits,setKits]             = useState(editOrder?.kits || [emptyKit()])
-  const [orderType,setOrderType]   = useState(editOrder?.orderType || 'istituzionale')
+  const [kits,setKits]             = useState(src?.kits || [emptyKit()])
+  const [orderType,setOrderType]   = useState(src?.orderType || 'istituzionale')
   const [payments,setPayments]     = useState(editOrder?.payments || [])
   const [saving,setSaving]         = useState(false)
   const [saveError,setSaveError]   = useState(null)
   const [showBollaModal,setShowBollaModal] = useState(false)
+
+  // ── Bozza recuperabile ───────────────────────────────────────────
+  const draftKey = `duOrderDraft:${editOrder?.id || (reorderFrom ? `reorder-${reorderFrom.sourceId}` : 'new')}`
+  const draftSnapshot = {
+    club, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    orderDate, deliveryDate, actualDeliveryDate, alertDays, status, cancelReason, cancelDate,
+    clientNotes, productionNotes, showTotal, pricingMode, ivaEnabled, shipping,
+    discountMode, discountType, discountValue, orderNote, invoiceNumber, kits, orderType, payments, step,
+  }
+  const restoreDraft = (data) => {
+    if (!data) return
+    setClub(data.club ?? '')
+    setEmail(data.clientEmail ?? '')
+    setPhone(data.clientPhone ?? '')
+    setAddress(data.clientAddress ?? '')
+    setCity(data.clientCity ?? '')
+    setCountry(data.clientCountry ?? 'Italia')
+    setContact(data.clientContact ?? '')
+    setOrderDate(data.orderDate ?? new Date().toISOString().split('T')[0])
+    setDelivery(data.deliveryDate ?? '')
+    setActualDelivery(data.actualDeliveryDate ?? '')
+    setAlertDays(data.alertDays ?? 7)
+    setStatus(data.status ?? 'PREVENTIVO')
+    setCancelReason(data.cancelReason ?? '')
+    setCancelDate(data.cancelDate ?? null)
+    setCN(data.clientNotes ?? '')
+    setPN(data.productionNotes ?? '')
+    setShowTotal(data.showTotal ?? true)
+    setPM(data.pricingMode ?? 'singolo')
+    setIvaEnabled(data.ivaEnabled ?? false)
+    setShipping(data.shipping ?? '')
+    setDiscountMode(data.discountMode ?? 'nessuno')
+    setDiscountType(data.discountType ?? 'percentuale')
+    setDiscountValue(data.discountValue ?? '')
+    setOrderNote(data.orderNote ?? '')
+    setInvoiceNumber(data.invoiceNumber ?? '')
+    setKits(data.kits?.length ? data.kits : [emptyKit()])
+    setOrderType(data.orderType ?? 'istituzionale')
+    setPayments(data.payments ?? [])
+    setStep(data.step ?? 1)
+  }
+  const { pendingDraft, acceptDraft, discardDraft, isDirty, markSaved, confirmDiscardIfDirty } =
+    useDraftRecovery(draftKey, draftSnapshot, restoreDraft)
 
   const allArticles = kits.flatMap(k=>k.articles)
   const totalPieces = allArticles.reduce((s,a)=>s+artPieceCount(a),0)
@@ -214,6 +266,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
       const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces }
       const ok = editOrder ? await updateOrder(order) : await createOrder(order)
       if (ok) {
+        markSaved()
         if (onUpsertClient && club.trim()) {
           await onUpsertClient(club.trim(), {
             email: clientEmail, phone: clientPhone,
@@ -246,33 +299,57 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         {pricingMode==='kit' && kits.map((kit,ki)=>{
           const qty = parseInt(kit.quantity)||0
-          const kitTotal = (parseFloat(kit.price)||0)*qty
+          const kitOmaggio = parseFloat(kit.omaggio)||0
+          const price = parseFloat(kit.price)||0
+          const kitTotal = price*qty
+          const billableQty = kitBillableQty(currentOrder,kit)
           const kitDisc = discountMode==='articolo' ? kitLineDiscount(currentOrder,kit) : 0
           return (
             <div key={ki}>
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
-                <span>{kit.name||`Kit ${ki+1}`} — € {parseFloat(kit.price)||0} × {qty||'?'}</span>
+                <span>{kit.name||`Kit ${ki+1}`} — € {price} × {qty||'?'}</span>
                 <span style={{ color:CREAM }}>€ {kitTotal.toFixed(2)}</span>
               </div>
+              {kitOmaggio > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
+                  <span>omaggio {kitOmaggio} kit</span>
+                  <span style={{ color:'#ef4444' }}>− € {(price*kitOmaggio).toFixed(2)}</span>
+                </div>
+              )}
               {kitDisc > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
                   <span>sconto{kit.discountType!=='importo' ? ` ${parseFloat(kit.discountValue)||0}%` : ''}</span>
                   <span style={{ color:'#ef4444' }}>− € {kitDisc.toFixed(2)}</span>
                 </div>
               )}
+              {kitOmaggio > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:MUTED, paddingLeft:14, opacity:0.7 }}>
+                  <span>fatturabile</span>
+                  <span>{billableQty} kit</span>
+                </div>
+              )}
             </div>
           )
         })}
-        {pricingMode==='singolo' && discountMode==='articolo' && allArticles.map((art,i)=>{
-          const base = artLineBase(art)
-          const disc = artLineDiscount(art)
-          if (base <= 0) return null
+        {pricingMode==='singolo' && (discountMode==='articolo' || allArticles.some(a=>parseFloat(a.omaggio)>0)) && allArticles.map((art,i)=>{
+          const price = parseFloat(art.price)||0
+          const pieces = artPieceCount(art)||parseInt(art.estimatedQty)||0
+          const artOmaggio = parseFloat(art.omaggio)||0
+          const gross = price*pieces
+          const disc = discountMode==='articolo' ? artLineDiscount(art) : 0
+          if (gross <= 0) return null
           return (
             <div key={i}>
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
-                <span>{art.description||`Articolo ${i+1}`} — € {parseFloat(art.price)||0} × {artPieceCount(art)||parseInt(art.estimatedQty)||0} pz</span>
-                <span style={{ color:CREAM }}>€ {base.toFixed(2)}</span>
+                <span>{art.description||`Articolo ${i+1}`} — € {price} × {pieces} pz</span>
+                <span style={{ color:CREAM }}>€ {gross.toFixed(2)}</span>
               </div>
+              {artOmaggio > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
+                  <span>omaggio {artOmaggio} pz</span>
+                  <span style={{ color:'#ef4444' }}>− € {(price*artOmaggio).toFixed(2)}</span>
+                </div>
+              )}
               {disc > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
                   <span>sconto{art.discountType!=='importo' ? ` ${parseFloat(art.discountValue)||0}%` : ''}</span>
@@ -324,14 +401,17 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
     <div style={{maxWidth:960}}>
       <div style={s.topBar}>
         <div>
-          <div style={s.pageTitle}>{editOrder?'Modifica Ordine':'Nuovo Ordine'}{prefillClient?' · '+prefillClient.name:''}</div>
-          <div style={s.pageSub}>{editOrder?.id||'Nuovo'} · {toItalianDate(orderDate)}</div>
+          <div style={s.pageTitle}>{editOrder?'Modifica Ordine':reorderFrom?'Riordino':'Nuovo Ordine'}{prefillClient?' · '+prefillClient.name:''}{reorderFrom?' · '+(club||'—'):''}</div>
+          <div style={s.pageSub}>{reorderFrom?`Da ordine ${reorderFrom.sourceId}`:(editOrder?.id||'Nuovo')} · {toItalianDate(orderDate)}</div>
+          <div style={{marginTop:6}}><SaveStatusBadge isDirty={isDirty}/></div>
         </div>
         <div style={{textAlign:'right'}}>
           <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:4}}>PEZZI TOTALI</div>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,color:GOLD,lineHeight:1}}>{totalPieces}</div>
         </div>
       </div>
+
+      <DraftBanner pendingDraft={pendingDraft} onAccept={acceptDraft} onDiscard={discardDraft}/>
 
       <div style={{display:'flex',marginBottom:36}}>
         {STEPS.map((label,i)=>(
@@ -439,13 +519,20 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
           </label>
         </div>
         <div style={{display:'flex',justifyContent:'flex-end',gap:12,marginTop:8}}>
-          <button style={btnStyle(false)} onClick={()=>setView('orders')}>Annulla</button>
+          <button style={btnStyle(false)} onClick={()=>confirmDiscardIfDirty() && setView('orders')}>Annulla</button>
           <button style={btnStyle(true)} onClick={()=>setStep(2)}>Continua →</button>
         </div>
       </div>}
 
       {/* ── STEP 2 ── */}
       {step===2 && <div>
+        {reorderFrom && (
+          <div style={{...s.card, background:'rgba(184,150,90,0.07)', border:`1px solid rgba(184,150,90,0.25)`}}>
+            <div style={{fontSize:12,color:CREAM}}>
+              Articoli, colori e prezzi ripresi dall'ordine <strong>{reorderFrom.sourceId}</strong> — verifica i prezzi prima di confermare, potrebbero essere cambiati nel frattempo. Quantità e taglie sono vuote: vanno compilate per questo riordino.
+            </div>
+          </div>
+        )}
         <div style={s.card}>
           <div style={s.cardTitle}>Modalità Pricing</div>
           <div style={{display:'flex',gap:10,marginBottom:16}}>
@@ -492,12 +579,16 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, c
 
         {kits.map((kit,ki)=>(
           <div key={ki} style={{...s.card,border:`1px solid rgba(184,150,90,0.25)`}}>
-            {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 140px 140px',gap:16,marginBottom:20,alignItems:'end'}}>
+            {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 140px 140px 140px',gap:16,marginBottom:20,alignItems:'end'}}>
               <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e=>updateKit(ki,'name',e.target.value)} placeholder="Es. Kit Scuola Tennis"/></div>
               <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="85"/></div>
               <div>
                 <label style={s.label}>Quantità (n° persone) *</label>
                 <input type="number" min="1" style={{...inp,borderColor:!kit.quantity?'rgba(184,150,90,0.5)':undefined}} value={kit.quantity} onChange={e=>updateKit(ki,'quantity',e.target.value)} placeholder="Es. 50"/>
+              </div>
+              <div>
+                <label style={s.label}>Kit omaggio</label>
+                <input type="number" min="0" step="0.5" style={{...inp,borderColor:parseFloat(kit.omaggio)>0?'rgba(196,98,58,0.6)':undefined}} value={kit.omaggio} onChange={e=>updateKit(ki,'omaggio',e.target.value)} placeholder="0"/>
               </div>
             </div>}
             {pricingMode==='kit' && discountMode==='articolo' && (

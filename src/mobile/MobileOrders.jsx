@@ -40,7 +40,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
               border: `1px solid ${active ? GOLD : BORDER}`,
               background: active ? 'rgba(184,150,90,0.12)' : 'transparent',
               color: active ? GOLD : MUTED,
-              fontSize: 10,
+              fontSize: 12,
               letterSpacing: 2,
               textTransform: 'uppercase',
               cursor: 'pointer',
@@ -52,7 +52,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
         })}
       </div>
 
-      <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
         {filtered.length} ordini
       </div>
 
@@ -74,19 +74,19 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
               <span style={badgeStyle(o.status)}>{o.status}</span>
             </div>
 
-            <div style={{ fontSize: 12, color: MUTED, marginBottom: 8 }}>{o.id} · {o.date}</div>
+            <div style={{ fontSize: 13, color: MUTED, marginBottom: 8 }}>{o.id} · {o.date}</div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               {o.deliveryDate ? (
-                <span style={{ fontSize: 12, color: days !== null && days <= 3 ? CLAY : MUTED }}>
+                <span style={{ fontSize: 13, color: days !== null && days <= 3 ? CLAY : MUTED }}>
                   Consegna {o.deliveryDate}
                   {days !== null && ` · ${days < 0 ? `-${Math.abs(days)}g` : `+${days}g`}`}
                 </span>
               ) : <span />}
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                {pending > 0 && <span style={{ fontSize: 12, color: GOLD }}>Atteso {fmt(pending)}</span>}
-                {residual > 0 && <span style={{ fontSize: 12, color: CLAY }}>Residuo {fmt(residual)}</span>}
+                {pending > 0 && <span style={{ fontSize: 13, color: GOLD }}>Atteso {fmt(pending)}</span>}
+                {residual > 0 && <span style={{ fontSize: 13, color: CLAY }}>Residuo {fmt(residual)}</span>}
               </div>
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
       })}
 
       {filtered.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 12, color: MUTED }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 13, color: MUTED }}>
           Nessun ordine
         </div>
       )}
