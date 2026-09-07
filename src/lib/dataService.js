@@ -109,6 +109,7 @@ export async function fetchOrders() {
       date: order.date, deliveryDate: order.delivery_date, actualDeliveryDate: order.actual_delivery_date || null, alertDays: order.alert_days,
       status: order.status, pieces: order.pieces, pricingMode: order.pricing_mode,
       lost: order.lost || false, lostReason: order.lost_reason || '', lostDate: order.lost_date || null,
+      standby: order.standby || false, standbyReason: order.standby_reason || '',
       cancelReason: order.cancel_reason || '', cancelDate: order.cancel_date || null,
       convertedFromQuote: order.converted_from_quote || false,
       kitQuantity: order.kit_quantity || null,
@@ -146,6 +147,7 @@ function buildOrderPayload(order) {
     date: order.date, delivery_date: order.deliveryDate || null, actual_delivery_date: order.actualDeliveryDate || null, alert_days: order.alertDays || 7,
     status: order.status, pieces: order.pieces, pricing_mode: order.pricingMode,
     lost: order.lost || false, lost_reason: order.lostReason || null, lost_date: order.lostDate || null,
+    standby: order.standby || false, standby_reason: order.standbyReason || null,
     cancel_reason: order.cancelReason || null, cancel_date: order.cancelDate || null,
     converted_from_quote: order.convertedFromQuote || false,
     kit_quantity: order.kitQuantity || null,
@@ -229,6 +231,27 @@ export async function restoreQuote(orderId) {
     .update({ lost: false, lost_reason: null, lost_date: null })
     .eq('id', orderId)
   if (error) { console.error('restoreQuote:', error); return false }
+  return true
+}
+
+// Mette in pausa un preventivo bloccato da un fattore esterno al cliente
+// (es. vincolo contrattuale in corso): resta come riferimento — stessa
+// data, stesso id — ma esce dalla lista "da seguire" finché non si
+// riattiva a mano.
+export async function markQuoteStandby(orderId, reason) {
+  const { error } = await supabase.from('orders')
+    .update({ standby: true, standby_reason: reason || null })
+    .eq('id', orderId)
+  if (error) { console.error('markQuoteStandby:', error); return false }
+  return true
+}
+
+// Riporta un preventivo in standby tra quelli attivi
+export async function restoreFromStandby(orderId) {
+  const { error } = await supabase.from('orders')
+    .update({ standby: false, standby_reason: null })
+    .eq('id', orderId)
+  if (error) { console.error('restoreFromStandby:', error); return false }
   return true
 }
 
