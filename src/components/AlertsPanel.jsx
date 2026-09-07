@@ -16,7 +16,7 @@ export default function AlertsPanel({ orders, setView, setEditOrder, shipments =
 
   // Preventivi ancora aperti, in attesa di una decisione del cliente — i
   // più vecchi in cima, sono quelli da sollecitare per primi.
-  const quoteAlerts = (orders||[]).filter(o => isQuote(o) && !o.lost)
+  const quoteAlerts = (orders||[]).filter(o => isQuote(o) && !o.lost && !o.standby)
     .sort((a, b) => (parseDate(a.date)?.getTime() ?? 0) - (parseDate(b.date)?.getTime() ?? 0))
 
   const overdueOrders = (orders||[]).filter(o => isConfirmed(o) && hasOverduePayment(o))
