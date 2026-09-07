@@ -322,9 +322,9 @@ export async function upsertProspect(prospect) {
   row.stage = rest.stage || 'contatto'
   row.contact_type = rest.contact_type || 'cliente'
 
-  // Risolve/crea il client_id già alla creazione del prospect (non solo a stage='won'),
-  // così il collegamento con ordini/preventivi resta stabile fin dall'inizio.
-  if (row.contact_type === 'cliente' && !row.client_id) {
+  // Auto-crea il client solo quando il prospect diventa cliente vero (stage='won'):
+  // prima di 'won' resta un prospect, non deve comparire in anagrafica clienti.
+  if (row.stage === 'won' && row.contact_type === 'cliente' && !row.client_id) {
     row.client_id = await resolveClientId(row.name, {
       email: row.contact_email || undefined,
       phone: row.contact_phone || undefined,
