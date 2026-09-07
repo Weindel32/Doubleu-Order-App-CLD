@@ -19,18 +19,15 @@ export function artPieceCount(art) {
 
 // ── Kit pricing: price × kit.quantity (per-kit), fallback to order.kitQuantity for old records
 // ── Single pricing: price × pieces per article
+// In entrambe le modalità la quantità fatturabile esclude l'omaggio — la
+// quantità intera ordinata (per produzione/consegna) resta quella delle
+// taglie inserite per ogni articolo, mai toccata qui.
 export function orderSubtotal(order) {
   if (!order.kits) return 0
   if (order.pricingMode === 'kit') {
-    return order.kits.reduce((sum, kit) => {
-      const qty = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
-      return sum + (parseFloat(kit.price) || 0) * qty
-    }, 0)
+    return order.kits.reduce((sum, kit) => sum + kitLineBase(order, kit), 0)
   }
-  return (order.kits || []).flatMap(k => k.articles || []).reduce((sum, a) => {
-    const pieces = artPieceCount(a) || parseInt(a.estimatedQty) || 0
-    return sum + (parseFloat(a.price) || 0) * pieces
-  }, 0)
+  return getAllArticles(order).reduce((sum, a) => sum + artLineBase(a), 0)
 }
 
 // ── Shipping is a flat cost added to the total (net, not subject to IVA)
@@ -51,14 +48,29 @@ export function discountAmount(base, type, value) {
   return Math.min(amount, base)
 }
 
-export function artLineBase(art) {
+// Pezzi dell'articolo al netto dell'omaggio — solo per il fatturato: la
+// produzione/consegna deve sempre vedere il totale pieno, mai questo.
+export function artBillablePieces(art) {
   const pieces = artPieceCount(art) || parseInt(art.estimatedQty) || 0
-  return (parseFloat(art.price) || 0) * pieces
+  return Math.max(0, pieces - (parseFloat(art.omaggio) || 0))
+}
+
+export function artLineBase(art) {
+  return (parseFloat(art.price) || 0) * artBillablePieces(art)
+}
+
+// Quantità di kit fatturabile: la quantità ordinata (persone/kit) meno i
+// kit dati in omaggio, un numero deciso da chi compila l'ordine — non
+// dedotto dai singoli capi omaggio (un kit può avere pezzi diversi tra loro,
+// es. pantaloncino per un kit uomo e gonnellino per un kit donna, entrambi
+// nello stesso "2 kit omaggio"). Quantità di produzione invariata altrove.
+export function kitBillableQty(order, kit) {
+  const qty = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
+  return Math.max(0, qty - (parseFloat(kit.omaggio) || 0))
 }
 
 export function kitLineBase(order, kit) {
-  const qty = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
-  return (parseFloat(kit.price) || 0) * qty
+  return (parseFloat(kit.price) || 0) * kitBillableQty(order, kit)
 }
 
 export function artLineDiscount(art) {
