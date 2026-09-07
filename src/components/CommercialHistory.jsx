@@ -33,19 +33,24 @@ export default function CommercialHistory({ orders = [], emptyText = 'Nessun ord
         const st = orderStatusInfo(o)
         const note = o.lost ? o.lostReason : o.standby ? o.standbyReason : null
         return (
-          <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${BORDER}` }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: CREAM }}>{o.id}</div>
-              <div style={{ fontSize: 10, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {o.date}{note ? ` · ${note}` : ''}
+          <div key={o.id} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${BORDER}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: CREAM }}>{o.id}</div>
+                <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{o.date}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: CREAM }}>€ {orderTotal(o).toLocaleString('it-IT', { maximumFractionDigits: 0 })}</span>
+                <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 2, fontSize: 9, letterSpacing: 1.5, background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>
+                  {st.label}
+                </span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <span style={{ fontSize: 12, color: CREAM }}>€ {orderTotal(o).toLocaleString('it-IT', { maximumFractionDigits: 0 })}</span>
-              <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 2, fontSize: 9, letterSpacing: 1.5, background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>
-                {st.label}
-              </span>
-            </div>
+            {note && (
+              <div style={{ fontSize: 11, color: MUTED, marginTop: 6, lineHeight: 1.5, overflowWrap: 'break-word' }}>
+                {note}
+              </div>
+            )}
           </div>
         )
       })}
