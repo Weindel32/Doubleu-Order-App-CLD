@@ -224,12 +224,11 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, orders = [], onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample }) {
+export default function Prospects({ prospects, orders = [], onOpenOrder, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample, selectedId, setSelectedId }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
   const [filterStage, setFilterStage] = useState('all')
-  const [selectedId,  setSelectedId]  = useState(null)
   const [editForm,    setEditForm]    = useState(null)
   const [saving,      setSaving]      = useState(false)
   const [newForm,     setNewForm]     = useState(null)
@@ -253,7 +252,7 @@ export default function Prospects({ prospects, orders = [], onUpsert, onAddActiv
   const rete  = prospects.filter(p => p.contact_type !== 'cliente')
 
   const referredBy   = (id) => prospects.filter(x => x.referred_by === id)
-  const samplesOf    = (id) => shipments.filter(sh => sh.prospect_id === id)
+  const samplesOf    = (id) => shipments.filter(sh => sh.prospect_id === id || (selected?.client_id && sh.client_id === selected.client_id))
   const ordersOf     = (p)  => p.client_id ? orders.filter(o => o.clientId === p.client_id) : []
   const rewardsOf    = (p, type) => (p.prospect_activities || []).filter(a => a.reward_type === type).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
   const rewardsTotal = (p)  => rewardsOf(p,'provvigione') + rewardsOf(p,'prodotto')
@@ -384,6 +383,8 @@ export default function Prospects({ prospects, orders = [], onUpsert, onAddActiv
 
   return (
     <div>
+      {!selected && (
+      <>
       {/* Top bar */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
@@ -555,13 +556,17 @@ export default function Prospects({ prospects, orders = [], onUpsert, onAddActiv
           })}
         </div>
       )}
+      </>
+      )}
 
-      {/* ── Detail modal ── */}
+      {/* ── Scheda prospect a pagina intera ── */}
       {selected && !editForm && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:500, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'32px 20px', overflowY:'auto' }}
-          onClick={closeModal}>
-          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, width:'100%', maxWidth:960, overflow:'hidden' }}
-            onClick={e => e.stopPropagation()}>
+        <div>
+          <button onClick={closeModal}
+            style={{ background:'none', border:'none', color:GOLD, fontSize:11, letterSpacing:1.5, cursor:'pointer', padding:0, marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}>
+            ← Torna ai Prospect
+          </button>
+          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, overflow:'hidden' }}>
 
             {/* Header */}
             <div style={{ background:'rgba(255,255,255,0.04)', padding:'22px 32px', borderBottom:`1px solid ${BORDER}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
@@ -669,7 +674,8 @@ export default function Prospects({ prospects, orders = [], onUpsert, onAddActiv
                 {selected.contact_type === 'cliente' && (
                   <div style={{ ...s.card, marginBottom:16 }}>
                     <div style={s.cardTitle}>Storico Commerciale</div>
-                    <CommercialHistory orders={ordersOf(selected)} emptyText="Nessun preventivo o ordine collegato ancora"/>
+                    <CommercialHistory orders={ordersOf(selected)} emptyText="Nessun preventivo o ordine collegato ancora"
+                      onOpen={onOpenOrder ? (o) => { closeModal(); onOpenOrder(o) } : undefined}/>
                   </div>
                 )}
 

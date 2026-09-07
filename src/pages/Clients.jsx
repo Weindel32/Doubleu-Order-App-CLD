@@ -4,17 +4,22 @@ import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
 import CommercialHistory from '../components/CommercialHistory.jsx'
+import ActIcon from '../components/ActIcon.jsx'
 import { shipmentFromClient } from '../components/SampleModal.jsx'
-import { orderTotal, paymentSummary, parseDate, isConfirmed } from '../utils/helpers.js'
-import { sampleInvested, euro } from '../utils/samples.js'
+import { paymentSummary } from '../utils/helpers.js'
+import { euro } from '../utils/samples.js'
+import { enrichClient } from '../lib/clientStats.js'
+
+const ACT_LABELS = {
+  email_sent: 'Email inviata', reply_received: 'Risposta ricevuta', sample_shipped: 'Sample spedito',
+  call: 'Chiamata', meeting: 'Meeting', message_sent: 'Messaggio inviato', message_received: 'Messaggio ricevuto', note: 'Nota',
+}
 
 const TIER_COLORS = {
   ANCHOR: { bg: 'rgba(184,150,90,0.18)', color: GOLD,      border: 'rgba(184,150,90,0.35)' },
   ALLIED: { bg: 'rgba(90,130,184,0.18)', color: '#7aaee8', border: 'rgba(90,130,184,0.35)' },
   SCOUT:  { bg: 'rgba(196,98,58,0.15)',  color: CLAY,      border: 'rgba(196,98,58,0.3)'  },
 }
-const getTier = (total) => total >= 4000 ? 'ANCHOR' : total >= 1000 ? 'ALLIED' : 'SCOUT'
-
 const chipStyle = (active, tc) => ({
   padding:'7px 12px', borderRadius:4, fontSize:9, letterSpacing:1.5, textTransform:'uppercase',
   cursor:'pointer', fontWeight:600, transition:'all 0.15s', whiteSpace:'nowrap',
@@ -62,10 +67,7 @@ function InfoField({ label, value }) {
 
 const inp = { ...s.input }
 
-const normalizeName = (name) => (name || '').trim().replace(/\s+/g, ' ').toLowerCase()
-
-export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpdateClient, onCreateClient, onLinkOrder, shipments = [], onNewSample }) {
-  const [selectedId, setSelectedId]   = useState(null)
+export default function Clients({ orders, clients, prospects = [], setView, setEditOrder, onOpenOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpdateClient, onCreateClient, onLinkOrder, shipments = [], onNewSample, selectedId, setSelectedId }) {
   const [editForm,   setEditForm]     = useState(null)
   const [editSaving, setEditSaving]   = useState(false)
   const [linking,    setLinking]      = useState(false)
@@ -78,25 +80,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
   const [sortKey,    setSortKey]      = useState('total')
   const [sortDir,    setSortDir]      = useState('desc')
 
-  const enriched = clients.map(c => {
-    const linked    = orders.filter(o => o.clientId === c.id)
-    const textMatch = orders.filter(o => !o.clientId && normalizeName(o.client) === normalizeName(c.name))
-    const allOrders = [...linked, ...textMatch]
-    const confirmed = allOrders.filter(isConfirmed)
-    const total     = confirmed.reduce((sum, o) => sum + orderTotal(o), 0)
-    const pieces    = confirmed.reduce((sum, o) => sum + (o.pieces || 0), 0)
-    const totalIst  = confirmed.filter(o => o.orderType !== 'soci').reduce((sum, o) => sum + orderTotal(o), 0)
-    const totalSoci = confirmed.filter(o => o.orderType === 'soci').reduce((sum, o)  => sum + orderTotal(o), 0)
-    const unlinkable = textMatch.filter(o => o.status !== 'PREVENTIVO')
-    const nonConfirmed = allOrders.filter(o => !isConfirmed(o))
-    const lastTs    = confirmed.reduce((max, o) => { const d = parseDate(o.date); return d && d.getTime() > max ? d.getTime() : max }, 0)
-    const lastOrder = confirmed.reduce((best, o) => { const d = parseDate(o.date); return d && d.getTime() === lastTs ? o.date : best }, null)
-    // Campionature: collegate per client_id, con fallback sul nome per
-    // gli invii registrati a un destinatario non ancora in anagrafica
-    const samples   = shipments.filter(sh => sh.client_id === c.id || (!sh.client_id && !sh.prospect_id && normalizeName(sh.recipient_name) === normalizeName(c.name)))
-    const sampleInv = samples.reduce((v, sh) => v + sampleInvested(sh), 0)
-    return { ...c, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, nonConfirmed, lastTs, lastOrder, samples, sampleInv }
-  })
+  const enriched = clients.map(c => enrichClient(c, orders, shipments))
 
   const totalRevenue = enriched.reduce((s, c) => s + c.total, 0)
   const anchorCount  = enriched.filter(c => c.tier === 'ANCHOR').length
@@ -125,7 +109,10 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
 
   const SORT_LABELS = { total:'Fatturato', name:'Nome', last:'Ultimo ordine', orders:'N° ordini' }
 
-  const selected     = selectedId ? enriched.find(c => c.id === selectedId) : null
+  const selected       = selectedId ? enriched.find(c => c.id === selectedId) : null
+  // Il prospect che ha generato questo cliente (se ancora tracciato come
+  // tale) porta con sé lo storico di attività commerciali pre-vendita.
+  const linkedProspect = selected ? prospects.find(p => p.client_id === selected.id) : null
 
   const closeModal = () => { setSelectedId(null); setEditForm(null) }
 
@@ -204,6 +191,8 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
 
   return (
     <div>
+      {!selected && (
+      <>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
           <div style={s.pageTitle}>Clienti</div>
@@ -342,13 +331,17 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
           )}
         </>
       )}
+      </>
+      )}
 
-      {/* ── Client detail modal ───────────────────────────────────── */}
+      {/* ── Scheda cliente a pagina intera ──────────────────────────── */}
       {selected && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:500, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 20px', overflowY:'auto' }}
-          onClick={closeModal}>
-          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, width:'100%', maxWidth:880, overflow:'hidden' }}
-            onClick={e => e.stopPropagation()}>
+        <div>
+          <button onClick={closeModal}
+            style={{ background:'none', border:'none', color:GOLD, fontSize:11, letterSpacing:1.5, cursor:'pointer', padding:0, marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}>
+            ← Torna ai Clienti
+          </button>
+          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, overflow:'hidden' }}>
 
             {/* Header */}
             <div style={{ background:'rgba(255,255,255,0.04)', padding:'24px 32px', borderBottom:`1px solid ${BORDER}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
@@ -565,53 +558,36 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                   emptyText="Nessun campione inviato a questo cliente"/>
               </div>
 
-              {/* Preventivi, standby, persi, annullati — tutto ciò che non è
-                  un ordine confermato, così anche un preventivo perso resta
-                  visibile sulla card invece di sparire silenziosamente. */}
-              {selected.nonConfirmed.length > 0 && (
+              {/* Attività — lo storico pre-vendita registrato quando questo
+                  club era ancora un prospect, se il collegamento esiste. */}
+              {linkedProspect && (linkedProspect.prospect_activities || []).length > 0 && (
                 <div style={{ marginBottom:20 }}>
-                  <div style={s.cardTitle}>Preventivi & Storico Commerciale</div>
-                  <CommercialHistory orders={selected.nonConfirmed}/>
+                  <div style={s.cardTitle}>Attività</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {[...linkedProspect.prospect_activities].sort((a,b) => b.created_at.localeCompare(a.created_at)).map(act => (
+                      <div key={act.id} style={{ padding:'10px 14px', background:'rgba(255,255,255,0.02)', borderRadius:6, borderLeft:'3px solid rgba(138,154,181,0.3)' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10 }}>
+                          <span style={{ fontSize:11, color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7 }}>
+                            <ActIcon type={act.type}/>{ACT_LABELS[act.type] || act.type}
+                          </span>
+                          <span style={{ fontSize:10, color:MUTED }}>{act.created_at?.slice(0,10)}</span>
+                        </div>
+                        {act.content && <div style={{ fontSize:12, color:CREAM, marginTop:6, lineHeight:1.6 }}>{act.content}</div>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* Storico ordini */}
-              {selected.confirmed.length > 0 && (
-                <>
-                  <div style={s.cardTitle}>Storico Ordini</div>
-                  <table style={s.table}>
-                    <thead>
-                      <tr>{['Codice','Data','Tipo','Stato','Pezzi','Totale',''].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-                    </thead>
-                    <tbody>
-                      {[...selected.confirmed].sort((a, b) => (b.date||'').localeCompare(a.date||'')).map(o => {
-                        const { total:tot } = paymentSummary(o)
-                        return (
-                          <tr key={o.id}>
-                            <td style={{ ...s.td, fontSize:11, color:MUTED, letterSpacing:1 }}>{o.id}</td>
-                            <td style={{ ...s.td, fontSize:12 }}>{o.date}</td>
-                            <td style={s.td}>
-                              <span style={{ fontSize:9, letterSpacing:1, color: o.orderType === 'soci' ? '#7aaee8' : MUTED }}>
-                                {o.orderType === 'soci' ? 'Soci/Shop' : 'Istituzionale'}
-                              </span>
-                            </td>
-                            <td style={s.td}><span style={badgeStyle(o.status)}>{o.status}</span></td>
-                            <td style={{ ...s.td, textAlign:'center' }}>{o.pieces}</td>
-                            <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:GOLD }}>
-                              {tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €
-                            </td>
-                            <td style={s.td}>
-                              <button style={{ ...btnGoldStyle, padding:'4px 10px', fontSize:8 }}
-                                onClick={() => { setEditOrder(o); setView('new'); closeModal() }}>
-                                Apri
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </>
+              {/* Storico Commerciale — tutti gli ordini/preventivi collegati,
+                  qualunque sia lo stato (attivo, perso, in standby, confermato),
+                  in un'unica vista invece di due tabelle separate. */}
+              {selected.allOrders.length > 0 && (
+                <div style={{ marginBottom:20 }}>
+                  <div style={s.cardTitle}>Storico Commerciale</div>
+                  <CommercialHistory orders={selected.allOrders}
+                    onOpen={onOpenOrder ? (o) => { closeModal(); onOpenOrder(o) } : (o) => { setEditOrder(o); setView('new'); closeModal() }}/>
+                </div>
               )}
 
             </div>

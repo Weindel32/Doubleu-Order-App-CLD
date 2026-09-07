@@ -9,6 +9,7 @@ import Clients    from './pages/Clients.jsx'
 import Prospects  from './pages/Prospects.jsx'
 import Samples    from './pages/Samples.jsx'
 import NavIcon    from './components/NavIcon.jsx'
+import GlobalSearch from './components/GlobalSearch.jsx'
 import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
@@ -92,6 +93,8 @@ export default function App() {
   const [prefillClient, setPrefill]   = useState(null)
   const [reorderFrom, setReorderFrom] = useState(null)
   const [quoteProspect, setQuoteProspect] = useState(null)
+  const [selectedClientId,   setSelectedClientId]   = useState(null)
+  const [selectedProspectId, setSelectedProspectId] = useState(null)
   const [orders, setOrders]           = useState([])
   const [clients, setClients]         = useState([])
   const [prospects, setProspects]     = useState([])
@@ -290,6 +293,13 @@ export default function App() {
   const goToOrder = (order) => { setEditOrder(order); setPrefill(null); setReorderFrom(null); navigate('new') }
   const goToQuote = (quote) => { setEditOrder(quote); setPrefill(null); setReorderFrom(null); navigate('newQuote') }
   const navigateToOrders = (filter) => { setOrdersFilter(filter); setView('orders'); window.scrollTo(0, 0) }
+  const openOrderOrQuote = (order) => order.status === 'PREVENTIVO' ? goToQuote(order) : goToOrder(order)
+
+  // Ricerca globale: apre direttamente la scheda del cliente/prospect
+  // (con lo storico commerciale unificato) invece di dover cercare a mano
+  // in quale tab si trova il nome cercato.
+  const openClientFromSearch = (id) => { setSelectedClientId(id); setSelectedProspectId(null); navigate('clients') }
+  const openProspectFromSearch = (id) => { setSelectedProspectId(id); setSelectedClientId(null); navigate('prospects') }
 
   const handleNewOrderFromClient = (clientData) => {
     setEditOrder(null)
@@ -427,11 +437,15 @@ export default function App() {
     <div style={s.app}>
       <Sidebar view={view} setView={navigate} orders={orders} shipments={shipments} onLogout={handleLogout}/>
       <main style={s.main}>
+        {!['new', 'newQuote'].includes(view) && (
+          <GlobalSearch clients={clients} prospects={prospects} orders={orders}
+            onOpenClient={openClientFromSearch} onOpenProspect={openProspectFromSearch} onOpenOrder={openOrderOrQuote}/>
+        )}
         {view === 'dashboard'  && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders} onNavigateToQuotes={() => navigate('quotes')} shipments={shipments} clients={clients} prospects={prospects}/>}
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote} onMarkStandby={handleMarkQuoteStandby} onRestoreFromStandby={handleRestoreFromStandby}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onReorder={handleReorder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
-        {view === 'clients'    && <Clients   orders={orders} clients={clients} setView={navigate} setEditOrder={goToOrder} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder} shipments={shipments} onNewSample={handleNewSample}/>}
-        {view === 'prospects'  && <Prospects prospects={prospects} orders={orders} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample}/>}
+        {view === 'clients'    && <Clients   orders={orders} clients={clients} prospects={prospects} setView={navigate} setEditOrder={goToOrder} onOpenOrder={openOrderOrQuote} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedClientId} setSelectedId={setSelectedClientId}/>}
+        {view === 'prospects'  && <Prospects prospects={prospects} orders={orders} onOpenOrder={openOrderOrQuote} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedProspectId} setSelectedId={setSelectedProspectId}/>}
         {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
         {view === 'analytics'  && <Analytics orders={orders} shipments={shipments}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onResolveClientId={handleResolveClientId}/>}
