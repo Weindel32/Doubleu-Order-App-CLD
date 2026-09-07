@@ -146,3 +146,37 @@ export function needsAlert(order) {
   if (days === null) return false
   return days <= (order.alertDays || 7)
 }
+
+// ── Prossime azioni ──────────────────────────────────────────────
+// Un ordine già confermato (non più un preventivo) il cui articolo non ha
+// ancora nessuna taglia inserita, pur avendo prezzo/quantità già decisi —
+// è un ordine bloccato: prezzo e prodotto sono chiari, manca solo la
+// distribuzione taglie da parte del cliente.
+export function missingSizeArticles(order) {
+  if (order.status !== 'CONFERMATO' && order.status !== 'IN PRODUZIONE') return []
+  return (order.kits || []).flatMap(kit => (kit.articles || []).filter(art => {
+    if (artPieceCount(art) > 0) return false
+    if (order.pricingMode === 'kit') return (parseInt(kit.quantity) || 0) > 0
+    return (parseFloat(art.price) || 0) > 0 || (parseFloat(art.estimatedQty) || 0) > 0
+  }))
+}
+
+export function hasMissingSizes(order) {
+  return missingSizeArticles(order).length > 0
+}
+
+// Pagamenti pianificati con data già passata e non ancora segnati come
+// incassati — vanno verificati ora, a differenza di un pagamento
+// pianificato per il mese prossimo che non richiede ancora nulla.
+export function overduePayments(order) {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return (order.payments || []).filter(p => {
+    if (p.paid || !(parseFloat(p.amount) > 0)) return false
+    const due = parseDate(p.date)
+    return due !== null && due <= today
+  })
+}
+
+export function hasOverduePayment(order) {
+  return overduePayments(order).length > 0
+}
