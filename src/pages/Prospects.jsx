@@ -383,6 +383,8 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
 
   return (
     <div>
+      {!selected && (
+      <>
       {/* Top bar */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
@@ -554,13 +556,17 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
           })}
         </div>
       )}
+      </>
+      )}
 
-      {/* ── Detail modal ── */}
+      {/* ── Scheda prospect a pagina intera ── */}
       {selected && !editForm && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:500, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'32px 20px', overflowY:'auto' }}
-          onClick={closeModal}>
-          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, width:'100%', maxWidth:960, overflow:'hidden' }}
-            onClick={e => e.stopPropagation()}>
+        <div>
+          <button onClick={closeModal}
+            style={{ background:'none', border:'none', color:GOLD, fontSize:11, letterSpacing:1.5, cursor:'pointer', padding:0, marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}>
+            ← Torna ai Prospect
+          </button>
+          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, overflow:'hidden' }}>
 
             {/* Header */}
             <div style={{ background:'rgba(255,255,255,0.04)', padding:'22px 32px', borderBottom:`1px solid ${BORDER}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>

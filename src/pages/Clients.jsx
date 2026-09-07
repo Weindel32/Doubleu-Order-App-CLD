@@ -191,6 +191,8 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
   return (
     <div>
+      {!selected && (
+      <>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
           <div style={s.pageTitle}>Clienti</div>
@@ -329,13 +331,17 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
           )}
         </>
       )}
+      </>
+      )}
 
-      {/* ── Client detail modal ───────────────────────────────────── */}
+      {/* ── Scheda cliente a pagina intera ──────────────────────────── */}
       {selected && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', zIndex:500, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 20px', overflowY:'auto' }}
-          onClick={closeModal}>
-          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, width:'100%', maxWidth:880, overflow:'hidden' }}
-            onClick={e => e.stopPropagation()}>
+        <div>
+          <button onClick={closeModal}
+            style={{ background:'none', border:'none', color:GOLD, fontSize:11, letterSpacing:1.5, cursor:'pointer', padding:0, marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}>
+            ← Torna ai Clienti
+          </button>
+          <div style={{ background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:14, overflow:'hidden' }}>
 
             {/* Header */}
             <div style={{ background:'rgba(255,255,255,0.04)', padding:'24px 32px', borderBottom:`1px solid ${BORDER}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
