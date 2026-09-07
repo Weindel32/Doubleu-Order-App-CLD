@@ -30,6 +30,7 @@ export function buildReorderSeed(order) {
     kits: (order.kits || []).map(kit => ({
       ...kit,
       quantity: null,
+      omaggio: 0,
       articles: (kit.articles || []).map(art => ({
         ...art,
         delivered: false,

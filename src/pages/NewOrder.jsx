@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
-         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount } from '../utils/helpers.js'
+         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -23,7 +23,7 @@ const emptyArticle = () => ({
   delivered: false, omaggio: 0, discountType:'percentuale', discountValue:'',
   sizes:{ adult:Object.fromEntries(ADULT_SIZES.map(sz=>[sz,0])), kids:Object.fromEntries(KIDS_SIZES.map(sz=>[sz,0])), uni:0 }
 })
-const emptyKit = () => ({ name:'', price:'', quantity:'', discountType:'percentuale', discountValue:'', articles:[emptyArticle()] })
+const emptyKit = () => ({ name:'', price:'', quantity:'', omaggio:'', discountType:'percentuale', discountValue:'', articles:[emptyArticle()] })
 
 function ClientSearch({ clients, onSelect, inputStyle }) {
   const [query, setQuery] = useState('')
@@ -299,33 +299,57 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         {pricingMode==='kit' && kits.map((kit,ki)=>{
           const qty = parseInt(kit.quantity)||0
-          const kitTotal = (parseFloat(kit.price)||0)*qty
+          const kitOmaggio = parseFloat(kit.omaggio)||0
+          const price = parseFloat(kit.price)||0
+          const kitTotal = price*qty
+          const billableQty = kitBillableQty(currentOrder,kit)
           const kitDisc = discountMode==='articolo' ? kitLineDiscount(currentOrder,kit) : 0
           return (
             <div key={ki}>
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
-                <span>{kit.name||`Kit ${ki+1}`} — € {parseFloat(kit.price)||0} × {qty||'?'}</span>
+                <span>{kit.name||`Kit ${ki+1}`} — € {price} × {qty||'?'}</span>
                 <span style={{ color:CREAM }}>€ {kitTotal.toFixed(2)}</span>
               </div>
+              {kitOmaggio > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
+                  <span>omaggio {kitOmaggio} kit</span>
+                  <span style={{ color:'#ef4444' }}>− € {(price*kitOmaggio).toFixed(2)}</span>
+                </div>
+              )}
               {kitDisc > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
                   <span>sconto{kit.discountType!=='importo' ? ` ${parseFloat(kit.discountValue)||0}%` : ''}</span>
                   <span style={{ color:'#ef4444' }}>− € {kitDisc.toFixed(2)}</span>
                 </div>
               )}
+              {kitOmaggio > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:MUTED, paddingLeft:14, opacity:0.7 }}>
+                  <span>fatturabile</span>
+                  <span>{billableQty} kit</span>
+                </div>
+              )}
             </div>
           )
         })}
-        {pricingMode==='singolo' && discountMode==='articolo' && allArticles.map((art,i)=>{
-          const base = artLineBase(art)
-          const disc = artLineDiscount(art)
-          if (base <= 0) return null
+        {pricingMode==='singolo' && (discountMode==='articolo' || allArticles.some(a=>parseFloat(a.omaggio)>0)) && allArticles.map((art,i)=>{
+          const price = parseFloat(art.price)||0
+          const pieces = artPieceCount(art)||parseInt(art.estimatedQty)||0
+          const artOmaggio = parseFloat(art.omaggio)||0
+          const gross = price*pieces
+          const disc = discountMode==='articolo' ? artLineDiscount(art) : 0
+          if (gross <= 0) return null
           return (
             <div key={i}>
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
-                <span>{art.description||`Articolo ${i+1}`} — € {parseFloat(art.price)||0} × {artPieceCount(art)||parseInt(art.estimatedQty)||0} pz</span>
-                <span style={{ color:CREAM }}>€ {base.toFixed(2)}</span>
+                <span>{art.description||`Articolo ${i+1}`} — € {price} × {pieces} pz</span>
+                <span style={{ color:CREAM }}>€ {gross.toFixed(2)}</span>
               </div>
+              {artOmaggio > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
+                  <span>omaggio {artOmaggio} pz</span>
+                  <span style={{ color:'#ef4444' }}>− € {(price*artOmaggio).toFixed(2)}</span>
+                </div>
+              )}
               {disc > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
                   <span>sconto{art.discountType!=='importo' ? ` ${parseFloat(art.discountValue)||0}%` : ''}</span>
@@ -555,12 +579,16 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
 
         {kits.map((kit,ki)=>(
           <div key={ki} style={{...s.card,border:`1px solid rgba(184,150,90,0.25)`}}>
-            {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 140px 140px',gap:16,marginBottom:20,alignItems:'end'}}>
+            {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 140px 140px 140px',gap:16,marginBottom:20,alignItems:'end'}}>
               <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e=>updateKit(ki,'name',e.target.value)} placeholder="Es. Kit Scuola Tennis"/></div>
               <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="85"/></div>
               <div>
                 <label style={s.label}>Quantità (n° persone) *</label>
                 <input type="number" min="1" style={{...inp,borderColor:!kit.quantity?'rgba(184,150,90,0.5)':undefined}} value={kit.quantity} onChange={e=>updateKit(ki,'quantity',e.target.value)} placeholder="Es. 50"/>
+              </div>
+              <div>
+                <label style={s.label}>Kit omaggio</label>
+                <input type="number" min="0" step="0.5" style={{...inp,borderColor:parseFloat(kit.omaggio)>0?'rgba(196,98,58,0.6)':undefined}} value={kit.omaggio} onChange={e=>updateKit(ki,'omaggio',e.target.value)} placeholder="0"/>
               </div>
             </div>}
             {pricingMode==='kit' && discountMode==='articolo' && (

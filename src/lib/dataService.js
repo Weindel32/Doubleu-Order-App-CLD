@@ -122,7 +122,7 @@ export async function fetchOrders() {
       showTotalInClientPDF: order.show_total_in_client_pdf,
       orderType: order.order_type || 'istituzionale',
       kits: kitsWithArticles.map(k => ({
-        ...k, quantity: k.quantity || null,
+        ...k, quantity: k.quantity || null, omaggio: k.omaggio || 0,
         discountType: k.discount_type || 'percentuale', discountValue: k.discount_value || 0,
       })),
       payments,
@@ -165,6 +165,7 @@ function buildKitsPayload(order) {
   return (order.kits || []).map(kit => ({
     name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null,
     discount_type: kit.discountType || 'percentuale', discount_value: parseFloat(kit.discountValue) || 0,
+    omaggio: parseFloat(kit.omaggio) || 0,
     articles: (kit.articles || []).map(art => ({
       sp: art.sp, category: art.category, line: art.line,
       description: art.description, color: art.color, price: art.price || null,
