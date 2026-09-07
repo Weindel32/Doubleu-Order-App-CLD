@@ -13,7 +13,7 @@ import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, markQuoteStandby, restoreFromStandby, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, resolveClientId, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, markQuoteStandby, restoreFromStandby, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
 import { needsAlert, isConfirmed } from './utils/helpers.js'
 import { buildReorderSeed } from './utils/reorder.js'
 import { needsFollowUp, returnOverdue, recipientLabel } from './utils/samples.js'
@@ -136,6 +136,13 @@ export default function App() {
       const clientData = await fetchClients()
       setClients(clientData)
     }
+  }
+
+  const handleResolveClientId = async (name, fields) => {
+    const id = await resolveClientId(name, fields)
+    const clientData = await fetchClients()
+    setClients(clientData)
+    return id
   }
 
   const handleRenameClient = async (oldName, newName, fields) => {
@@ -301,6 +308,7 @@ export default function App() {
   const handleNewQuoteFromProspect = (prospect) => {
     setEditOrder(null)
     setPrefill({
+      id:      prospect.client_id || null,
       name:    prospect.name,
       contact: prospect.contact_name  || '',
       email:   prospect.contact_email || '',
@@ -421,8 +429,8 @@ export default function App() {
         {view === 'prospects'  && <Prospects prospects={prospects} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample}/>}
         {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
         {view === 'analytics'  && <Analytics orders={orders} shipments={shipments}/>}
-        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onUpsertClient={handleUpsertClient}/>}
-        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onUpsertClient={handleUpsertClient}/>}
+        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onResolveClientId={handleResolveClientId}/>}
+        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onResolveClientId={handleResolveClientId}/>}
       </main>
     </div>
   )

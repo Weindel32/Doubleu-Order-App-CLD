@@ -61,7 +61,7 @@ function ClientSearch({ clients, onSelect, inputStyle }) {
   )
 }
 
-export default function NewOrder({ editOrder, setView, onSaved, prefillClient, reorderFrom, clients = [], onUpsertClient }) {
+export default function NewOrder({ editOrder, setView, onSaved, prefillClient, reorderFrom, clients = [], onResolveClientId }) {
   // Un riordino non è una modifica: è un ordine nuovo che riparte dai dati
   // di uno passato (articoli, colori, prezzi da riconfermare), ma con
   // quantità/taglie/date/pagamenti azzerati (già così in buildReorderSeed).
@@ -71,6 +71,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const src = editOrder || reorderFrom
   const [step,setStep]             = useState((prefillClient || reorderFrom) ? 2 : 1)
   const [club,setClub]             = useState(prefillClient?.name || src?.client || '')
+  const [clientId,setClientId]     = useState(prefillClient?.id || src?.clientId || null)
   const [clientEmail,setEmail]     = useState(prefillClient?.email || src?.clientEmail || '')
   const [clientPhone,setPhone]     = useState(prefillClient?.phone || src?.clientPhone || '')
   const [clientAddress,setAddress] = useState(prefillClient?.address || src?.clientAddress || '')
@@ -106,7 +107,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   // ── Bozza recuperabile ───────────────────────────────────────────
   const draftKey = `duOrderDraft:${editOrder?.id || (reorderFrom ? `reorder-${reorderFrom.sourceId}` : 'new')}`
   const draftSnapshot = {
-    club, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    club, clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     orderDate, deliveryDate, actualDeliveryDate, alertDays, status, cancelReason, cancelDate,
     clientNotes, productionNotes, showTotal, pricingMode, ivaEnabled, shipping,
     discountMode, discountType, discountValue, orderNote, invoiceNumber, kits, orderType, payments, step,
@@ -114,6 +115,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const restoreDraft = (data) => {
     if (!data) return
     setClub(data.club ?? '')
+    setClientId(data.clientId ?? null)
     setEmail(data.clientEmail ?? '')
     setPhone(data.clientPhone ?? '')
     setAddress(data.clientAddress ?? '')
@@ -157,7 +159,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
 
   const orderObj = () => ({
     id: editOrder?.id||'DU-NEW',
-    client: club||'—', clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    client: club||'—', clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
     deliveryDate: toItalianDate(deliveryDate),
     actualDeliveryDate: toItalianDate(actualDeliveryDate) || null,
@@ -263,17 +265,19 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     try {
       const id = editOrder?.id || await generateOrderId(orderDate)
       const finalStatus = confirmOrder ? 'CONFERMATO' : status
-      const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces }
+      let resolvedClientId = clientId
+      if (onResolveClientId && club.trim()) {
+        resolvedClientId = await onResolveClientId(club.trim(), {
+          email: clientEmail, phone: clientPhone,
+          address: clientAddress, city: clientCity,
+          country: clientCountry, contact: clientContact,
+        })
+      }
+      const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces, clientId: resolvedClientId }
       const ok = editOrder ? await updateOrder(order) : await createOrder(order)
       if (ok) {
         markSaved()
-        if (onUpsertClient && club.trim()) {
-          await onUpsertClient(club.trim(), {
-            email: clientEmail, phone: clientPhone,
-            address: clientAddress, city: clientCity,
-            country: clientCountry, contact: clientContact,
-          })
-        }
+        setClientId(resolvedClientId)
         onSaved()
       } else { setSaveError('Errore nel salvataggio. Riprova.') }
     } catch (e) { setSaveError('Errore: ' + e.message) }
@@ -429,6 +433,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
             <div style={s.cardTitle}>Cliente esistente</div>
             <ClientSearch clients={clients} inputStyle={inp} onSelect={c => {
               setClub(c.name)
+              setClientId(c.id || null)
               setContact(c.contact || '')
               setEmail(c.email || '')
               setPhone(c.phone || '')
