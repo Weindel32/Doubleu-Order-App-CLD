@@ -204,7 +204,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
       if (ok) {
         markSaved()
         setClientId(resolvedClientId)
-        onSaved()
+        onSaved(order)
       } else { setSaveError('Errore nel salvataggio. Riprova.') }
     } catch (e) { setSaveError('Errore: ' + e.message) }
     setSaving(false)
