@@ -10,7 +10,7 @@ const STATUS_STYLE = {
   ANNULLATO:           { label: 'Annullato',         color: MUTED,     bg: 'rgba(138,154,181,0.12)', border: 'rgba(138,154,181,0.3)' },
 }
 
-function orderStatusInfo(o) {
+export function orderStatusInfo(o) {
   if (o.lost)    return { label: 'Perso',      color: CLAY, bg: 'rgba(196,98,58,0.15)',  border: 'rgba(196,98,58,0.3)' }
   if (o.standby) return { label: 'In standby', color: GOLD, bg: 'rgba(184,150,90,0.15)', border: 'rgba(184,150,90,0.3)' }
   return STATUS_STYLE[o.status] || { label: o.status, color: MUTED, bg: 'rgba(255,255,255,0.05)', border: BORDER }
@@ -22,7 +22,7 @@ const sortKey = (dateStr) => {
   return d && m && y ? `${y}${m}${d}` : '00000000'
 }
 
-export default function CommercialHistory({ orders = [], emptyText = 'Nessun ordine o preventivo collegato' }) {
+export default function CommercialHistory({ orders = [], emptyText = 'Nessun ordine o preventivo collegato', onOpen }) {
   if (orders.length === 0) {
     return <div style={{ fontSize: 12, color: MUTED, fontStyle: 'italic', textAlign: 'center', padding: '16px 0' }}>{emptyText}</div>
   }
@@ -44,6 +44,12 @@ export default function CommercialHistory({ orders = [], emptyText = 'Nessun ord
                 <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 2, fontSize: 9, letterSpacing: 1.5, background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>
                   {st.label}
                 </span>
+                {onOpen && (
+                  <button style={{ padding: '4px 10px', fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 600, border: 'none', borderRadius: 3, cursor: 'pointer', background: GOLD, color: '#1a2744' }}
+                    onClick={() => onOpen(o)}>
+                    Apri
+                  </button>
+                )}
               </div>
             </div>
             {note && (

@@ -224,12 +224,11 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, orders = [], onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample }) {
+export default function Prospects({ prospects, orders = [], onOpenOrder, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample, selectedId, setSelectedId }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
   const [filterStage, setFilterStage] = useState('all')
-  const [selectedId,  setSelectedId]  = useState(null)
   const [editForm,    setEditForm]    = useState(null)
   const [saving,      setSaving]      = useState(false)
   const [newForm,     setNewForm]     = useState(null)
@@ -253,7 +252,7 @@ export default function Prospects({ prospects, orders = [], onUpsert, onAddActiv
   const rete  = prospects.filter(p => p.contact_type !== 'cliente')
 
   const referredBy   = (id) => prospects.filter(x => x.referred_by === id)
-  const samplesOf    = (id) => shipments.filter(sh => sh.prospect_id === id)
+  const samplesOf    = (id) => shipments.filter(sh => sh.prospect_id === id || (selected?.client_id && sh.client_id === selected.client_id))
   const ordersOf     = (p)  => p.client_id ? orders.filter(o => o.clientId === p.client_id) : []
   const rewardsOf    = (p, type) => (p.prospect_activities || []).filter(a => a.reward_type === type).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
   const rewardsTotal = (p)  => rewardsOf(p,'provvigione') + rewardsOf(p,'prodotto')
@@ -669,7 +668,8 @@ export default function Prospects({ prospects, orders = [], onUpsert, onAddActiv
                 {selected.contact_type === 'cliente' && (
                   <div style={{ ...s.card, marginBottom:16 }}>
                     <div style={s.cardTitle}>Storico Commerciale</div>
-                    <CommercialHistory orders={ordersOf(selected)} emptyText="Nessun preventivo o ordine collegato ancora"/>
+                    <CommercialHistory orders={ordersOf(selected)} emptyText="Nessun preventivo o ordine collegato ancora"
+                      onOpen={onOpenOrder ? (o) => { closeModal(); onOpenOrder(o) } : undefined}/>
                   </div>
                 )}
 
