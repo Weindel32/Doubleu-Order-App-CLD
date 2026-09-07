@@ -20,6 +20,34 @@ export async function upsertClient(name, fields) {
   return true
 }
 
+const normalizeName = (name) => (name || '').trim().replace(/\s+/g, ' ').toLowerCase()
+
+// Risolve un nome cliente al suo id stabile: trova il match esistente
+// (normalizzato per trim/maiuscole) o crea il cliente se non esiste.
+// Usata da ordini/preventivi/prospect per non dipendere più dal match
+// esatto sulla stringa nome.
+export async function resolveClientId(name, fields = {}) {
+  const trimmedName = (name || '').trim()
+  if (!trimmedName) return null
+  const target = normalizeName(trimmedName)
+  const { data: candidates, error: searchError } = await supabase.from('clients').select('id, name')
+  if (searchError) { console.error('resolveClientId (search):', searchError); return null }
+  const match = (candidates || []).find(c => normalizeName(c.name) === target)
+  const safe = {}
+  CLIENT_FIELDS.forEach(k => { if (fields[k] !== undefined) safe[k] = fields[k] })
+  if (match) {
+    if (Object.keys(safe).length) {
+      const { error } = await supabase.from('clients').update(safe).eq('id', match.id)
+      if (error) console.error('resolveClientId (update):', error)
+    }
+    return match.id
+  }
+  const { data: created, error: insertError } = await supabase.from('clients')
+    .insert({ name: trimmedName, ...safe }).select('id').single()
+  if (insertError) { console.error('resolveClientId (insert):', insertError); return null }
+  return created?.id || null
+}
+
 export async function updateClient(id, fields) {
   const safe = {}
   ;['name', ...CLIENT_FIELDS].forEach(k => { if (fields[k] !== undefined) safe[k] = fields[k] })
@@ -140,7 +168,7 @@ export async function fetchOrders() {
 
 function buildOrderPayload(order) {
   return {
-    id: order.id, client: order.client,
+    id: order.id, client: order.client, client_id: order.clientId || null,
     client_email: order.clientEmail || null, client_phone: order.clientPhone || null,
     client_address: order.clientAddress || null, client_city: order.clientCity || null,
     client_country: order.clientCountry || 'Italia', client_contact: order.clientContact || null,
@@ -294,21 +322,15 @@ export async function upsertProspect(prospect) {
   row.stage = rest.stage || 'contatto'
   row.contact_type = rest.contact_type || 'cliente'
 
-  // Auto-create client only when won + contact_type='cliente'
+  // Auto-crea il client solo quando il prospect diventa cliente vero (stage='won'):
+  // prima di 'won' resta un prospect, non deve comparire in anagrafica clienti.
   if (row.stage === 'won' && row.contact_type === 'cliente' && !row.client_id) {
-    const { data: existing } = await supabase.from('clients').select('id').eq('name', row.name).maybeSingle()
-    if (existing) {
-      row.client_id = existing.id
-    } else {
-      const { data: newClient } = await supabase.from('clients').insert({
-        name: row.name,
-        email: row.contact_email || null,
-        phone: row.contact_phone || null,
-        country: row.country || 'Italia',
-        province: row.province || null,
-      }).select().single()
-      if (newClient) row.client_id = newClient.id
-    }
+    row.client_id = await resolveClientId(row.name, {
+      email: row.contact_email || undefined,
+      phone: row.contact_phone || undefined,
+      country: row.country || 'Italia',
+      province: row.province || undefined,
+    })
   }
 
   if (id) {

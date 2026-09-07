@@ -3,6 +3,7 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
+import CommercialHistory from '../components/CommercialHistory.jsx'
 import { shipmentFromClient } from '../components/SampleModal.jsx'
 import { orderTotal, paymentSummary, parseDate, isConfirmed } from '../utils/helpers.js'
 import { sampleInvested, euro } from '../utils/samples.js'
@@ -61,6 +62,8 @@ function InfoField({ label, value }) {
 
 const inp = { ...s.input }
 
+const normalizeName = (name) => (name || '').trim().replace(/\s+/g, ' ').toLowerCase()
+
 export default function Clients({ orders, clients, setView, setEditOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpdateClient, onCreateClient, onLinkOrder, shipments = [], onNewSample }) {
   const [selectedId, setSelectedId]   = useState(null)
   const [editForm,   setEditForm]     = useState(null)
@@ -77,7 +80,7 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
 
   const enriched = clients.map(c => {
     const linked    = orders.filter(o => o.clientId === c.id)
-    const textMatch = orders.filter(o => !o.clientId && o.client === c.name)
+    const textMatch = orders.filter(o => !o.clientId && normalizeName(o.client) === normalizeName(c.name))
     const allOrders = [...linked, ...textMatch]
     const confirmed = allOrders.filter(isConfirmed)
     const total     = confirmed.reduce((sum, o) => sum + orderTotal(o), 0)
@@ -85,13 +88,14 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
     const totalIst  = confirmed.filter(o => o.orderType !== 'soci').reduce((sum, o) => sum + orderTotal(o), 0)
     const totalSoci = confirmed.filter(o => o.orderType === 'soci').reduce((sum, o)  => sum + orderTotal(o), 0)
     const unlinkable = textMatch.filter(o => o.status !== 'PREVENTIVO')
+    const nonConfirmed = allOrders.filter(o => !isConfirmed(o))
     const lastTs    = confirmed.reduce((max, o) => { const d = parseDate(o.date); return d && d.getTime() > max ? d.getTime() : max }, 0)
     const lastOrder = confirmed.reduce((best, o) => { const d = parseDate(o.date); return d && d.getTime() === lastTs ? o.date : best }, null)
     // Campionature: collegate per client_id, con fallback sul nome per
     // gli invii registrati a un destinatario non ancora in anagrafica
-    const samples   = shipments.filter(sh => sh.client_id === c.id || (!sh.client_id && !sh.prospect_id && sh.recipient_name === c.name))
+    const samples   = shipments.filter(sh => sh.client_id === c.id || (!sh.client_id && !sh.prospect_id && normalizeName(sh.recipient_name) === normalizeName(c.name)))
     const sampleInv = samples.reduce((v, sh) => v + sampleInvested(sh), 0)
-    return { ...c, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, lastTs, lastOrder, samples, sampleInv }
+    return { ...c, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, nonConfirmed, lastTs, lastOrder, samples, sampleInv }
   })
 
   const totalRevenue = enriched.reduce((s, c) => s + c.total, 0)
@@ -560,6 +564,16 @@ export default function Clients({ orders, clients, setView, setEditOrder, onNewO
                   onNew={onNewSample ? () => { const client = selected; closeModal(); onNewSample(shipmentFromClient(client)) } : undefined}
                   emptyText="Nessun campione inviato a questo cliente"/>
               </div>
+
+              {/* Preventivi, standby, persi, annullati — tutto ciò che non è
+                  un ordine confermato, così anche un preventivo perso resta
+                  visibile sulla card invece di sparire silenziosamente. */}
+              {selected.nonConfirmed.length > 0 && (
+                <div style={{ marginBottom:20 }}>
+                  <div style={s.cardTitle}>Preventivi & Storico Commerciale</div>
+                  <CommercialHistory orders={selected.nonConfirmed}/>
+                </div>
+              )}
 
               {/* Storico ordini */}
               {selected.confirmed.length > 0 && (

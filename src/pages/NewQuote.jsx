@@ -57,11 +57,12 @@ function ClientSearch({ clients, onSelect, inputStyle }) {
   )
 }
 
-export default function NewQuote({ editOrder, setView, onSaved, prefillClient, clients = [], onUpsertClient }) {
+export default function NewQuote({ editOrder, setView, onSaved, prefillClient, clients = [], onResolveClientId }) {
   const isEdit = !!editOrder && editOrder.status === 'PREVENTIVO'
 
   const [step, setStep]               = useState(prefillClient ? 2 : 1)
   const [club, setClub]               = useState(prefillClient?.name    || editOrder?.client        || '')
+  const [clientId, setClientId]       = useState(prefillClient?.id      || editOrder?.clientId      || null)
   const [clientEmail, setEmail]       = useState(prefillClient?.email   || editOrder?.clientEmail   || '')
   const [clientPhone, setPhone]       = useState(prefillClient?.phone   || editOrder?.clientPhone   || '')
   const [clientAddress, setAddress]   = useState(prefillClient?.address || editOrder?.clientAddress || '')
@@ -84,13 +85,14 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
   // ── Bozza recuperabile ───────────────────────────────────────────
   const draftKey = `duQuoteDraft:${editOrder?.id || 'new'}`
   const draftSnapshot = {
-    club, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    club, clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     orderDate, clientNotes, pricingMode, ivaEnabled, discountMode, discountType, discountValue,
     orderNote, kits, step,
   }
   const restoreDraft = (data) => {
     if (!data) return
     setClub(data.club ?? '')
+    setClientId(data.clientId ?? null)
     setEmail(data.clientEmail ?? '')
     setPhone(data.clientPhone ?? '')
     setAddress(data.clientAddress ?? '')
@@ -115,7 +117,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
 
   const quoteObj = () => ({
     id: editOrder?.id || 'DU-NEW',
-    client: club || '—', clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
+    client: club || '—', clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
     deliveryDate: '', alertDays: 7, status: 'PREVENTIVO',
     pieces: 0, orderType: 'istituzionale',
@@ -158,9 +160,18 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
     if (!isEdit && club.trim()) {
       try {
         const id = await generateOrderId(orderDate)
-        const order = { ...quoteObj(), id }
+        let resolvedClientId = clientId
+        if (onResolveClientId) {
+          resolvedClientId = await onResolveClientId(club.trim(), {
+            email: clientEmail, phone: clientPhone,
+            address: clientAddress, city: clientCity,
+            country: clientCountry, contact: clientContact,
+          })
+        }
+        const order = { ...quoteObj(), id, clientId: resolvedClientId }
         await createOrder(order)
         markSaved()
+        setClientId(resolvedClientId)
         quoteForPDF = { ...order }
       } catch {}
     }
@@ -180,18 +191,20 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
     setSaving(true); setSaveError(null)
     try {
       const id    = editOrder?.id || await generateOrderId(orderDate)
-      const order = { ...quoteObj(), id }
+      let resolvedClientId = clientId
+      if (onResolveClientId && club.trim()) {
+        resolvedClientId = await onResolveClientId(club.trim(), {
+          email: clientEmail, phone: clientPhone,
+          address: clientAddress, city: clientCity,
+          country: clientCountry, contact: clientContact,
+        })
+      }
+      const order = { ...quoteObj(), id, clientId: resolvedClientId }
       const ok    = isEdit ? await updateOrder(order) : await createOrder(order)
       if (ok) {
         markSaved()
-        if (onUpsertClient && club.trim()) {
-          await onUpsertClient(club.trim(), {
-            email: clientEmail, phone: clientPhone,
-            address: clientAddress, city: clientCity,
-            country: clientCountry, contact: clientContact,
-          })
-        }
-        onSaved()
+        setClientId(resolvedClientId)
+        onSaved(order)
       } else { setSaveError('Errore nel salvataggio. Riprova.') }
     } catch (e) { setSaveError('Errore: ' + e.message) }
     setSaving(false)
@@ -335,6 +348,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
               <div style={s.cardTitle}>Cliente esistente</div>
               <ClientSearch clients={clients} inputStyle={inp} onSelect={c => {
                 setClub(c.name)
+                setClientId(c.id || null)
                 setContact(c.contact || '')
                 setEmail(c.email || '')
                 setPhone(c.phone || '')

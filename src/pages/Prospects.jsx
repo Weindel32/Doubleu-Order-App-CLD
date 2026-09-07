@@ -5,6 +5,7 @@ import StatCard from '../components/StatCard.jsx'
 import ActIcon  from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
+import CommercialHistory from '../components/CommercialHistory.jsx'
 import { shipmentFromProspect } from '../components/SampleModal.jsx'
 import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
 
@@ -61,6 +62,25 @@ function StageBadge({ stage }) {
   return (
     <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:2, fontSize:9, letterSpacing:2, background:c.bg, color:c.color, border:`1px solid ${c.border}` }}>
       {stage}
+    </span>
+  )
+}
+
+// Badge sintetico sullo stato del preventivo più rilevante collegato al
+// club (attivo > standby > perso), visibile direttamente nella card senza
+// dover aprire il dettaglio.
+function QuoteStatusBadge({ orders }) {
+  const active  = orders.find(o => o.status === 'PREVENTIVO' && !o.lost && !o.standby)
+  const standby = orders.find(o => o.standby && !o.lost)
+  const lost    = orders.find(o => o.lost)
+  const cfg = active  ? { label:'Preventivo attivo',        color:'#7aaee8', bg:'rgba(90,130,184,0.15)', border:'rgba(90,130,184,0.35)' }
+    :        standby ? { label:'Preventivo in standby',     color:GOLD,      bg:'rgba(184,150,90,0.15)', border:'rgba(184,150,90,0.35)' }
+    :        lost    ? { label:'Preventivo perso',          color:CLAY,      bg:'rgba(196,98,58,0.15)',  border:'rgba(196,98,58,0.3)'   }
+    :        null
+  if (!cfg) return null
+  return (
+    <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:2, fontSize:9, letterSpacing:1.5, background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}` }}>
+      {cfg.label}
     </span>
   )
 }
@@ -204,7 +224,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample }) {
+export default function Prospects({ prospects, orders = [], onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
@@ -234,6 +254,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
 
   const referredBy   = (id) => prospects.filter(x => x.referred_by === id)
   const samplesOf    = (id) => shipments.filter(sh => sh.prospect_id === id)
+  const ordersOf     = (p)  => p.client_id ? orders.filter(o => o.clientId === p.client_id) : []
   const rewardsOf    = (p, type) => (p.prospect_activities || []).filter(a => a.reward_type === type).reduce((s,a) => s + (parseFloat(a.reward_value)||0), 0)
   const rewardsTotal = (p)  => rewardsOf(p,'provvigione') + rewardsOf(p,'prodotto')
 
@@ -461,6 +482,7 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                   <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                     <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:CREAM, letterSpacing:0.5 }}>{p.name}</span>
                     {isRete ? <CTChip ct={p.contact_type}/> : <StageBadge stage={p.stage}/>}
+                    {!isRete && <QuoteStatusBadge orders={ordersOf(p)}/>}
                     {p.hibernated_at && (
                       <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:2, fontSize:9, letterSpacing:2, background:'rgba(184,150,90,0.15)', color:GOLD, border:'1px solid rgba(184,150,90,0.3)' }}>
                         ibernato
@@ -641,6 +663,15 @@ export default function Prospects({ prospects, onUpsert, onAddActivity, onUpdate
                     )}
                   </div>
                 </div>
+
+                {/* Storico Commerciale — preventivi e ordini collegati a
+                    questo club via client_id, indipendentemente dallo stage. */}
+                {selected.contact_type === 'cliente' && (
+                  <div style={{ ...s.card, marginBottom:16 }}>
+                    <div style={s.cardTitle}>Storico Commerciale</div>
+                    <CommercialHistory orders={ordersOf(selected)} emptyText="Nessun preventivo o ordine collegato ancora"/>
+                  </div>
+                )}
 
                 {/* Prospect Finder — solo per i club: se non lo segui più
                     per ora, lo invii come ibernato a Prospect Finder così
