@@ -9,6 +9,7 @@ import { shipmentFromClient } from '../components/SampleModal.jsx'
 import { paymentSummary } from '../utils/helpers.js'
 import { euro } from '../utils/samples.js'
 import { enrichClient } from '../lib/clientStats.js'
+import { PAYER_LEVELS, MIN_INCASSI_PER_GIUDIZIO } from '../utils/payments.js'
 
 const ACT_LABELS = {
   email_sent: 'Email inviata', reply_received: 'Risposta ricevuta', sample_shipped: 'Sample spedito',
@@ -46,6 +47,33 @@ function TierBadge({ tier }) {
   )
 }
 
+// Il profilo pagatore non si digita: e' calcolato dallo storico incassi e si
+// aggiorna da se'. L'etichetta serve a scorrere, il numero di giorni accanto
+// dice quanto — "+18gg su 6 incassi" fa decidere, "due stelle" no.
+const PAYER_COLORS = {
+  sconosciuto: { bg:'rgba(138,143,156,0.10)', color:MUTED,     border:'rgba(138,143,156,0.25)' },
+  puntuale:    { bg:'rgba(74,158,110,0.15)',  color:GREEN,     border:'rgba(74,158,110,0.3)'   },
+  lieve:       { bg:'rgba(184,150,90,0.12)',  color:GOLD,      border:'rgba(184,150,90,0.3)'   },
+  sistematico: { bg:'rgba(196,98,58,0.15)',   color:CLAY,      border:'rgba(196,98,58,0.3)'    },
+  critico:     { bg:'rgba(239,68,68,0.15)',   color:'#ef4444', border:'rgba(239,68,68,0.35)'   },
+}
+
+function PayerBadge({ payer, compact = false }) {
+  if (!payer) return null
+  const pc = PAYER_COLORS[payer.level] || PAYER_COLORS.sconosciuto
+  const giorni = payer.avg === null ? null
+    : payer.avg === 0 ? '0 gg'
+    : payer.avg < 0   ? `${payer.avg} gg`
+    : `+${payer.avg} gg`
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'3px 10px', borderRadius:2, fontSize:9, letterSpacing:1.5, background:pc.bg, color:pc.color, border:`1px solid ${pc.border}`, whiteSpace:'nowrap' }}>
+      <span style={{ width:6, height:6, borderRadius:'50%', background:pc.color, flexShrink:0 }}/>
+      {compact && giorni ? giorni : PAYER_LEVELS[payer.level]?.label}
+      {!compact && giorni && <span style={{ opacity:0.75 }}>· {giorni}</span>}
+    </span>
+  )
+}
+
 function CatChip({ cat }) {
   if (!cat) return null
   const cc = CAT_COLORS[cat] || {}
@@ -77,6 +105,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
   const [tierFilter, setTierFilter]   = useState('ALL')
   const [catFilter,  setCatFilter]    = useState('ALL')
   const [shopOnly,   setShopOnly]     = useState(false)
+  const [overdueOnly, setOverdueOnly] = useState(false)
   const [sortKey,    setSortKey]      = useState('total')
   const [sortDir,    setSortDir]      = useState('desc')
 
@@ -91,6 +120,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
     if (tierFilter !== 'ALL' && c.tier !== tierFilter) return false
     if (catFilter  !== 'ALL' && (c.category || '') !== catFilter) return false
     if (shopOnly && !c.shop_attivo) return false
+    if (overdueOnly && !c.payer.hasOverdue) return false
     if (q) {
       const hay = [c.name, c.city, c.province, c.country, c.email, c.vat_number, c.fiscal_code].filter(Boolean).join(' ').toLowerCase()
       if (!hay.includes(q)) return false
@@ -131,6 +161,10 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
       address:     selected.address    || '',
       contact:     selected.contact    || '',
       shop_attivo: selected.shop_attivo || false,
+      payment_deposit_percent:     selected.payment_deposit_percent ?? '',
+      payment_balance_due_mode:    selected.payment_balance_due_mode || 'consegna',
+      payment_balance_offset_days: selected.payment_balance_offset_days ?? 0,
+      payment_notes:               selected.payment_notes || '',
     })
   }
 
@@ -150,6 +184,10 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
       address:     editForm.address    || null,
       contact:     editForm.contact    || null,
       shop_attivo: editForm.shop_attivo || false,
+      payment_deposit_percent:     editForm.payment_deposit_percent === '' ? null : Number(editForm.payment_deposit_percent),
+      payment_balance_due_mode:    editForm.payment_balance_due_mode || 'consegna',
+      payment_balance_offset_days: parseInt(editForm.payment_balance_offset_days) || 0,
+      payment_notes:               editForm.payment_notes || null,
     })
     setEditForm(null)
     setEditSaving(false)
@@ -244,6 +282,9 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
             <button onClick={() => setShopOnly(v => !v)} style={chipStyle(shopOnly, { bg:'rgba(74,158,110,0.18)', color:GREEN, border:'rgba(74,158,110,0.35)' })}>
               ● Shop attivo
             </button>
+            <button onClick={() => setOverdueOnly(v => !v)} style={chipStyle(overdueOnly, { bg:'rgba(239,68,68,0.15)', color:'#ef4444', border:'rgba(239,68,68,0.35)' })}>
+              ● Con crediti scaduti
+            </button>
           </div>
 
           {/* Contatore + ordinamento */}
@@ -284,6 +325,10 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                         <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:CREAM, letterSpacing:0.5 }}>{c.name}</span>
                         <TierBadge tier={c.tier}/>
                         {c.category && <CatChip cat={c.category}/>}
+                        {/* In lista il profilo compare solo quando dice
+                            qualcosa: un "da valutare" su ogni riga sarebbe
+                            rumore, un credito scaduto no. */}
+                        {(c.payer.level !== 'sconosciuto' || c.payer.hasOverdue) && <PayerBadge payer={c.payer}/>}
                         {c.shop_attivo && (
                           <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:9, letterSpacing:1, color:GREEN, background:'rgba(74,158,110,0.12)', border:'1px solid rgba(74,158,110,0.3)', padding:'2px 8px', borderRadius:2 }}>
                             <span style={{ width:6, height:6, borderRadius:'50%', background:GREEN }}/>SHOP
@@ -484,6 +529,98 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Profilo pagatore + condizioni concordate */}
+              <div style={{ ...s.card, marginBottom:20 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap', marginBottom:14 }}>
+                  <div style={s.cardTitle}>Pagamenti</div>
+                  <PayerBadge payer={selected.payer}/>
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
+                  <div>
+                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:4 }}>RITARDO MEDIO</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color: selected.payer.avg === null ? MUTED : selected.payer.avg > 0 ? CLAY : GREEN }}>
+                      {selected.payer.avg === null ? '—'
+                        : selected.payer.avg === 0 ? '0 gg'
+                        : selected.payer.avg < 0 ? `${selected.payer.avg} gg` : `+${selected.payer.avg} gg`}
+                    </div>
+                    <div style={{ fontSize:9, color:MUTED, letterSpacing:1, marginTop:3 }}>
+                      {selected.payer.count > 0
+                        ? `su ${selected.payer.count} ${selected.payer.count === 1 ? 'incasso' : 'incassi'}`
+                        : `servono ${MIN_INCASSI_PER_GIUDIZIO} incassi`}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:4 }}>RITARDO PEGGIORE</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color: selected.payer.worst > 0 ? CLAY : MUTED }}>
+                      {selected.payer.worst === null ? '—' : selected.payer.worst > 0 ? `+${selected.payer.worst} gg` : '0 gg'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:4 }}>SCADUTO OGGI</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color: selected.payer.hasOverdue ? '#ef4444' : MUTED }}>
+                      {selected.payer.hasOverdue ? `€ ${selected.payer.openAmount.toLocaleString('it-IT',{minimumFractionDigits:2})}` : '—'}
+                    </div>
+                    {selected.payer.hasOverdue && (
+                      <div style={{ fontSize:9, color:'#ef4444', letterSpacing:1, marginTop:3 }}>da {selected.payer.openDays}gg</div>
+                    )}
+                  </div>
+                </div>
+
+                {selected.payer.unverified > 0 && (
+                  <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:16, opacity:0.8 }}>
+                    {selected.payer.unverified} {selected.payer.unverified === 1 ? 'incasso proviene' : 'incassi provengono'} dall'archivio
+                    precedente, senza data reale di pagamento: {selected.payer.unverified === 1 ? 'non concorre' : 'non concorrono'} al profilo.
+                  </div>
+                )}
+
+                <div style={{ borderTop:`1px solid ${BORDER}`, paddingTop:14 }}>
+                  <div style={{ fontSize:9, letterSpacing:2, color:MUTED, marginBottom:4 }}>CONDIZIONI CONCORDATE</div>
+                  <div style={{ fontSize:10, color:MUTED, opacity:0.75, marginBottom:12 }}>
+                    Accordo commerciale, non un giudizio: precompila le rate di un ordine nuovo.
+                  </div>
+                  {editForm ? (
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
+                      <div>
+                        <label style={s.label}>Acconto %</label>
+                        <input type="number" min="0" max="100" style={inp} value={editForm.payment_deposit_percent}
+                          onChange={e => setEditForm(f => ({ ...f, payment_deposit_percent:e.target.value }))} placeholder="es. 50"/>
+                      </div>
+                      <div>
+                        <label style={s.label}>Saldo</label>
+                        <select style={inp} value={editForm.payment_balance_due_mode}
+                          onChange={e => setEditForm(f => ({ ...f, payment_balance_due_mode:e.target.value }))}>
+                          <option value="consegna">Alla consegna</option>
+                          <option value="fissa">Data da concordare</option>
+                        </select>
+                      </div>
+                      {editForm.payment_balance_due_mode === 'consegna' && (
+                        <div>
+                          <label style={s.label}>Giorni dopo consegna</label>
+                          <input type="number" min="0" style={inp} value={editForm.payment_balance_offset_days}
+                            onChange={e => setEditForm(f => ({ ...f, payment_balance_offset_days:e.target.value }))} placeholder="0"/>
+                        </div>
+                      )}
+                      <div style={{ gridColumn:'span 3' }}>
+                        <label style={s.label}>Note</label>
+                        <input style={inp} value={editForm.payment_notes}
+                          onChange={e => setEditForm(f => ({ ...f, payment_notes:e.target.value }))} placeholder="Es. paga sempre a fine mese"/>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                      <InfoField label="ACCONTO" value={selected.payment_deposit_percent != null ? `${selected.payment_deposit_percent}%` : 'non definito'}/>
+                      <InfoField label="SALDO" value={
+                        (selected.payment_balance_due_mode || 'consegna') === 'consegna'
+                          ? `Alla consegna${selected.payment_balance_offset_days ? ` + ${selected.payment_balance_offset_days}gg` : ''}`
+                          : 'Data da concordare'
+                      }/>
+                      {selected.payment_notes && <div style={{ gridColumn:'span 2' }}><InfoField label="NOTE" value={selected.payment_notes}/></div>}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Revenue stats */}

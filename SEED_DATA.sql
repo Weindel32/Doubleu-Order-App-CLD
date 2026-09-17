@@ -63,6 +63,25 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS paid_date text;
 -- (Order App o Doubleu Finance) lo fa con una data reale.
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS paid_date_verified boolean DEFAULT true;
 
+-- ----------------------------------------------------------------
+-- MIGRATION: condizioni di pagamento concordate col cliente
+-- (esegui una volta sola)
+-- Non sono un giudizio sul cliente — quello si calcola dallo storico
+-- incassi — ma un accordo commerciale, e servono a precompilare le
+-- rate di un ordine nuovo.
+-- payment_balance_due_mode: 'consegna' (saldo alla consegna + N gg)
+--                         | 'fissa' (data da concordare ordine per ordine)
+-- ----------------------------------------------------------------
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_deposit_percent numeric;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_due_mode text DEFAULT 'consegna';
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_offset_days integer DEFAULT 0;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_notes text;
+-- ----------------------------------------------------------------
+-- NOTA: save_order_payments conserva paid_date_verified quando il client
+-- non lo invia, altrimenti un'app non ancora aggiornata marcherebbe come
+-- verificate le date ereditate dalla migrazione, una riga alla volta.
+-- ----------------------------------------------------------------
+
 -- Trigger che tengono payments.date sempre allineata alla scadenza effettiva
 -- anche per le rate ancorate alla consegna (due_mode = 'consegna'): Doubleu
 -- Finance legge questa tabella direttamente e scarta le rate senza data, e
