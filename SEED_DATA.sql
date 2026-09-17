@@ -35,6 +35,15 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_date text;
 -- ----------------------------------------------------------------
 
 -- ----------------------------------------------------------------
+-- MIGRATION: data reale di spedizione (esegui una volta sola)
+-- shipped_date: quando la merce e' realmente partita, distinta da
+-- actual_delivery_date (quando e' stata consegnata al cliente).
+-- Formato testo gg/mm/aaaa come le altre date ordine.
+-- ----------------------------------------------------------------
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_date text;
+-- ----------------------------------------------------------------
+
+-- ----------------------------------------------------------------
 -- MIGRATION: sconto ordine/preventivo (esegui una volta sola)
 -- discount_type: 'percentuale' (% sul subtotale) | 'importo' (€ fissi)
 -- ----------------------------------------------------------------

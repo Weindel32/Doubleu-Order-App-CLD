@@ -18,6 +18,7 @@ export function buildReorderSeed(order) {
     id: undefined,
     date: undefined,
     deliveryDate: null,
+    shippedDate: null,
     actualDeliveryDate: null,
     status: 'PREVENTIVO',
     lost: false, lostReason: null, lostDate: null,

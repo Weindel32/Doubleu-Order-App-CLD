@@ -80,6 +80,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const [clientContact,setContact] = useState(prefillClient?.contact || src?.clientContact || '')
   const [orderDate,setOrderDate]   = useState(editOrder ? fromItalianDate(editOrder.date) : new Date().toISOString().split('T')[0])
   const [deliveryDate,setDelivery]       = useState(editOrder ? fromItalianDate(editOrder.deliveryDate)||'' : '')
+  const [shippedDate,setShippedDate] = useState(editOrder ? fromItalianDate(editOrder.shippedDate)||'' : '')
   const [actualDeliveryDate,setActualDelivery] = useState(editOrder ? fromItalianDate(editOrder.actualDeliveryDate)||'' : '')
   const [alertDays,setAlertDays]   = useState(src?.alertDays ?? 7)
   const [status,setStatus]         = useState(editOrder?.status || 'PREVENTIVO')
@@ -108,7 +109,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const draftKey = `duOrderDraft:${editOrder?.id || (reorderFrom ? `reorder-${reorderFrom.sourceId}` : 'new')}`
   const draftSnapshot = {
     club, clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
-    orderDate, deliveryDate, actualDeliveryDate, alertDays, status, cancelReason, cancelDate,
+    orderDate, deliveryDate, shippedDate, actualDeliveryDate, alertDays, status, cancelReason, cancelDate,
     clientNotes, productionNotes, showTotal, pricingMode, ivaEnabled, shipping,
     discountMode, discountType, discountValue, orderNote, invoiceNumber, kits, orderType, payments, step,
   }
@@ -124,6 +125,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     setContact(data.clientContact ?? '')
     setOrderDate(data.orderDate ?? new Date().toISOString().split('T')[0])
     setDelivery(data.deliveryDate ?? '')
+    setShippedDate(data.shippedDate ?? '')
     setActualDelivery(data.actualDeliveryDate ?? '')
     setAlertDays(data.alertDays ?? 7)
     setStatus(data.status ?? 'PREVENTIVO')
@@ -162,6 +164,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     client: club||'—', clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
     deliveryDate: toItalianDate(deliveryDate),
+    shippedDate: toItalianDate(shippedDate) || null,
     actualDeliveryDate: toItalianDate(actualDeliveryDate) || null,
     alertDays, status, pieces: totalPieces, orderType,
     notes: clientNotes, productionNotes, pricingMode,
@@ -230,10 +233,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
 
   const handleStatusChange = (newStatus) => {
     setStatus(newStatus)
-    if (newStatus === 'CONSEGNATO') {
-      setActualDelivery(new Date().toISOString().split('T')[0])
-    } else if (newStatus === 'CONSEGNA PARZIALE' && !actualDeliveryDate) {
-      setActualDelivery(new Date().toISOString().split('T')[0])
+    // Le date reali si precompilano a oggi solo se ancora vuote: l'ordine
+    // viene spesso aggiornato a posteriori e la data gia' inserita a mano
+    // non deve essere sovrascritta.
+    if (newStatus === 'CONSEGNATO' || newStatus === 'CONSEGNA PARZIALE') {
+      const today = new Date().toISOString().split('T')[0]
+      if (!actualDeliveryDate) setActualDelivery(today)
+      if (!shippedDate)        setShippedDate(today)
     } else if (newStatus === 'ANNULLATO' && !cancelDate) {
       setCancelDate(new Date().toLocaleDateString('it-IT'))
     }
@@ -473,10 +479,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
                 {[3,5,7,10,14,21,30].map(d=><option key={d} value={d}>{d} giorni prima</option>)}
               </select>
             </div>
-            {showDelivery && (
-              <DatePicker label="Data Consegna Reale" value={actualDeliveryDate} onChange={setActualDelivery}/>
-            )}
+            <DatePicker label="Data Spedizione Reale" value={shippedDate} onChange={setShippedDate}/>
+            <DatePicker label="Data Consegna Reale" value={actualDeliveryDate} onChange={setActualDelivery}/>
           </div>
+          {shippedDate && actualDeliveryDate && shippedDate > actualDeliveryDate && (
+            <div style={{fontSize:9,color:CLAY,letterSpacing:1,marginTop:10}}>La spedizione risulta successiva alla consegna. Controlla le date.</div>
+          )}
+          <div style={{fontSize:9,color:MUTED,letterSpacing:1,marginTop:10}}>Date reali, modificabili anche a posteriori — non vengono forzate a oggi.</div>
         </div>
         <div style={s.card}>
           <div style={s.cardTitle}>Stato Ordine</div>
