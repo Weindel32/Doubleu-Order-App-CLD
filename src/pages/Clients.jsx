@@ -591,7 +591,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
                       <div>
-                        <label style={s.label}>Quando si paga il resto</label>
+                        <label style={s.label}>Quando si paga il saldo</label>
                         <select style={inp} value={termsForm.payment_balance_due_mode}
                           onChange={e => setTermsForm(f => ({ ...f, payment_balance_due_mode:e.target.value }))}>
                           <option value="ordine">Alla conferma dell'ordine</option>
@@ -638,7 +638,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                         ? `${selected.payment_deposit_percent}%${selected.payment_deposit_min_amount ? ` · solo per ordini oltre € ${Number(selected.payment_deposit_min_amount).toLocaleString('it-IT')}` : ''}`
                         : 'nessun acconto'
                     }/>
-                    <InfoField label="RESTO" value={
+                    <InfoField label="SALDO" value={
                       (() => {
                         const mode = selected.payment_balance_due_mode || 'consegna'
                         const gg = selected.payment_balance_offset_days
