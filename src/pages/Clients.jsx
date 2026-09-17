@@ -531,10 +531,10 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                 )}
               </div>
 
-              {/* Profilo pagatore + condizioni concordate */}
+              {/* Rating pagatore: calcolato dallo storico incassi */}
               <div style={{ ...s.card, marginBottom:20 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap', marginBottom:14 }}>
-                  <div style={s.cardTitle}>Pagamenti</div>
+                  <div style={s.cardTitle}>Rating Pagamenti</div>
                   <PayerBadge payer={selected.payer}/>
                 </div>
 
@@ -576,11 +576,18 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                   </div>
                 )}
 
-                <div style={{ borderTop:`1px solid ${BORDER}`, paddingTop:14 }}>
-                  <div style={{ fontSize:9, letterSpacing:2, color:MUTED, marginBottom:4 }}>CONDIZIONI CONCORDATE</div>
-                  <div style={{ fontSize:10, color:MUTED, opacity:0.75, marginBottom:12 }}>
-                    Accordo commerciale, non un giudizio: precompila le rate di un ordine nuovo.
+              </div>
+
+              {/* Condizioni concordate: card a se' stante. Il rating lo
+                  calcola lo storico, queste le decidi tu. */}
+              <div style={{ ...s.card, marginBottom:20 }}>
+                <div style={{ marginBottom:14 }}>
+                  <div style={s.cardTitle}>Condizioni di Pagamento</div>
+                  <div style={{ fontSize:10, color:MUTED, opacity:0.75, marginTop:4 }}>
+                    Accordo commerciale concordato con il cliente: precompila le rate di un ordine nuovo.
                   </div>
+                </div>
+                <div>
                   {editForm ? (
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
                       <div>
