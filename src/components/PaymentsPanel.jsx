@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import DatePicker from './DatePicker.jsx'
-import { paymentDue, paymentDelay, formatItalian, splitPayment, splitAmount, isSuspectDueDate } from '../utils/payments.js'
+import { paymentDue, paymentDelay, formatItalian, splitPayment, splitAmount, isSuspectDueDate, depositDeviation } from '../utils/payments.js'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
 const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Carta di Credito', 'Assegno', 'PayPal', 'Altro']
@@ -88,7 +88,11 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
   // reinserire le stesse due rate a ogni ordine. Resta un'azione esplicita —
   // generare rate da sole, senza che nessuno le abbia chieste, e' il tipo di
   // automatismo che poi ci si dimentica di aver subito.
-  const depositPct = Number(clientTerms?.payment_deposit_percent)
+  // Sotto la soglia concordata l'acconto non si propone: su un ordine da venti
+  // euro non ha senso chiederlo.
+  const depositMin = Number(clientTerms?.payment_deposit_min_amount) || 0
+  const sopraSoglia = !depositMin || (parseFloat(orderTotal) || 0) >= depositMin
+  const depositPct = sopraSoglia ? Number(clientTerms?.payment_deposit_percent) : 0
   const canApplyTerms = !!clientTerms
     && payments.length === 0
     && orderTotal > 0
@@ -237,7 +241,11 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
           <div>
             <div style={{ fontSize:9, letterSpacing:2, color:GOLD, marginBottom:3 }}>CONDIZIONI DEL CLIENTE</div>
             <div style={{ fontSize:11, color:MUTED }}>
-              {depositPct > 0 ? `Acconto ${depositPct}%` : 'Nessun acconto'}
+              {depositPct > 0
+                ? `Acconto ${depositPct}%`
+                : depositMin && !sopraSoglia
+                  ? `Nessun acconto sotto € ${depositMin.toLocaleString('it-IT')}`
+                  : 'Nessun acconto'}
               {' · saldo '}
               {(clientTerms.payment_balance_due_mode || 'consegna') === 'consegna'
                 ? `alla consegna${parseInt(clientTerms.payment_balance_offset_days) ? ` + ${clientTerms.payment_balance_offset_days}gg` : ''}`
@@ -249,6 +257,20 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
           </button>
         </div>
       )}
+
+      {(() => {
+        const dev = depositDeviation(clientTerms, payments, orderTotal)
+        if (!dev) return null
+        return (
+          <div style={{ background: 'rgba(196,98,58,0.08)', border: `1px solid rgba(196,98,58,0.3)`, borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: CLAY, marginBottom: 4 }}>DIVERSO DALLE CONDIZIONI CONCORDATE</div>
+            <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6 }}>
+              Con questo cliente e' concordato un acconto del {dev.expected}%, qui e' {dev.actual}% ({dev.reason}).
+              Nessun problema se e' una scelta: l'avviso serve solo a non derogare per distrazione.
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Shipping cost */}
       {setShipping && (

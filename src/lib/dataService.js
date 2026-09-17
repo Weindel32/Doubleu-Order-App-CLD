@@ -11,7 +11,7 @@ const CLIENT_FIELDS = ['category', 'city', 'province', 'country', 'vat_number', 
   // Condizioni di pagamento concordate: precompilano le rate di un ordine
   // nuovo. Sono un accordo commerciale, non il profilo pagatore, che invece
   // si calcola dallo storico degli incassi.
-  'payment_deposit_percent', 'payment_balance_due_mode', 'payment_balance_offset_days', 'payment_notes']
+  'payment_deposit_percent', 'payment_deposit_min_amount', 'payment_balance_due_mode', 'payment_balance_offset_days', 'payment_notes']
 
 export async function upsertClient(name, fields) {
   const safe = {}
