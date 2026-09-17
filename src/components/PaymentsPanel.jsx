@@ -55,7 +55,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
   // date vuoto sparirebbe dal suo modale incassi. Il database ha comunque un
   // trigger che la ricalcola se la consegna si sposta.
   const dueDateFor = (form) => {
-    if (form.dueMode !== 'consegna') return isoToDisplay(form.date)
+    if (form.dueMode !== 'consegna' && form.dueMode !== 'ordine') return isoToDisplay(form.date)
     const due = paymentDue(order, { ...form, dueOffsetDays: parseInt(form.dueOffsetDays) || 0 })
     return formatItalian(due.date) || null
   }
@@ -201,12 +201,13 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             <label style={s.label}>Scadenza</label>
             <select style={inp} value={value.dueMode || 'fissa'} onChange={e => onChange({ ...value, dueMode: e.target.value })}>
               <option value="fissa">Data fissa</option>
+              <option value="ordine">Alla conferma ordine</option>
               <option value="consegna">Alla consegna</option>
             </select>
           </div>
-          {value.dueMode === 'consegna' ? (
+          {value.dueMode === 'consegna' || value.dueMode === 'ordine' ? (
             <div>
-              <label style={s.label}>Giorni dopo la consegna</label>
+              <label style={s.label}>{value.dueMode === 'ordine' ? "Giorni dopo l'ordine" : 'Giorni dopo la consegna'}</label>
               <input type="number" min="0" style={inp} value={value.dueOffsetDays ?? 0}
                 onChange={e => onChange({ ...value, dueOffsetDays: e.target.value })} placeholder="0" />
             </div>
@@ -214,11 +215,13 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             <DatePicker label="Data" value={value.date} onChange={v => onChange({ ...value, date: v })} />
           )}
         </div>
-        {value.dueMode === 'consegna' && (
+        {(value.dueMode === 'consegna' || value.dueMode === 'ordine') && (
           <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 8 }}>
             {preview.date
               ? `Scade il ${formatItalian(preview.date)}${preview.estimated ? ' — stima sulla consegna prevista, si ricalcola alla consegna reale' : ''}`
-              : 'Nessuna data di consegna sull\'ordine: la scadenza si calcola quando la inserisci.'}
+              : value.dueMode === 'ordine'
+                ? "Manca la data dell'ordine: la scadenza si calcola quando la inserisci."
+                : 'Nessuna data di consegna sull\'ordine: la scadenza si calcola quando la inserisci.'}
           </div>
         )}
       </div>
@@ -247,9 +250,13 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                   ? `Nessun acconto sotto € ${depositMin.toLocaleString('it-IT')}`
                   : 'Nessun acconto'}
               {' · saldo '}
-              {(clientTerms.payment_balance_due_mode || 'consegna') === 'consegna'
-                ? `alla consegna${parseInt(clientTerms.payment_balance_offset_days) ? ` + ${clientTerms.payment_balance_offset_days}gg` : ''}`
-                : 'a data da concordare'}
+              {(() => {
+                const mode = clientTerms.payment_balance_due_mode || 'consegna'
+                if (mode === 'fissa') return 'a data da concordare'
+                const gg = parseInt(clientTerms.payment_balance_offset_days) || 0
+                const base = mode === 'ordine' ? "alla conferma ordine" : 'alla consegna'
+                return gg ? `${base} + ${gg}gg` : base
+              })()}
             </div>
           </div>
           <button style={{ ...btnGoldStyle, padding:'8px 18px', fontSize:9 }} onClick={applyClientTerms}>
@@ -463,7 +470,12 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                       </span>
                       <span style={{ fontSize: 11, color: MUTED }}>
                         {due.date ? formatItalian(due.date) : '—'}
-                        {p.dueMode === 'consegna' && <span style={{ opacity: 0.6 }}> · alla consegna{p.dueOffsetDays ? ` +${p.dueOffsetDays}gg` : ''}{due.estimated ? ' (stima)' : ''}</span>}
+                        {(p.dueMode === 'consegna' || p.dueMode === 'ordine') && (
+                          <span style={{ opacity: 0.6 }}>
+                            {p.dueMode === 'ordine' ? " · alla conferma ordine" : ' · alla consegna'}
+                            {p.dueOffsetDays ? ` +${p.dueOffsetDays}gg` : ''}{due.estimated ? ' (stima)' : ''}
+                          </span>
+                        )}
                       </span>
                       {p.method && <span style={{ fontSize: 10, color: MUTED, opacity: 0.7 }}>{p.method}</span>}
                       {suspect && (

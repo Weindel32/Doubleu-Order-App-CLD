@@ -77,6 +77,19 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_deposit_percent numeric;
 -- non ha senso, e un avviso di deroga che scatta su ogni ordine piccolo e' un
 -- avviso che si smette di leggere.
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_deposit_min_amount numeric;
+
+-- ----------------------------------------------------------------
+-- MIGRATION: scadenza ancorata alla conferma ordine (una volta sola)
+-- payments.due_mode accetta ora anche 'ordine': la scadenza parte dalla
+-- data dell'ordine invece che dalla consegna, per i clienti che pagano
+-- in anticipo. Senza, quel patto si poteva esprimere solo come
+-- "acconto 100%", che non e' un acconto ma l'intero importo.
+-- compute_payment_due_date prende un parametro in piu' (p_order_date) e
+-- i trigger sono aggiornati di conseguenza: vedi la migrazione Supabase
+-- payment_due_mode_ordine.
+-- ----------------------------------------------------------------
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_deposit_offset_days integer DEFAULT 0;
+-- ----------------------------------------------------------------
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_due_mode text DEFAULT 'consegna';
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_offset_days integer DEFAULT 0;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_notes text;
