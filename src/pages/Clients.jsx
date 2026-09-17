@@ -578,8 +578,9 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
                 {selected.payer.unverified > 0 && (
                   <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:16, opacity:0.8 }}>
-                    {selected.payer.unverified} {selected.payer.unverified === 1 ? 'incasso proviene' : 'incassi provengono'} dall'archivio
-                    precedente, senza data reale di pagamento: {selected.payer.unverified === 1 ? 'non concorre' : 'non concorrono'} al profilo.
+                    {selected.payer.unverified} {selected.payer.unverified === 1 ? 'incasso e\' registrato' : 'incassi sono registrati'} ma
+                    con la data di scadenza al posto di quella di pagamento, ereditata dall'archivio precedente:
+                    {selected.payer.unverified === 1 ? ' non concorre' : ' non concorrono'} al profilo finche\' non si conosce il giorno reale.
                   </div>
                 )}
 

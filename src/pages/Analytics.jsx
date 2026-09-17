@@ -476,7 +476,11 @@ export default function Analytics({ orders, shipments = [] }) {
                 : c.avg <= 0 ? GREEN : c.avg <= 10 ? GOLD : c.avg <= 30 ? CLAY : '#ef4444'
               // Il numero e' l'informazione, il colore serve solo a scorrere
               // la colonna: +3gg e +40gg non devono diventare lo stesso segno.
-              const label = c.avg === null ? '—'
+              // Un trattino in una colonna "storico incassi" si legge come
+              // "non c'e' nulla". Qui invece il dato c'e', ma non e'
+              // misurabile: meglio dirlo.
+              const label = c.avg === null
+                ? (c.unverified > 0 ? 'in attesa' : 'poca storia')
                 : c.avg === 0 ? '0 gg'
                 : c.avg < 0   ? `${c.avg} gg`
                 : `+${c.avg} gg`
@@ -494,7 +498,7 @@ export default function Analytics({ orders, shipments = [] }) {
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: tone, flexShrink: 0, opacity: c.avg === null ? 0.35 : 1 }}/>
-                    <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 21, color: tone, opacity: c.avg === null ? 0.5 : 1 }}>{label}</span>
+                    <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: c.avg === null ? 15 : 21, color: tone, opacity: c.avg === null ? 0.6 : 1 }}>{label}</span>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
@@ -514,8 +518,11 @@ export default function Analytics({ orders, shipments = [] }) {
 
           {paymentBehaviour.some(c => c.unverified > 0) && (
             <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 14, lineHeight: 1.6, opacity: 0.8 }}>
-              Gli incassi "da verificare" arrivano dall'archivio precedente, quando non si registrava
-              la data reale di pagamento: non concorrono al giudizio finche' non vengono confermati.
+              Gli incassi "da verificare" sono registrati, ma la loro data di pagamento vale la scadenza
+              copiata dall'archivio precedente, non il giorno in cui i soldi sono arrivati: contarli
+              farebbe risultare puntuali tutti i clienti, per costruzione. Si sbloccano recuperando le
+              date reali dai movimenti di Doubleu Finance, oppure correggendo "Incassato il" sulla
+              singola rata. Da li' in avanti ogni incasso registrato conta da subito.
             </div>
           )}
         </div>
