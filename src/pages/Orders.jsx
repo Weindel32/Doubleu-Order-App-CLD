@@ -6,6 +6,7 @@ import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import BollaModal                from '../components/BollaModal.jsx'
+import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
 import { exportSizesCSV, exportAllOrdersCSV } from '../utils/exportCSV.js'
 import { quickUpdateStatus, quickTogglePayment } from '../lib/dataService.js'
 import { BORDER } from '../tokens.js'
@@ -16,11 +17,33 @@ const todayItalian = () => {
   return `${String(t.getDate()).padStart(2,'0')}/${String(t.getMonth()+1).padStart(2,'0')}/${t.getFullYear()}`
 }
 
+const todayISO = () => {
+  const t = new Date()
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`
+}
+
+// Stati che richiedono le date reali (spedizione + consegna). Le date NON
+// vengono piu' scritte in automatico con "oggi": l'aggiornamento avviene
+// spesso a posteriori, quindi si chiedono sempre con oggi come default.
+const DATE_STATUSES = ['CONSEGNATO', 'CONSEGNA PARZIALE']
+
 function StatusSelector({ order, onStatusChange }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pending, setPending] = useState(null)   // { status, cancelFields }
+  const [shipISO, setShipISO] = useState('')
+  const [delivISO, setDelivISO] = useState('')
+
+  const applyStatus = async (newStatus, cancelFields, dateFields) => {
+    setSaving(true)
+    const extraFields = { ...dateFields, ...cancelFields }
+    const ok = await quickUpdateStatus(order.id, newStatus, extraFields)
+    if (ok) onStatusChange(order.id, newStatus, dateFields, cancelFields)
+    setSaving(false); setOpen(false); setPending(null)
+  }
+
   const handleSelect = async (newStatus) => {
-    if (newStatus === order.status) { setOpen(false); return }
+    if (newStatus === order.status && !DATE_STATUSES.includes(newStatus)) { setOpen(false); return }
     let cancelFields = {}
     if (newStatus === 'ANNULLATO') {
       const reason = window.prompt('Motivo annullamento (promemoria interno):', order.cancelReason || '')
@@ -29,15 +52,26 @@ function StatusSelector({ order, onStatusChange }) {
     } else if (order.status === 'ANNULLATO') {
       cancelFields = { cancel_reason: null, cancel_date: null }
     }
-    setSaving(true)
-    const autoDate = newStatus === 'CONSEGNATO'
-      ? todayItalian()
-      : (newStatus === 'CONSEGNA PARZIALE' && !order.actualDeliveryDate) ? todayItalian() : null
-    const extraFields = { ...(autoDate ? { actual_delivery_date: autoDate } : {}), ...cancelFields }
-    const ok = await quickUpdateStatus(order.id, newStatus, extraFields)
-    if (ok) onStatusChange(order.id, newStatus, autoDate, cancelFields)
-    setSaving(false); setOpen(false)
+    if (DATE_STATUSES.includes(newStatus)) {
+      setShipISO(fromItalianDate(order.shippedDate) || todayISO())
+      setDelivISO(fromItalianDate(order.actualDeliveryDate) || todayISO())
+      setPending({ status: newStatus, cancelFields })
+      setOpen(false)
+      return
+    }
+    await applyStatus(newStatus, cancelFields, null)
   }
+
+  const confirmDates = () => {
+    if (!pending) return
+    applyStatus(pending.status, pending.cancelFields, {
+      shipped_date: toItalianDate(shipISO) || null,
+      actual_delivery_date: toItalianDate(delivISO) || null,
+    })
+  }
+
+  const shipAfterDelivery = shipISO && delivISO && shipISO > delivISO
+
   return (
     <div style={{ position:'relative' }}>
       <div onClick={() => !saving && setOpen(!open)} style={{ cursor: saving?'wait':'pointer' }}>
@@ -54,6 +88,26 @@ function StatusSelector({ order, onStatusChange }) {
               {st}
             </div>
           })}
+        </div>
+      )}
+      {pending && (
+        <div style={{ position:'absolute', top:'100%', left:0, zIndex:120, marginTop:4, background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:8, padding:16, width:260, boxShadow:'0 8px 24px rgba(0,0,0,0.45)' }}>
+          <div style={{ fontSize:9, letterSpacing:2, color:GOLD, textTransform:'uppercase', marginBottom:12 }}>{pending.status} · date reali</div>
+          <div style={{ marginBottom:12 }}>
+            <DatePicker label="Data spedizione" value={shipISO} onChange={setShipISO}/>
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <DatePicker label="Data consegna" value={delivISO} onChange={setDelivISO}/>
+          </div>
+          {shipAfterDelivery && (
+            <div style={{ fontSize:9, color:CLAY, lineHeight:1.5, marginBottom:10 }}>
+              La spedizione e' successiva alla consegna. Controlla le date.
+            </div>
+          )}
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={confirmDates} disabled={saving} style={{ ...btnGoldStyle, flex:1, padding:'9px 12px', fontSize:10, opacity:saving?0.5:1 }}>{saving?'...':'Conferma'}</button>
+            <button onClick={()=>setPending(null)} disabled={saving} style={{ ...btnStyle(false), flex:1, padding:'9px 12px', fontSize:10 }}>Annulla</button>
+          </div>
         </div>
       )}
     </div>
@@ -136,7 +190,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
     const h=gen(order); const w=window.open('','_blank'); w.document.write(h); w.document.close()
   }
 
-  const handleStatusChange   = (orderId, newStatus, autoDate, cancelFields={}) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(autoDate?{actualDeliveryDate:autoDate}:{}),...('cancel_reason' in cancelFields?{cancelReason:cancelFields.cancel_reason||'',cancelDate:cancelFields.cancel_date||null}:{})}:o))
+  const handleStatusChange   = (orderId, newStatus, dateFields, cancelFields={}) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(dateFields?{shippedDate:dateFields.shipped_date||null,actualDeliveryDate:dateFields.actual_delivery_date||null}:{}),...('cancel_reason' in cancelFields?{cancelReason:cancelFields.cancel_reason||'',cancelDate:cancelFields.cancel_date||null}:{})}:o))
   const handlePaymentToggle  = (orderId, paymentId, newPaid) => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid}:p)}))
 
   const thStyle = (col) => ({
@@ -206,6 +260,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                   <td style={{...s.td,fontSize:11,color:days!==null&&days<=7&&o.status!=='CONSEGNATO'?CLAY:MUTED}}>
                     {o.deliveryDate||'—'}
                     {days!==null&&o.status!=='CONSEGNATO'&&<div style={{fontSize:9,marginTop:2}}>{days<0?`scad.${Math.abs(days)}gg`:days===0?'oggi':`${days}gg`}</div>}
+                    {o.shippedDate&&<div style={{fontSize:9,marginTop:3,color:MUTED}}>Sped. {o.shippedDate}</div>}
                     {o.actualDeliveryDate&&<div style={{fontSize:9,marginTop:3,color:GREEN}}>✓ {o.actualDeliveryDate}</div>}
                   </td>
                   <td style={s.td}><StatusSelector order={o} onStatusChange={handleStatusChange}/></td>

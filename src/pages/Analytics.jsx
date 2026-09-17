@@ -352,6 +352,21 @@ export default function Analytics({ orders, shipments = [] }) {
     return { avg, onTime, mild, severe, total: delays.length }
   })()
 
+  // Tempo di transito reale: quanto ci mette la merce dalla partenza alla
+  // consegna. Separa il ritardo di produzione da quello del corriere.
+  const transitPerf = (() => {
+    const spediti = orders.filter(o => o.shippedDate && o.actualDeliveryDate)
+    const days = spediti.map(o => {
+      const sped  = parseItalianDate(o.shippedDate)
+      const cons  = parseItalianDate(o.actualDeliveryDate)
+      if (!sped || !cons) return null
+      const diff = Math.round((cons - sped) / 86400000)
+      return diff >= 0 ? diff : null
+    }).filter(d => d !== null)
+    if (days.length === 0) return null
+    return { avg: Math.round(days.reduce((s, d) => s + d, 0) / days.length * 10) / 10, total: days.length }
+  })()
+
   const byClientSplit = {}
   confirmed.forEach(o => {
     const tot = orderTotal(o)
@@ -423,6 +438,12 @@ export default function Analytics({ orders, shipments = [] }) {
                   <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, color: '#ef4444', lineHeight: 1 }}>{deliveryPerf.severe}</div>
                   <div style={{ fontSize: 9, letterSpacing: 1, color: MUTED, marginTop: 4 }}>+10gg ritardo</div>
                 </div>
+                {transitPerf && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, color: CREAM, lineHeight: 1 }}>{transitPerf.avg}gg</div>
+                    <div style={{ fontSize: 9, letterSpacing: 1, color: MUTED, marginTop: 4 }}>transito medio · {transitPerf.total} ord.</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
