@@ -162,3 +162,42 @@ export function clientPaymentDelays(orders, today = new Date()) {
     .filter(r => r.count > 0 || r.unverified > 0 || r.openAmount > 0)
     .sort((a, b) => (b.openDays - a.openDays) || ((b.avg ?? -999) - (a.avg ?? -999)))
 }
+
+// Divide un importo in n tranche senza perdere centesimi: le prime sono
+// arrotondate al centesimo, l'ultima assorbe il resto. Su 737,50 in 3 non
+// esiste una divisione esatta, e tre volte 245,83 lascerebbero un centesimo
+// scoperto.
+export function splitAmount(total, parts) {
+  const cents = Math.round((parseFloat(total) || 0) * 100)
+  const n = Math.max(1, parseInt(parts) || 1)
+  const base = Math.floor(cents / n)
+  const out = Array(n).fill(base)
+  out[n - 1] = cents - base * (n - 1)
+  return out.map(c => c / 100)
+}
+
+// Spezza una rata in n tranche a date fisse, scalate di `everyDays` giorni a
+// partire da `firstDateISO`. Le tranche intermedie diventano di tipo
+// 'intermedio', l'ultima eredita il tipo della rata originale (di norma il
+// saldo), cosi' resta riconoscibile quale chiude l'ordine.
+export function splitPayment(payment, { parts, firstDateISO, everyDays = 30 }) {
+  const n = Math.max(2, parseInt(parts) || 2)
+  const amounts = splitAmount(payment.amount, n)
+  const start = firstDateISO ? new Date(`${firstDateISO}T00:00:00`) : new Date()
+  const now = Date.now()
+  return amounts.map((amount, i) => ({
+    ...payment,
+    id: `p${now + i}`,
+    amount,
+    type: i === n - 1 ? (payment.type || 'saldo') : 'intermedio',
+    // Date fisse: una dilazione si concorda a calendario, non si sposta con
+    // la consegna come fa un saldo ancorato.
+    dueMode: 'fissa',
+    dueOffsetDays: 0,
+    date: formatItalian(addDays(start, i * (parseInt(everyDays) || 30))),
+    paid: false,
+    paidDate: null,
+    paidDateVerified: true,
+    note: payment.note || `Rata ${i + 1} di ${n}`,
+  }))
+}

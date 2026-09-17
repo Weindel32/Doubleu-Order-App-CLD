@@ -30,5 +30,9 @@ export function enrichClient(c, orders, shipments) {
   // Un giudizio scritto una volta invecchia e diventa un pregiudizio; questo
   // si aggiorna da se' a ogni incasso registrato.
   const payer = paymentProfile(confirmed)
-  return { ...c, allOrders, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, nonConfirmed, lastTs, lastOrder, samples, sampleInv, payer }
+  // Dilazioni concesse: un cliente puntuale sulle tranche che ha chiesto non
+  // e' lo stesso di uno puntuale sul saldo pieno, e il ritardo medio da solo
+  // non li distingue.
+  const installmentOrders = confirmed.filter(o => o.installmentsGranted).length
+  return { ...c, allOrders, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, nonConfirmed, lastTs, lastOrder, samples, sampleInv, payer, installmentOrders }
 }

@@ -76,6 +76,15 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_deposit_percent numeric;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_due_mode text DEFAULT 'consegna';
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_offset_days integer DEFAULT 0;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_notes text;
+
+-- ----------------------------------------------------------------
+-- MIGRATION: dilazione concessa sull'ordine (esegui una volta sola)
+-- Segna che il saldo e' stato spezzato in piu' tranche su richiesta del
+-- cliente. Non si deduce dal numero di rate: acconto piu' saldo sono due
+-- rate per prassi, e tre rate possono essere pianificate dall'inizio.
+-- ----------------------------------------------------------------
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS installments_granted boolean DEFAULT false;
+-- ----------------------------------------------------------------
 -- ----------------------------------------------------------------
 -- NOTA: save_order_payments conserva paid_date_verified quando il client
 -- non lo invia, altrimenti un'app non ancora aggiornata marcherebbe come

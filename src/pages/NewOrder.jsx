@@ -101,6 +101,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const [kits,setKits]             = useState(src?.kits || [emptyKit()])
   const [orderType,setOrderType]   = useState(src?.orderType || 'istituzionale')
   const [payments,setPayments]     = useState(editOrder?.payments || [])
+  const [installmentsGranted,setInstallmentsGranted] = useState(editOrder?.installmentsGranted || false)
   const [saving,setSaving]         = useState(false)
   const [saveError,setSaveError]   = useState(null)
   const [showBollaModal,setShowBollaModal] = useState(false)
@@ -164,6 +165,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     client: club||'—', clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
     deliveryDate: toItalianDate(deliveryDate),
+    installmentsGranted,
     shippedDate: toItalianDate(shippedDate) || null,
     actualDeliveryDate: toItalianDate(actualDeliveryDate) || null,
     alertDays, status, pieces: totalPieces, orderType,
@@ -741,7 +743,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
 
       {/* ── STEP 4 ── */}
       {step===4 && <div>
-        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber} order={currentOrder} clientTerms={clientTerms}/>
+        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber} order={currentOrder} clientTerms={clientTerms} onInstallmentsGranted={setInstallmentsGranted}/>
         <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →" withSave/>
       </div>}
 
