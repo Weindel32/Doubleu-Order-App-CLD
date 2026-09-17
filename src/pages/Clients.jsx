@@ -61,10 +61,10 @@ const PAYER_COLORS = {
 function PayerBadge({ payer, compact = false }) {
   if (!payer) return null
   const pc = PAYER_COLORS[payer.level] || PAYER_COLORS.sconosciuto
-  const giorni = payer.avg === null ? null
-    : payer.avg === 0 ? '0 gg'
-    : payer.avg < 0   ? `${payer.avg} gg`
-    : `+${payer.avg} gg`
+  const giorni = payer.typical === null ? null
+    : payer.typical === 0 ? '0 gg'
+    : payer.typical < 0   ? `${payer.typical} gg`
+    : `+${payer.typical} gg`
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'3px 10px', borderRadius:2, fontSize:9, letterSpacing:1.5, background:pc.bg, color:pc.color, border:`1px solid ${pc.border}`, whiteSpace:'nowrap' }}>
       <span style={{ width:6, height:6, borderRadius:'50%', background:pc.color, flexShrink:0 }}/>
@@ -540,11 +540,11 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
                   <div>
-                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:4 }}>RITARDO MEDIO</div>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color: selected.payer.avg === null ? MUTED : selected.payer.avg > 0 ? CLAY : GREEN }}>
-                      {selected.payer.avg === null ? '—'
-                        : selected.payer.avg === 0 ? '0 gg'
-                        : selected.payer.avg < 0 ? `${selected.payer.avg} gg` : `+${selected.payer.avg} gg`}
+                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:4 }}>RITARDO TIPICO</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color: selected.payer.typical === null ? MUTED : selected.payer.typical > 0 ? CLAY : GREEN }}>
+                      {selected.payer.typical === null ? '—'
+                        : selected.payer.typical === 0 ? '0 gg'
+                        : selected.payer.typical < 0 ? `${selected.payer.typical} gg` : `+${selected.payer.typical} gg`}
                     </div>
                     <div style={{ fontSize:9, color:MUTED, letterSpacing:1, marginTop:3 }}>
                       {selected.payer.count > 0
@@ -569,6 +569,15 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                   </div>
                 </div>
 
+                {selected.payer.suspect > 0 && (
+                  <div style={{ fontSize:10, color:CLAY, letterSpacing:1, lineHeight:1.6, marginBottom:12 }}>
+                    {selected.payer.suspect} {selected.payer.suspect === 1 ? 'rata ha' : 'rate hanno'} una scadenza
+                    incoerente con la data dell'ordine — quasi sempre un anno digitato male:
+                    {selected.payer.suspect === 1 ? ' resta fuori' : ' restano fuori'} dal calcolo finche' non
+                    {selected.payer.suspect === 1 ? ' viene corretta' : ' vengono corrette'} dal pannello pagamenti.
+                  </div>
+                )}
+
                 {selected.installmentOrders > 0 && (
                   <div style={{ fontSize:10, color:CLAY, letterSpacing:1, lineHeight:1.6, marginBottom:12 }}>
                     Dilazione concessa su {selected.installmentOrders} {selected.installmentOrders === 1 ? 'ordine' : 'ordini'} su {selected.confirmed.length}:
@@ -578,8 +587,9 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
                 {selected.payer.unverified > 0 && (
                   <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:16, opacity:0.8 }}>
-                    {selected.payer.unverified} {selected.payer.unverified === 1 ? 'incasso proviene' : 'incassi provengono'} dall'archivio
-                    precedente, senza data reale di pagamento: {selected.payer.unverified === 1 ? 'non concorre' : 'non concorrono'} al profilo.
+                    {selected.payer.unverified} {selected.payer.unverified === 1 ? 'incasso e\' registrato' : 'incassi sono registrati'} ma
+                    con la data di scadenza al posto di quella di pagamento, ereditata dall'archivio precedente:
+                    {selected.payer.unverified === 1 ? ' non concorre' : ' non concorrono'} al profilo finche\' non si conosce il giorno reale.
                   </div>
                 )}
 
