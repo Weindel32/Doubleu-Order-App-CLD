@@ -236,3 +236,43 @@ export function splitPayment(payment, { parts, firstDateISO, everyDays = 30 }) {
     note: payment.note || `Rata ${i + 1} di ${n}`,
   }))
 }
+
+// ─── Condizioni concordate vs ordine reale ───────────────────────────────────
+
+// Percentuale di acconto effettiva di un ordine, sul totale delle sue rate.
+// null quando non ci sono rate: un ordine senza pagamenti non "deroga", e' solo
+// incompleto.
+export function depositPercentOf(payments) {
+  const rows = payments || []
+  const total = rows.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
+  if (!(total > 0)) return null
+  const deposit = rows
+    .filter(p => p.type === 'acconto')
+    .reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
+  return Math.round(deposit / total * 100)
+}
+
+// Confronta le rate di un ordine con le condizioni concordate col cliente.
+// → null quando non c'e' niente da dire; altrimenti { expected, actual, reason }.
+//
+// Sotto la soglia di importo concordata l'acconto non si chiede, quindi non
+// c'e' nessuna deroga da segnalare: un avviso che scatta su ogni ordine da
+// venti euro e' un avviso che si smette di leggere.
+export function depositDeviation(terms, payments, orderTotal, tolerance = 5) {
+  if (!terms) return null
+  const expected = Number(terms.payment_deposit_percent)
+  if (!(expected > 0)) return null
+
+  const soglia = Number(terms.payment_deposit_min_amount)
+  if (soglia > 0 && (parseFloat(orderTotal) || 0) < soglia) return null
+
+  const actual = depositPercentOf(payments)
+  if (actual === null) return null
+  if (Math.abs(actual - expected) <= tolerance) return null
+
+  return {
+    expected,
+    actual,
+    reason: actual === 0 ? 'nessun acconto' : actual < expected ? 'acconto inferiore' : 'acconto superiore',
+  }
+}

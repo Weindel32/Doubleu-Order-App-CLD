@@ -73,6 +73,10 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS paid_date_verified boolean DEFAULT
 --                         | 'fissa' (data da concordare ordine per ordine)
 -- ----------------------------------------------------------------
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_deposit_percent numeric;
+-- Soglia sotto la quale l'acconto non si chiede: su un ordine da venti euro
+-- non ha senso, e un avviso di deroga che scatta su ogni ordine piccolo e' un
+-- avviso che si smette di leggere.
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_deposit_min_amount numeric;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_due_mode text DEFAULT 'consegna';
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_balance_offset_days integer DEFAULT 0;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS payment_notes text;

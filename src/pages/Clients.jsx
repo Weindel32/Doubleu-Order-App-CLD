@@ -162,6 +162,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
       contact:     selected.contact    || '',
       shop_attivo: selected.shop_attivo || false,
       payment_deposit_percent:     selected.payment_deposit_percent ?? '',
+      payment_deposit_min_amount:  selected.payment_deposit_min_amount ?? '',
       payment_balance_due_mode:    selected.payment_balance_due_mode || 'consegna',
       payment_balance_offset_days: selected.payment_balance_offset_days ?? 0,
       payment_notes:               selected.payment_notes || '',
@@ -185,6 +186,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
       contact:     editForm.contact    || null,
       shop_attivo: editForm.shop_attivo || false,
       payment_deposit_percent:     editForm.payment_deposit_percent === '' ? null : Number(editForm.payment_deposit_percent),
+      payment_deposit_min_amount:  editForm.payment_deposit_min_amount === '' ? null : Number(editForm.payment_deposit_min_amount),
       payment_balance_due_mode:    editForm.payment_balance_due_mode || 'consegna',
       payment_balance_offset_days: parseInt(editForm.payment_balance_offset_days) || 0,
       payment_notes:               editForm.payment_notes || null,
@@ -613,6 +615,11 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                           onChange={e => setEditForm(f => ({ ...f, payment_deposit_percent:e.target.value }))} placeholder="es. 50"/>
                       </div>
                       <div>
+                        <label style={s.label}>Solo sopra €</label>
+                        <input type="number" min="0" style={inp} value={editForm.payment_deposit_min_amount}
+                          onChange={e => setEditForm(f => ({ ...f, payment_deposit_min_amount:e.target.value }))} placeholder="es. 300"/>
+                      </div>
+                      <div>
                         <label style={s.label}>Saldo</label>
                         <select style={inp} value={editForm.payment_balance_due_mode}
                           onChange={e => setEditForm(f => ({ ...f, payment_balance_due_mode:e.target.value }))}>
@@ -635,7 +642,11 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                     </div>
                   ) : (
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                      <InfoField label="ACCONTO" value={selected.payment_deposit_percent != null ? `${selected.payment_deposit_percent}%` : 'non definito'}/>
+                      <InfoField label="ACCONTO" value={
+                        selected.payment_deposit_percent != null
+                          ? `${selected.payment_deposit_percent}%${selected.payment_deposit_min_amount ? ` · solo sopra € ${Number(selected.payment_deposit_min_amount).toLocaleString('it-IT')}` : ''}`
+                          : 'non definito'
+                      }/>
                       <InfoField label="SALDO" value={
                         (selected.payment_balance_due_mode || 'consegna') === 'consegna'
                           ? `Alla consegna${selected.payment_balance_offset_days ? ` + ${selected.payment_balance_offset_days}gg` : ''}`
