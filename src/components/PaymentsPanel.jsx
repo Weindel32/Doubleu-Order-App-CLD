@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import DatePicker from './DatePicker.jsx'
-import { paymentDue, paymentDelay, formatItalian, splitPayment, splitAmount } from '../utils/payments.js'
+import { paymentDue, paymentDelay, formatItalian, splitPayment, splitAmount, isSuspectDueDate } from '../utils/payments.js'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
 const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Carta di Credito', 'Assegno', 'PayPal', 'Altro']
@@ -321,8 +321,11 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             return when(a) - when(b)
           }).map(p => {
             const tc    = TYPE_COLORS[p.type] || TYPE_COLORS.acconto
-            const due   = paymentDue(order, p)
-            const delay = paymentDelay(order, p)
+            const due     = paymentDue(order, p)
+            const delay   = paymentDelay(order, p)
+            // Una scadenza lontana anni dalla data dell'ordine e' un refuso:
+            // va segnalata qui, dove si corregge, non solo nelle statistiche.
+            const suspect = isSuspectDueDate(order, p)
 
             if (editingId === p.id && editP) {
               return (
@@ -441,6 +444,11 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                         {p.dueMode === 'consegna' && <span style={{ opacity: 0.6 }}> · alla consegna{p.dueOffsetDays ? ` +${p.dueOffsetDays}gg` : ''}{due.estimated ? ' (stima)' : ''}</span>}
                       </span>
                       {p.method && <span style={{ fontSize: 10, color: MUTED, opacity: 0.7 }}>{p.method}</span>}
+                      {suspect && (
+                        <span style={{ padding: '2px 8px', borderRadius: 2, fontSize: 9, letterSpacing: 1, fontWeight: 700, background: 'rgba(196,98,58,0.15)', color: CLAY, border: `1px solid rgba(196,98,58,0.35)` }}>
+                          SCADENZA DA CONTROLLARE
+                        </span>
+                      )}
                       {!p.paid && delay !== null && delay > 0 && (
                         <span style={{ padding: '2px 8px', borderRadius: 2, fontSize: 9, letterSpacing: 1, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)' }}>
                           SCADUTO DA {delay}GG
@@ -452,6 +460,12 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                         Incassato il {p.paidDate}
                         {delay !== null && delay > 0 && ` · ${delay}gg di ritardo`}
                         {delay !== null && delay < 0 && ` · ${Math.abs(delay)}gg di anticipo`}
+                      </div>
+                    )}
+                    {suspect && (
+                      <div style={{ fontSize: 10, color: CLAY, marginTop: 3, lineHeight: 1.5 }}>
+                        La scadenza non e' coerente con la data dell'ordine ({order?.date || '—'}): controlla l'anno.
+                        Finche' resta cosi' questa rata non conta nel rating del cliente.
                       </div>
                     )}
                     {p.note && <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>{p.note}</div>}

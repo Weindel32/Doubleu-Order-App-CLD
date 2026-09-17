@@ -460,6 +460,7 @@ export default function Analytics({ orders, shipments = [] }) {
           <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 4 }}>PUNTUALITA' DI PAGAMENTO</div>
           <div style={{ fontSize: 10, color: MUTED, opacity: 0.8, marginBottom: 18 }}>
             A sinistra come ha pagato in passato, a destra quanto deve adesso. Sono due cose diverse.
+            Il ritardo storico e' la mediana: un solo pagamento fuori scala non riscrive il giudizio.
           </div>
 
           {/* Intestazioni: senza, un ritardo storico e un credito scaduto si
@@ -472,23 +473,23 @@ export default function Analytics({ orders, shipments = [] }) {
 
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {paymentBehaviour.map(c => {
-              const tone = c.avg === null ? MUTED
-                : c.avg <= 0 ? GREEN : c.avg <= 10 ? GOLD : c.avg <= 30 ? CLAY : '#ef4444'
+              const tone = c.typical === null ? MUTED
+                : c.typical <= 0 ? GREEN : c.typical <= 10 ? GOLD : c.typical <= 30 ? CLAY : '#ef4444'
               // Il numero e' l'informazione, il colore serve solo a scorrere
               // la colonna: +3gg e +40gg non devono diventare lo stesso segno.
               // Un trattino in una colonna "storico incassi" si legge come
               // "non c'e' nulla". Qui invece il dato c'e', ma non e'
               // misurabile: meglio dirlo.
-              const label = c.avg === null
+              const label = c.typical === null
                 ? (c.unverified > 0 ? 'in attesa' : 'poca storia')
-                : c.avg === 0 ? '0 gg'
-                : c.avg < 0   ? `${c.avg} gg`
-                : `+${c.avg} gg`
-              const sotto = c.avg === null
+                : c.typical === 0 ? '0 gg'
+                : c.typical < 0   ? `${c.typical} gg`
+                : `+${c.typical} gg`
+              const sotto = c.typical === null
                 ? (c.unverified > 0
                     ? `${c.unverified} ${c.unverified === 1 ? 'incasso' : 'incassi'} da verificare`
                     : `${c.count} su ${MIN_INCASSI_PER_GIUDIZIO} per il giudizio`)
-                : `${c.count} ${c.count === 1 ? 'incasso' : 'incassi'}${c.worst > 0 ? ` · max +${c.worst}gg` : ''}`
+                : `${c.count} ${c.count === 1 ? 'incasso' : 'incassi'}${c.worst > 0 ? ` · max +${c.worst}gg` : ''}${c.suspect > 0 ? ` · ${c.suspect} da controllare` : ''}`
               return (
                 <div key={c.name} style={{ display: 'grid', gridTemplateColumns: '1fr 150px 210px', gap: 16, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ minWidth: 0 }}>
@@ -497,8 +498,8 @@ export default function Analytics({ orders, shipments = [] }) {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: tone, flexShrink: 0, opacity: c.avg === null ? 0.35 : 1 }}/>
-                    <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: c.avg === null ? 15 : 21, color: tone, opacity: c.avg === null ? 0.6 : 1 }}>{label}</span>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: tone, flexShrink: 0, opacity: c.typical === null ? 0.35 : 1 }}/>
+                    <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: c.typical === null ? 15 : 21, color: tone, opacity: c.typical === null ? 0.6 : 1 }}>{label}</span>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
@@ -515,6 +516,14 @@ export default function Analytics({ orders, shipments = [] }) {
               )
             })}
           </div>
+
+          {paymentBehaviour.some(c => c.suspect > 0) && (
+            <div style={{ fontSize: 9, color: CLAY, letterSpacing: 1, marginTop: 14, lineHeight: 1.6 }}>
+              Alcune rate hanno una scadenza incoerente con la data dell'ordine — quasi sempre un anno
+              digitato male. Restano fuori dal calcolo finche' non vengono corrette dal pannello
+              pagamenti dell'ordine.
+            </div>
+          )}
 
           {paymentBehaviour.some(c => c.unverified > 0) && (
             <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 14, lineHeight: 1.6, opacity: 0.8 }}>

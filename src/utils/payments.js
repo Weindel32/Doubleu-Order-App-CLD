@@ -95,9 +95,22 @@ export function overdueSummary(order, today = new Date()) {
 // comportamento.
 export const MIN_INCASSI_PER_GIUDIZIO = 3
 
-// Profili pagatore, in ordine di gravita'. Le soglie sono in giorni di ritardo
-// medio: sono convenzioni, non verita' — il numero di giorni resta sempre
-// visibile accanto all'etichetta, perche' e' quello a dire quanto.
+// Oltre questa distanza dalla data dell'ordine una scadenza non e' plausibile:
+// e' quasi sempre un anno digitato male. Due anni lascia spazio a dilazioni
+// lunghe vere senza far passare un 2016 al posto di un 2026.
+const MAX_GIORNI_SCADENZA = 730
+
+// Una scadenza incoerente con la data dell'ordine va segnalata, non calcolata:
+// un solo "20/04/2016" al posto di "20/04/2026" vale 3654 giorni di ritardo e
+// travolge qualsiasi statistica gli si costruisca sopra.
+export function isSuspectDueDate(order, payment) {
+  const { date: due } = paymentDue(order, payment)
+  const ordered = startOfDay(parseDate(order?.date))
+  if (!due || !ordered) return false
+  const diff = Math.round((due - ordered) / DAY)
+  return diff < 0 || diff > MAX_GIORNI_SCADENZA
+}
+
 export const PAYER_LEVELS = {
   sconosciuto:  { label: 'Da valutare',          rank: 0 },
   puntuale:     { label: 'Puntuale',             rank: 1 },
@@ -106,12 +119,25 @@ export const PAYER_LEVELS = {
   critico:      { label: 'Ritardi gravi',        rank: 4 },
 }
 
-const levelFor = (avg) => {
-  if (avg === null || avg === undefined) return 'sconosciuto'
-  if (avg <= 0)  return 'puntuale'
-  if (avg <= 10) return 'lieve'
-  if (avg <= 30) return 'sistematico'
+const levelFor = (value) => {
+  if (value === null || value === undefined) return 'sconosciuto'
+  if (value <= 0)  return 'puntuale'
+  if (value <= 10) return 'lieve'
+  if (value <= 30) return 'sistematico'
   return 'critico'
+}
+
+// Mediana, non media: su cinque o sei incassi un singolo valore anomalo
+// sposta la media di centinaia di giorni e riscrive la storia di un cliente.
+// Un club che ha pagato una volta con sei mesi di ritardo e per il resto
+// sempre puntuale resterebbe marchiato per anni.
+const median = (values) => {
+  if (!values.length) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2
+    ? sorted[mid]
+    : Math.round((sorted[mid - 1] + sorted[mid]) / 2)
 }
 
 // Profilo pagatore calcolato su un insieme di ordini (tipicamente quelli di un
@@ -122,11 +148,17 @@ const levelFor = (avg) => {
 // ereditati dalla migrazione hanno per costruzione ritardo zero e farebbero
 // apparire puntuali clienti di cui non sappiamo nulla. Restano contati a parte
 // come `unverified`, per poterlo dire in chiaro invece di tacerlo.
+//
+// Le rate con una scadenza incoerente restano fuori dal calcolo e si contano
+// come `suspect`: sono errori di digitazione da correggere, non comportamenti
+// da misurare. Dichiararli e' meglio che scartarli in silenzio, altrimenti il
+// refuso resta li' per sempre.
 export function paymentProfile(orders, today = new Date()) {
   const delays = []
-  let unverified = 0, openAmount = 0, openDays = 0
+  let unverified = 0, suspect = 0, openAmount = 0, openDays = 0
   for (const o of (orders || [])) {
     for (const p of (o.payments || [])) {
+      if (isSuspectDueDate(o, p)) { suspect += 1; continue }
       const delay = paymentDelay(o, p, today)
       if (delay === null) continue
       if (p.paid) {
@@ -140,15 +172,18 @@ export function paymentProfile(orders, today = new Date()) {
   }
   const count  = delays.length
   const enough = count >= MIN_INCASSI_PER_GIUDIZIO
-  const avg    = enough ? Math.round(delays.reduce((s, d) => s + d, 0) / count) : null
+  const typical = enough ? median(delays) : null
   return {
     count,
     unverified,
-    avg,
+    suspect,
+    // `typical` e' la mediana dei ritardi: il comportamento abituale, non la
+    // media, che un solo valore fuori scala rende inservibile.
+    typical,
     worst: enough ? Math.max(...delays) : null,
     openAmount,
     openDays,
-    level: levelFor(avg),
+    level: levelFor(typical),
     hasOverdue: openAmount > 0,
   }
 }
@@ -159,8 +194,8 @@ export function clientPaymentDelays(orders, today = new Date()) {
   for (const o of (orders || [])) (byClient[o.client] ||= []).push(o)
   return Object.entries(byClient)
     .map(([name, os]) => ({ name, ...paymentProfile(os, today) }))
-    .filter(r => r.count > 0 || r.unverified > 0 || r.openAmount > 0)
-    .sort((a, b) => (b.openDays - a.openDays) || ((b.avg ?? -999) - (a.avg ?? -999)))
+    .filter(r => r.count > 0 || r.unverified > 0 || r.suspect > 0 || r.openAmount > 0)
+    .sort((a, b) => (b.openDays - a.openDays) || ((b.typical ?? -999) - (a.typical ?? -999)))
 }
 
 // Divide un importo in n tranche senza perdere centesimi: le prime sono
