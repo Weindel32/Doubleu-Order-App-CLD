@@ -4,6 +4,8 @@
 //  - 'fissa'    → la scadenza e' la data digitata a mano (campo date)
 //  - 'consegna' → la scadenza e' ancorata alla consegna reale dell'ordine,
 //                 piu' un eventuale offset in giorni (saldo a 30gg ecc.)
+//  - 'ordine'   → la scadenza e' ancorata alla conferma dell'ordine, piu' un
+//                 eventuale offset: i clienti che pagano in anticipo
 //
 // L'ancoraggio serve perche' la consegna si sposta: se il saldo e' "alla
 // consegna" e spedisci con quattro giorni di anticipo, il credito scade
@@ -48,6 +50,11 @@ export const formatItalian = (date) =>
 // → { date: Date|null, estimated: boolean }
 export function paymentDue(order, payment) {
   if (!payment) return { date: null, estimated: false }
+  if (payment.dueMode === 'ordine') {
+    // La data dell'ordine esiste sempre: nessuna stima da fare.
+    const ordered = startOfDay(parseDate(order?.date))
+    return { date: ordered ? addDays(ordered, payment.dueOffsetDays) : null, estimated: false }
+  }
   if (payment.dueMode === 'consegna') {
     const real = startOfDay(parseDate(order?.actualDeliveryDate))
     if (real) return { date: addDays(real, payment.dueOffsetDays), estimated: false }

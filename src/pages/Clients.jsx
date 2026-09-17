@@ -98,6 +98,8 @@ const inp = { ...s.input }
 export default function Clients({ orders, clients, prospects = [], setView, setEditOrder, onOpenOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpdateClient, onCreateClient, onLinkOrder, shipments = [], onNewSample, selectedId, setSelectedId }) {
   const [editForm,   setEditForm]     = useState(null)
   const [editSaving, setEditSaving]   = useState(false)
+  const [termsForm,  setTermsForm]    = useState(null)
+  const [termsSaving, setTermsSaving] = useState(false)
   const [linking,    setLinking]      = useState(false)
   const [newForm,    setNewForm]      = useState(null)
   const [newSaving,  setNewSaving]    = useState(false)
@@ -144,7 +146,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
   // tale) porta con sé lo storico di attività commerciali pre-vendita.
   const linkedProspect = selected ? prospects.find(p => p.client_id === selected.id) : null
 
-  const closeModal = () => { setSelectedId(null); setEditForm(null) }
+  const closeModal = () => { setSelectedId(null); setEditForm(null); setTermsForm(null) }
 
   const openEdit = () => {
     if (!selected) return
@@ -161,12 +163,34 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
       address:     selected.address    || '',
       contact:     selected.contact    || '',
       shop_attivo: selected.shop_attivo || false,
+    })
+  }
+
+  // Le condizioni di pagamento si modificano dalla loro card, senza passare
+  // dall'anagrafica: sono la cosa che si ritocca piu' spesso.
+  const openTermsEdit = () => {
+    if (!selected) return
+    setTermsForm({
       payment_deposit_percent:     selected.payment_deposit_percent ?? '',
       payment_deposit_min_amount:  selected.payment_deposit_min_amount ?? '',
       payment_balance_due_mode:    selected.payment_balance_due_mode || 'consegna',
       payment_balance_offset_days: selected.payment_balance_offset_days ?? 0,
       payment_notes:               selected.payment_notes || '',
     })
+  }
+
+  const handleTermsSave = async () => {
+    if (!termsForm || !selected) return
+    setTermsSaving(true)
+    await onUpdateClient(selected.id, {
+      payment_deposit_percent:     termsForm.payment_deposit_percent === '' ? null : Number(termsForm.payment_deposit_percent),
+      payment_deposit_min_amount:  termsForm.payment_deposit_min_amount === '' ? null : Number(termsForm.payment_deposit_min_amount),
+      payment_balance_due_mode:    termsForm.payment_balance_due_mode || 'consegna',
+      payment_balance_offset_days: parseInt(termsForm.payment_balance_offset_days) || 0,
+      payment_notes:               termsForm.payment_notes || null,
+    })
+    setTermsForm(null)
+    setTermsSaving(false)
   }
 
   const handleSave = async () => {
@@ -185,11 +209,6 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
       address:     editForm.address    || null,
       contact:     editForm.contact    || null,
       shop_attivo: editForm.shop_attivo || false,
-      payment_deposit_percent:     editForm.payment_deposit_percent === '' ? null : Number(editForm.payment_deposit_percent),
-      payment_deposit_min_amount:  editForm.payment_deposit_min_amount === '' ? null : Number(editForm.payment_deposit_min_amount),
-      payment_balance_due_mode:    editForm.payment_balance_due_mode || 'consegna',
-      payment_balance_offset_days: parseInt(editForm.payment_balance_offset_days) || 0,
-      payment_notes:               editForm.payment_notes || null,
     })
     setEditForm(null)
     setEditSaving(false)
@@ -533,6 +552,106 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                 )}
               </div>
 
+              {/* Condizioni di pagamento: card con la propria modifica. Non e'
+                  intuibile dover aprire tutta l'anagrafica per cambiare solo
+                  queste, che sono la cosa che si ritocca piu' spesso. */}
+              <div style={{ ...s.card, marginBottom:20 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16, marginBottom:14 }}>
+                  <div>
+                    <div style={s.cardTitle}>Condizioni di Pagamento</div>
+                    <div style={{ fontSize:10, color:MUTED, opacity:0.75, marginTop:4 }}>
+                      Accordo commerciale concordato con il cliente: precompila le rate di un ordine nuovo.
+                    </div>
+                  </div>
+                  {!termsForm && (
+                    <button style={{ ...btnStyle(false), padding:'4px 14px', fontSize:9, flexShrink:0 }} onClick={openTermsEdit}>Modifica</button>
+                  )}
+                </div>
+
+                {termsForm ? (
+                  <div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+                      <div>
+                        <label style={s.label}>Acconto all'ordine %</label>
+                        <input type="number" min="0" max="100" style={inp} value={termsForm.payment_deposit_percent}
+                          onChange={e => setTermsForm(f => ({ ...f, payment_deposit_percent:e.target.value }))} placeholder="es. 50"/>
+                        <div style={{ fontSize:9, color:MUTED, marginTop:5, lineHeight:1.5 }}>
+                          Quota richiesta alla conferma. Lascia vuoto se non chiedi acconto.
+                        </div>
+                      </div>
+                      <div>
+                        <label style={s.label}>Solo per ordini oltre €</label>
+                        <input type="number" min="0" style={inp} value={termsForm.payment_deposit_min_amount}
+                          onChange={e => setTermsForm(f => ({ ...f, payment_deposit_min_amount:e.target.value }))} placeholder="es. 300"/>
+                        <div style={{ fontSize:9, color:MUTED, marginTop:5, lineHeight:1.5 }}>
+                          Sotto questo importo l'acconto non si chiede: si incassa tutto in un'unica rata.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+                      <div>
+                        <label style={s.label}>Quando si paga il resto</label>
+                        <select style={inp} value={termsForm.payment_balance_due_mode}
+                          onChange={e => setTermsForm(f => ({ ...f, payment_balance_due_mode:e.target.value }))}>
+                          <option value="ordine">Alla conferma dell'ordine</option>
+                          <option value="consegna">Alla consegna</option>
+                          <option value="fissa">Data da concordare ogni volta</option>
+                        </select>
+                        <div style={{ fontSize:9, color:MUTED, marginTop:5, lineHeight:1.5 }}>
+                          {termsForm.payment_balance_due_mode === 'ordine'
+                            ? "Il cliente paga in anticipo: la scadenza parte dalla data dell'ordine."
+                            : termsForm.payment_balance_due_mode === 'consegna'
+                              ? 'La scadenza segue la consegna reale: se spedisci prima, scade prima.'
+                              : 'Nessuna regola fissa: la scadenza si inserisce ordine per ordine.'}
+                        </div>
+                      </div>
+                      {termsForm.payment_balance_due_mode !== 'fissa' && (
+                        <div>
+                          <label style={s.label}>Dopo quanti giorni</label>
+                          <input type="number" min="0" style={inp} value={termsForm.payment_balance_offset_days}
+                            onChange={e => setTermsForm(f => ({ ...f, payment_balance_offset_days:e.target.value }))} placeholder="0"/>
+                          <div style={{ fontSize:9, color:MUTED, marginTop:5, lineHeight:1.5 }}>
+                            0 = subito. Es. 30 per un pagamento a trenta giorni.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom:16 }}>
+                      <label style={s.label}>Note</label>
+                      <input style={inp} value={termsForm.payment_notes}
+                        onChange={e => setTermsForm(f => ({ ...f, payment_notes:e.target.value }))} placeholder="Es. paga sempre a fine mese"/>
+                    </div>
+
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button style={{ ...btnGoldStyle, padding:'8px 24px' }} onClick={handleTermsSave} disabled={termsSaving}>
+                        {termsSaving ? 'Salvataggio…' : 'Salva'}
+                      </button>
+                      <button style={{ ...btnStyle(false), padding:'8px 20px' }} onClick={() => setTermsForm(null)}>Annulla</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                    <InfoField label="ACCONTO" value={
+                      selected.payment_deposit_percent != null
+                        ? `${selected.payment_deposit_percent}%${selected.payment_deposit_min_amount ? ` · solo per ordini oltre € ${Number(selected.payment_deposit_min_amount).toLocaleString('it-IT')}` : ''}`
+                        : 'nessun acconto'
+                    }/>
+                    <InfoField label="RESTO" value={
+                      (() => {
+                        const mode = selected.payment_balance_due_mode || 'consegna'
+                        const gg = selected.payment_balance_offset_days
+                        if (mode === 'fissa') return 'Data da concordare ogni volta'
+                        const base = mode === 'ordine' ? "Alla conferma dell'ordine" : 'Alla consegna'
+                        return gg ? `${base} + ${gg}gg` : base
+                      })()
+                    }/>
+                    {selected.payment_notes && <div style={{ gridColumn:'span 2' }}><InfoField label="NOTE" value={selected.payment_notes}/></div>}
+                  </div>
+                )}
+              </div>
+
               {/* Rating pagatore: calcolato dallo storico incassi */}
               <div style={{ ...s.card, marginBottom:20 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap', marginBottom:14 }}>
@@ -595,67 +714,6 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                   </div>
                 )}
 
-              </div>
-
-              {/* Condizioni concordate: card a se' stante. Il rating lo
-                  calcola lo storico, queste le decidi tu. */}
-              <div style={{ ...s.card, marginBottom:20 }}>
-                <div style={{ marginBottom:14 }}>
-                  <div style={s.cardTitle}>Condizioni di Pagamento</div>
-                  <div style={{ fontSize:10, color:MUTED, opacity:0.75, marginTop:4 }}>
-                    Accordo commerciale concordato con il cliente: precompila le rate di un ordine nuovo.
-                  </div>
-                </div>
-                <div>
-                  {editForm ? (
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
-                      <div>
-                        <label style={s.label}>Acconto %</label>
-                        <input type="number" min="0" max="100" style={inp} value={editForm.payment_deposit_percent}
-                          onChange={e => setEditForm(f => ({ ...f, payment_deposit_percent:e.target.value }))} placeholder="es. 50"/>
-                      </div>
-                      <div>
-                        <label style={s.label}>Solo sopra €</label>
-                        <input type="number" min="0" style={inp} value={editForm.payment_deposit_min_amount}
-                          onChange={e => setEditForm(f => ({ ...f, payment_deposit_min_amount:e.target.value }))} placeholder="es. 300"/>
-                      </div>
-                      <div>
-                        <label style={s.label}>Saldo</label>
-                        <select style={inp} value={editForm.payment_balance_due_mode}
-                          onChange={e => setEditForm(f => ({ ...f, payment_balance_due_mode:e.target.value }))}>
-                          <option value="consegna">Alla consegna</option>
-                          <option value="fissa">Data da concordare</option>
-                        </select>
-                      </div>
-                      {editForm.payment_balance_due_mode === 'consegna' && (
-                        <div>
-                          <label style={s.label}>Giorni dopo consegna</label>
-                          <input type="number" min="0" style={inp} value={editForm.payment_balance_offset_days}
-                            onChange={e => setEditForm(f => ({ ...f, payment_balance_offset_days:e.target.value }))} placeholder="0"/>
-                        </div>
-                      )}
-                      <div style={{ gridColumn:'span 3' }}>
-                        <label style={s.label}>Note</label>
-                        <input style={inp} value={editForm.payment_notes}
-                          onChange={e => setEditForm(f => ({ ...f, payment_notes:e.target.value }))} placeholder="Es. paga sempre a fine mese"/>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                      <InfoField label="ACCONTO" value={
-                        selected.payment_deposit_percent != null
-                          ? `${selected.payment_deposit_percent}%${selected.payment_deposit_min_amount ? ` · solo sopra € ${Number(selected.payment_deposit_min_amount).toLocaleString('it-IT')}` : ''}`
-                          : 'non definito'
-                      }/>
-                      <InfoField label="SALDO" value={
-                        (selected.payment_balance_due_mode || 'consegna') === 'consegna'
-                          ? `Alla consegna${selected.payment_balance_offset_days ? ` + ${selected.payment_balance_offset_days}gg` : ''}`
-                          : 'Data da concordare'
-                      }/>
-                      {selected.payment_notes && <div style={{ gridColumn:'span 2' }}><InfoField label="NOTE" value={selected.payment_notes}/></div>}
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Revenue stats */}
