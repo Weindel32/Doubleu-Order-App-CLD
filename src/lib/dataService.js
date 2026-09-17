@@ -7,7 +7,11 @@ export async function fetchClients() {
   return data || []
 }
 
-const CLIENT_FIELDS = ['category', 'city', 'province', 'country', 'vat_number', 'fiscal_code', 'email', 'phone', 'shop_attivo', 'address', 'contact']
+const CLIENT_FIELDS = ['category', 'city', 'province', 'country', 'vat_number', 'fiscal_code', 'email', 'phone', 'shop_attivo', 'address', 'contact',
+  // Condizioni di pagamento concordate: precompilano le rate di un ordine
+  // nuovo. Sono un accordo commerciale, non il profilo pagatore, che invece
+  // si calcola dallo storico degli incassi.
+  'payment_deposit_percent', 'payment_balance_due_mode', 'payment_balance_offset_days', 'payment_notes']
 
 export async function upsertClient(name, fields) {
   const safe = {}
@@ -134,6 +138,7 @@ export async function fetchOrders() {
       dueMode: p.due_mode || 'fissa',
       dueOffsetDays: p.due_offset_days || 0,
       paidDate: p.paid_date || null,
+      paidDateVerified: p.paid_date_verified !== false,
     }))
     return {
       id: order.id, client: order.client, clientId: order.client_id || null,
@@ -221,6 +226,7 @@ function buildPaymentsPayload(order) {
     due_mode: p.dueMode || 'fissa',
     due_offset_days: parseInt(p.dueOffsetDays) || 0,
     paid_date: p.paidDate || null,
+    paid_date_verified: p.paidDateVerified !== false,
   }))
 }
 
@@ -296,7 +302,9 @@ export async function restoreFromStandby(orderId) {
 // vale la regola delle date di consegna — un pagamento si registra spesso a
 // giorni di distanza da quando i soldi sono arrivati davvero.
 export async function quickTogglePayment(paymentId, paid, paidDate = null) {
-  const fields = paid ? { paid: true, paid_date: paidDate } : { paid: false, paid_date: null }
+  const fields = paid
+    ? { paid: true, paid_date: paidDate, paid_date_verified: true }
+    : { paid: false, paid_date: null, paid_date_verified: true }
   const { error } = await supabase.from('payments').update(fields).eq('id', paymentId)
   if (error) { console.error('quickTogglePayment:', error); return false }
   return true

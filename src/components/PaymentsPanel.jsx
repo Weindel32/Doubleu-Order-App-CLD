@@ -32,7 +32,7 @@ const displayToIso = (display) => {
   return `${y}-${m}-${d}`
 }
 
-export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order }) {
+export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order, clientTerms }) {
   const emptyPayment = { type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false, dueMode: 'fissa', dueOffsetDays: 0, paidDate: '' }
   const [newP, setNewP] = useState(emptyPayment)
   const [editingId, setEditingId] = useState(null)
@@ -57,6 +57,44 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
     if (form.dueMode !== 'consegna') return isoToDisplay(form.date)
     const due = paymentDue(order, { ...form, dueOffsetDays: parseInt(form.dueOffsetDays) || 0 })
     return formatItalian(due.date) || null
+  }
+
+  // Condizioni concordate in anagrafica: si applicano con un clic invece di
+  // reinserire le stesse due rate a ogni ordine. Resta un'azione esplicita —
+  // generare rate da sole, senza che nessuno le abbia chieste, e' il tipo di
+  // automatismo che poi ci si dimentica di aver subito.
+  const depositPct = Number(clientTerms?.payment_deposit_percent)
+  const canApplyTerms = !!clientTerms
+    && payments.length === 0
+    && orderTotal > 0
+    && (depositPct > 0 || clientTerms.payment_balance_due_mode)
+
+  const applyClientTerms = () => {
+    const rows = []
+    const now = Date.now()
+    const balanceMode   = clientTerms.payment_balance_due_mode || 'consegna'
+    const balanceOffset = parseInt(clientTerms.payment_balance_offset_days) || 0
+    let residuo = orderTotal
+
+    if (depositPct > 0) {
+      const amount = Math.round(orderTotal * depositPct) / 100
+      residuo -= amount
+      rows.push({
+        id: `p${now}`, type: 'acconto', amount, method: 'Bonifico',
+        note: `Acconto ${depositPct}%`, paid: false,
+        dueMode: 'fissa', dueOffsetDays: 0, date: todayDisplay(), paidDate: null,
+      })
+    }
+    if (residuo > 0.005) {
+      const saldo = {
+        id: `p${now + 1}`, type: 'saldo', amount: Math.round(residuo * 100) / 100,
+        method: 'Bonifico', note: '', paid: false,
+        dueMode: balanceMode, dueOffsetDays: balanceOffset, paidDate: null,
+      }
+      saldo.date = dueDateFor({ ...saldo, date: '' })
+      rows.push(saldo)
+    }
+    if (rows.length) setPayments(rows)
   }
 
   // Con scadenza ancorata alla consegna la data fissa non serve: la calcola
@@ -111,6 +149,10 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             date: dueDateFor(editP),
             dueOffsetDays: parseInt(editP.dueOffsetDays) || 0,
             paidDate: editP.paid ? (isoToDisplay(editP.paidDate) || todayDisplay()) : null,
+            // Correggere a mano la data di incasso la rende un dato
+            // registrato: smette di contare come ereditata dall'archivio.
+            paidDateVerified: p.paidDateVerified !== false
+              || isoToDisplay(editP.paidDate) !== (p.paidDate || null),
           }
         : p
     ))
@@ -164,6 +206,24 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
   return (
     <div style={{ ...s.card }}>
       <div style={s.cardTitle}>Pagamenti</div>
+
+      {canApplyTerms && (
+        <div style={{ background:'rgba(184,150,90,0.06)', border:`1px solid rgba(184,150,90,0.25)`, borderRadius:8, padding:'14px 16px', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+          <div>
+            <div style={{ fontSize:9, letterSpacing:2, color:GOLD, marginBottom:3 }}>CONDIZIONI DEL CLIENTE</div>
+            <div style={{ fontSize:11, color:MUTED }}>
+              {depositPct > 0 ? `Acconto ${depositPct}%` : 'Nessun acconto'}
+              {' · saldo '}
+              {(clientTerms.payment_balance_due_mode || 'consegna') === 'consegna'
+                ? `alla consegna${parseInt(clientTerms.payment_balance_offset_days) ? ` + ${clientTerms.payment_balance_offset_days}gg` : ''}`
+                : 'a data da concordare'}
+            </div>
+          </div>
+          <button style={{ ...btnGoldStyle, padding:'8px 18px', fontSize:9 }} onClick={applyClientTerms}>
+            Applica
+          </button>
+        </div>
+      )}
 
       {/* Shipping cost */}
       {setShipping && (

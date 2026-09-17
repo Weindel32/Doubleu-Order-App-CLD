@@ -179,6 +179,9 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     showTotalInClientPDF: showTotal,
   })
 
+  // Condizioni di pagamento del cliente selezionato, per proporre le rate
+  // invece di farle reinserire a mano a ogni ordine.
+  const clientTerms = clientId ? (clients.find(c => c.id === clientId) || null) : null
   const currentOrder = orderObj()
   const subtotal  = orderSubtotal(currentOrder)
   const shipAmount = orderShipping(currentOrder)
@@ -738,7 +741,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
 
       {/* ── STEP 4 ── */}
       {step===4 && <div>
-        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber} order={currentOrder}/>
+        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber} order={currentOrder} clientTerms={clientTerms}/>
         <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →" withSave/>
       </div>}
 

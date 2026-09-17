@@ -90,31 +90,75 @@ export function overdueSummary(order, today = new Date()) {
   return { amount, days, count }
 }
 
-// Ritardo medio di pagamento per cliente, sugli incassi gia' avvenuti.
-// Un cliente si giudica da come ha pagato, non da quanto deve adesso.
-export function clientPaymentDelays(orders, today = new Date()) {
-  const byClient = {}
+// Numero minimo di incassi verificati sotto il quale non si esprime un
+// giudizio sul cliente: uno o due pagamenti sono un aneddoto, non un
+// comportamento.
+export const MIN_INCASSI_PER_GIUDIZIO = 3
+
+// Profili pagatore, in ordine di gravita'. Le soglie sono in giorni di ritardo
+// medio: sono convenzioni, non verita' — il numero di giorni resta sempre
+// visibile accanto all'etichetta, perche' e' quello a dire quanto.
+export const PAYER_LEVELS = {
+  sconosciuto:  { label: 'Da valutare',          rank: 0 },
+  puntuale:     { label: 'Puntuale',             rank: 1 },
+  lieve:        { label: 'Ritardi lievi',        rank: 2 },
+  sistematico:  { label: 'Ritardi sistematici',  rank: 3 },
+  critico:      { label: 'Ritardi gravi',        rank: 4 },
+}
+
+const levelFor = (avg) => {
+  if (avg === null || avg === undefined) return 'sconosciuto'
+  if (avg <= 0)  return 'puntuale'
+  if (avg <= 10) return 'lieve'
+  if (avg <= 30) return 'sistematico'
+  return 'critico'
+}
+
+// Profilo pagatore calcolato su un insieme di ordini (tipicamente quelli di un
+// cliente). Un cliente si giudica da come ha pagato, non da quanto deve adesso:
+// per questo lo storico e l'esposizione aperta restano due misure separate.
+//
+// Contano solo gli incassi con data REGISTRATA (paidDateVerified): quelli
+// ereditati dalla migrazione hanno per costruzione ritardo zero e farebbero
+// apparire puntuali clienti di cui non sappiamo nulla. Restano contati a parte
+// come `unverified`, per poterlo dire in chiaro invece di tacerlo.
+export function paymentProfile(orders, today = new Date()) {
+  const delays = []
+  let unverified = 0, openAmount = 0, openDays = 0
   for (const o of (orders || [])) {
     for (const p of (o.payments || [])) {
       const delay = paymentDelay(o, p, today)
       if (delay === null) continue
-      const row = byClient[o.client] ||= { name: o.client, delays: [], openAmount: 0, openDays: 0 }
-      if (p.paid) row.delays.push(delay)
-      else if (delay > 0) {
-        row.openAmount += parseFloat(p.amount) || 0
-        if (delay > row.openDays) row.openDays = delay
+      if (p.paid) {
+        if (p.paidDateVerified === false) unverified += 1
+        else delays.push(delay)
+      } else if (delay > 0) {
+        openAmount += parseFloat(p.amount) || 0
+        if (delay > openDays) openDays = delay
       }
     }
   }
-  return Object.values(byClient)
-    .map(r => ({
-      name: r.name,
-      count: r.delays.length,
-      avg: r.delays.length ? Math.round(r.delays.reduce((s, d) => s + d, 0) / r.delays.length) : null,
-      worst: r.delays.length ? Math.max(...r.delays) : null,
-      openAmount: r.openAmount,
-      openDays: r.openDays,
-    }))
-    .filter(r => r.count > 0 || r.openAmount > 0)
+  const count  = delays.length
+  const enough = count >= MIN_INCASSI_PER_GIUDIZIO
+  const avg    = enough ? Math.round(delays.reduce((s, d) => s + d, 0) / count) : null
+  return {
+    count,
+    unverified,
+    avg,
+    worst: enough ? Math.max(...delays) : null,
+    openAmount,
+    openDays,
+    level: levelFor(avg),
+    hasOverdue: openAmount > 0,
+  }
+}
+
+// Stessa misura, un cliente per riga, per la vista Analytics.
+export function clientPaymentDelays(orders, today = new Date()) {
+  const byClient = {}
+  for (const o of (orders || [])) (byClient[o.client] ||= []).push(o)
+  return Object.entries(byClient)
+    .map(([name, os]) => ({ name, ...paymentProfile(os, today) }))
+    .filter(r => r.count > 0 || r.unverified > 0 || r.openAmount > 0)
     .sort((a, b) => (b.openDays - a.openDays) || ((b.avg ?? -999) - (a.avg ?? -999)))
 }

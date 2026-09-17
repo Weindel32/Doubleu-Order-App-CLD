@@ -1,5 +1,6 @@
 import { orderTotal, parseDate, isConfirmed } from '../utils/helpers.js'
 import { sampleInvested } from '../utils/samples.js'
+import { paymentProfile } from '../utils/payments.js'
 
 export const normalizeName = (name) => (name || '').trim().replace(/\s+/g, ' ').toLowerCase()
 
@@ -25,5 +26,9 @@ export function enrichClient(c, orders, shipments) {
   // gli invii registrati a un destinatario non ancora in anagrafica
   const samples   = shipments.filter(sh => sh.client_id === c.id || (!sh.client_id && !sh.prospect_id && normalizeName(sh.recipient_name) === normalizeName(c.name)))
   const sampleInv = samples.reduce((v, sh) => v + sampleInvested(sh), 0)
-  return { ...c, allOrders, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, nonConfirmed, lastTs, lastOrder, samples, sampleInv }
+  // Profilo pagatore: calcolato dallo storico incassi, non digitato a mano.
+  // Un giudizio scritto una volta invecchia e diventa un pregiudizio; questo
+  // si aggiorna da se' a ogni incasso registrato.
+  const payer = paymentProfile(confirmed)
+  return { ...c, allOrders, confirmed, total, pieces, totalIst, totalSoci, tier: getTier(total), unlinkable, nonConfirmed, lastTs, lastOrder, samples, sampleInv, payer }
 }
