@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { s } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderTotal, isConfirmed, isCancelled } from '../utils/helpers.js'
-import { clientPaymentDelays } from '../utils/payments.js'
+import { clientPaymentDelays, MIN_INCASSI_PER_GIUDIZIO } from '../utils/payments.js'
 import { sampleStats, euro, itemOutcome } from '../utils/samples.js'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
@@ -458,40 +458,66 @@ export default function Analytics({ orders, shipments = [] }) {
       {paymentBehaviour.length > 0 && (
         <div style={{ ...s.card, marginBottom: 24 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 4 }}>PUNTUALITA' DI PAGAMENTO</div>
-          <div style={{ fontSize: 10, color: MUTED, opacity: 0.8, marginBottom: 16 }}>
-            Ritardo medio sugli incassi gia' avvenuti, rispetto alla scadenza concordata.
+          <div style={{ fontSize: 10, color: MUTED, opacity: 0.8, marginBottom: 18 }}>
+            A sinistra come ha pagato in passato, a destra quanto deve adesso. Sono due cose diverse.
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+          {/* Intestazioni: senza, un ritardo storico e un credito scaduto si
+              leggono come se parlassero dello stesso pagamento. */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px 210px', gap: 16, alignItems: 'end', paddingBottom: 8, borderBottom: `1px solid ${BORDER}` }}>
+            <div/>
+            <div style={{ fontSize: 8, letterSpacing: 2, color: MUTED, opacity: 0.75, textAlign: 'right' }}>STORICO INCASSI</div>
+            <div style={{ fontSize: 8, letterSpacing: 2, color: MUTED, opacity: 0.75, textAlign: 'right' }}>APERTO OGGI</div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {paymentBehaviour.map(c => {
-              const tone = c.avg === null ? MUTED : c.avg <= 0 ? GREEN : c.avg <= 10 ? GOLD : c.avg <= 30 ? CLAY : '#ef4444'
-              const label = c.avg === null ? 'dati insufficienti'
-                : c.avg === 0 ? 'puntuale'
-                : c.avg < 0  ? `${Math.abs(c.avg)}gg in anticipo`
-                : `+${c.avg}gg`
+              const tone = c.avg === null ? MUTED
+                : c.avg <= 0 ? GREEN : c.avg <= 10 ? GOLD : c.avg <= 30 ? CLAY : '#ef4444'
+              // Il numero e' l'informazione, il colore serve solo a scorrere
+              // la colonna: +3gg e +40gg non devono diventare lo stesso segno.
+              const label = c.avg === null ? '—'
+                : c.avg === 0 ? '0 gg'
+                : c.avg < 0   ? `${c.avg} gg`
+                : `+${c.avg} gg`
+              const sotto = c.avg === null
+                ? (c.unverified > 0
+                    ? `${c.unverified} ${c.unverified === 1 ? 'incasso' : 'incassi'} da verificare`
+                    : `${c.count} su ${MIN_INCASSI_PER_GIUDIZIO} per il giudizio`)
+                : `${c.count} ${c.count === 1 ? 'incasso' : 'incassi'}${c.worst > 0 ? ` · max +${c.worst}gg` : ''}`
               return (
-                <div key={c.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div key={c.name} style={{ display: 'grid', gridTemplateColumns: '1fr 150px 210px', gap: 16, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: CREAM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 2 }}>
-                      {c.count > 0 ? `${c.count} ${c.count === 1 ? 'incasso' : 'incassi'}` : 'nessun incasso registrato'}
-                      {c.worst !== null && c.worst > 0 && ` · peggiore +${c.worst}gg`}
-                    </div>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, color: CREAM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 3 }}>{sotto}</div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
-                    {c.openAmount > 0 && (
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: '#ef4444' }}>
-                          € {c.openAmount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                        </div>
-                        <div style={{ fontSize: 9, color: '#ef4444', letterSpacing: 1, marginTop: 2 }}>scaduto da {c.openDays}gg</div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: tone, flexShrink: 0, opacity: c.avg === null ? 0.35 : 1 }}/>
+                    <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 21, color: tone, opacity: c.avg === null ? 0.5 : 1 }}>{label}</span>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    {c.openAmount > 0 ? (<>
+                      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, color: '#ef4444' }}>
+                        € {c.openAmount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                       </div>
+                      <div style={{ fontSize: 9, color: '#ef4444', letterSpacing: 1, marginTop: 2 }}>scaduto da {c.openDays}gg</div>
+                    </>) : (
+                      <span style={{ fontSize: 12, color: MUTED, opacity: 0.4 }}>—</span>
                     )}
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, color: tone, minWidth: 110, textAlign: 'right' }}>{label}</div>
                   </div>
                 </div>
               )
             })}
           </div>
+
+          {paymentBehaviour.some(c => c.unverified > 0) && (
+            <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 14, lineHeight: 1.6, opacity: 0.8 }}>
+              Gli incassi "da verificare" arrivano dall'archivio precedente, quando non si registrava
+              la data reale di pagamento: non concorrono al giudizio finche' non vengono confermati.
+            </div>
+          )}
         </div>
       )}
 

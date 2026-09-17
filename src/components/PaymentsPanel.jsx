@@ -111,6 +111,10 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             date: dueDateFor(editP),
             dueOffsetDays: parseInt(editP.dueOffsetDays) || 0,
             paidDate: editP.paid ? (isoToDisplay(editP.paidDate) || todayDisplay()) : null,
+            // Correggere a mano la data di incasso la rende un dato
+            // registrato: smette di contare come ereditata dall'archivio.
+            paidDateVerified: p.paidDateVerified !== false
+              || isoToDisplay(editP.paidDate) !== (p.paidDate || null),
           }
         : p
     ))
