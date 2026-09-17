@@ -96,9 +96,14 @@ export function overdueSummary(order, today = new Date()) {
 export const MIN_INCASSI_PER_GIUDIZIO = 3
 
 // Oltre questa distanza dalla data dell'ordine una scadenza non e' plausibile:
-// e' quasi sempre un anno digitato male. Due anni lascia spazio a dilazioni
-// lunghe vere senza far passare un 2016 al posto di un 2026.
-const MAX_GIORNI_SCADENZA = 730
+// e' quasi sempre un anno digitato male.
+//
+// Un anno, non due: il refuso piu' comune non e' il 2016 al posto del 2026, ma
+// l'anno successivo — scrivendo a dicembre si datano le scadenze all'anno che
+// sta per iniziare. Una soglia di due anni lasciava passare proprio quello, che
+// e' il caso frequente. Le dilazioni oltre dodici mesi sono rare, e comunque
+// l'avviso non blocca nulla: segnala e basta.
+const MAX_GIORNI_SCADENZA = 365
 
 // Una scadenza incoerente con la data dell'ordine va segnalata, non calcolata:
 // un solo "20/04/2016" al posto di "20/04/2026" vale 3654 giorni di ritardo e
@@ -108,7 +113,7 @@ export function isSuspectDueDate(order, payment) {
   const ordered = startOfDay(parseDate(order?.date))
   if (!due || !ordered) return false
   const diff = Math.round((due - ordered) / DAY)
-  return diff < 0 || diff > MAX_GIORNI_SCADENZA
+  return diff < 0 || diff >= MAX_GIORNI_SCADENZA
 }
 
 export const PAYER_LEVELS = {
