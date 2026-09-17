@@ -7,6 +7,7 @@ import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import BollaModal                from '../components/BollaModal.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
+import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
 import { exportSizesCSV, exportAllOrdersCSV } from '../utils/exportCSV.js'
 import { quickUpdateStatus, quickTogglePayment } from '../lib/dataService.js'
 import { BORDER } from '../tokens.js'
@@ -119,24 +120,29 @@ function PaymentQuick({ order, onPaymentToggle }) {
   const [saving, setSaving] = useState(null)
   const toggle = async (payment) => {
     setSaving(payment.id)
-    const ok = await quickTogglePayment(payment.id, !payment.paid)
-    if (ok) onPaymentToggle(order.id, payment.id, !payment.paid)
+    const nowPaid = !payment.paid
+    const ok = await quickTogglePayment(payment.id, nowPaid, nowPaid ? todayItalian() : null)
+    if (ok) onPaymentToggle(order.id, payment.id, nowPaid, nowPaid ? todayItalian() : null)
     setSaving(null)
   }
   if (total === 0) return <span style={{ color:MUTED, fontSize:10 }}>—</span>
   return (
     <div>
       {[...order.payments].sort((a, b) => {
-        const p = s => { if (!s) return 0; const [d,m,y] = s.split('/'); return new Date(y,m-1,d).getTime() }
-        return p(a.date) - p(b.date)
-      }).map(p => (
+        const when = p => paymentDue(order, p).date?.getTime() ?? 0
+        return when(a) - when(b)
+      }).map(p => {
+        const delay = paymentDelay(order, p)
+        const late  = !p.paid && delay !== null && delay > 0
+        return (
         <div key={p.id} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-          <div onClick={()=>saving!==p.id&&toggle(p)} style={{ width:14, height:14, borderRadius:'50%', cursor:'pointer', flexShrink:0, border:`1.5px solid ${p.paid?GREEN:GOLD}`, background:p.paid?GREEN:'transparent', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', opacity:saving===p.id?0.5:1 }}>
+          <div onClick={()=>saving!==p.id&&toggle(p)} style={{ width:14, height:14, borderRadius:'50%', cursor:'pointer', flexShrink:0, border:`1.5px solid ${p.paid?GREEN:late?'#ef4444':GOLD}`, background:p.paid?GREEN:'transparent', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', opacity:saving===p.id?0.5:1 }}>
             {p.paid&&<span style={{ color:'white', fontSize:8, lineHeight:1 }}>✓</span>}
           </div>
-          <span style={{ fontSize:9, color:p.paid?GREEN:GOLD }}>€ {(p.amount||0).toLocaleString('it-IT',{maximumFractionDigits:0})} {p.type}</span>
+          <span style={{ fontSize:9, color:p.paid?GREEN:late?'#ef4444':GOLD }}>€ {(p.amount||0).toLocaleString('it-IT',{maximumFractionDigits:0})} {p.type}</span>
+          {late && <span style={{ fontSize:8, letterSpacing:1, fontWeight:700, color:'#ef4444' }}>+{delay}gg</span>}
         </div>
-      ))}
+      )})}
       <div style={{ height:3, background:'rgba(255,255,255,0.06)', borderRadius:2, marginTop:4, overflow:'hidden', display:'flex', width:80 }}>
         <div style={{ width:`${total>0?Math.min(100,(paid/total)*100):0}%`, background:GREEN }}/>
         <div style={{ width:`${total>0?Math.min(100,(pending/total)*100):0}%`, background:GOLD, opacity:0.6 }}/>
@@ -175,6 +181,12 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
       return matchFilter && matchSearch
     })
     .sort((a, b) => {
+      // Nel filtro crediti la domanda e' "chi mi deve soldi da piu' tempo":
+      // il ritardo batte qualsiasi altro ordinamento.
+      if (filter === 'Da Incassare' && sortBy === 'date') {
+        const d = overdueSummary(b).days - overdueSummary(a).days
+        if (d !== 0) return d
+      }
       let av, bv
       if (sortBy==='client')        { av=a.client||''; bv=b.client||'' }
       else if (sortBy==='date')     { av=parseDate(a.date); bv=parseDate(b.date) }
@@ -191,7 +203,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
   }
 
   const handleStatusChange   = (orderId, newStatus, dateFields, cancelFields={}) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(dateFields?{shippedDate:dateFields.shipped_date||null,actualDeliveryDate:dateFields.actual_delivery_date||null}:{}),...('cancel_reason' in cancelFields?{cancelReason:cancelFields.cancel_reason||'',cancelDate:cancelFields.cancel_date||null}:{})}:o))
-  const handlePaymentToggle  = (orderId, paymentId, newPaid) => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid}:p)}))
+  const handlePaymentToggle  = (orderId, paymentId, newPaid, paidDate=null) => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid,paidDate:newPaid?paidDate:null}:p)}))
 
   const thStyle = (col) => ({
     ...s.th, cursor:'pointer', userSelect:'none',

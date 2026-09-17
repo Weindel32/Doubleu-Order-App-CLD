@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import DatePicker from './DatePicker.jsx'
+import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
 const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Carta di Credito', 'Assegno', 'PayPal', 'Altro']
 
 const TYPE_LABELS = { acconto: 'Acconto', intermedio: 'Intermedio', saldo: 'Saldo' }
+const DUE_LABELS  = { fissa: 'Data fissa', consegna: 'Alla consegna' }
 const TYPE_COLORS = {
   acconto:    { bg: 'rgba(196,98,58,0.15)', color: CLAY,  border: 'rgba(196,98,58,0.3)'  },
   intermedio: { bg: 'rgba(184,150,90,0.12)', color: GOLD, border: 'rgba(184,150,90,0.3)' },
@@ -19,14 +21,20 @@ const isoToDisplay = (iso) => {
   return `${d}/${m}/${y}`
 }
 
+const todayDisplay = () => {
+  const t = new Date()
+  return `${String(t.getDate()).padStart(2,'0')}/${String(t.getMonth()+1).padStart(2,'0')}/${t.getFullYear()}`
+}
+
 const displayToIso = (display) => {
   if (!display) return ''
   const [d, m, y] = display.split('/')
   return `${y}-${m}-${d}`
 }
 
-export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber }) {
-  const [newP, setNewP] = useState({ type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false })
+export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order }) {
+  const emptyPayment = { type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false, dueMode: 'fissa', dueOffsetDays: 0, paidDate: '' }
+  const [newP, setNewP] = useState(emptyPayment)
   const [editingId, setEditingId] = useState(null)
   const [editP, setEditP] = useState(null)
 
@@ -40,22 +48,40 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
     setNewP(prev => ({ ...prev, ...updates }))
   }
 
+  // Con scadenza ancorata alla consegna la data fissa non serve: la calcola
+  // paymentDue() sulla consegna reale dell'ordine.
   const addPayment = () => {
-    if (!newP.amount || !newP.date) return
-    const p = { ...newP, id: `p${Date.now()}`, amount: parseFloat(newP.amount), date: isoToDisplay(newP.date) }
+    if (!newP.amount) return
+    if (newP.dueMode === 'fissa' && !newP.date) return
+    const p = {
+      ...newP, id: `p${Date.now()}`, amount: parseFloat(newP.amount),
+      date: newP.dueMode === 'fissa' ? isoToDisplay(newP.date) : null,
+      dueOffsetDays: parseInt(newP.dueOffsetDays) || 0,
+      paidDate: newP.paid ? (isoToDisplay(newP.paidDate) || todayDisplay()) : null,
+    }
     setPayments([...payments, p])
-    setNewP({ type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false })
+    setNewP(emptyPayment)
   }
 
+  // Spuntare "pagato" registra oggi come data di incasso; se serve un'altra
+  // data si corregge dalla riga in modifica, come per le date di consegna.
   const togglePaid = (id) =>
-    setPayments(payments.map(p => p.id === id ? { ...p, paid: !p.paid } : p))
+    setPayments(payments.map(p => p.id === id
+      ? { ...p, paid: !p.paid, paidDate: !p.paid ? (p.paidDate || todayDisplay()) : null }
+      : p))
 
   const removePayment = (id) =>
     setPayments(payments.filter(p => p.id !== id))
 
   const startEdit = (p) => {
     setEditingId(p.id)
-    setEditP({ ...p, date: displayToIso(p.date) })
+    setEditP({
+      ...p,
+      date: displayToIso(p.date),
+      paidDate: displayToIso(p.paidDate),
+      dueMode: p.dueMode || 'fissa',
+      dueOffsetDays: p.dueOffsetDays || 0,
+    })
   }
 
   const cancelEdit = () => {
@@ -64,16 +90,65 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
   }
 
   const saveEdit = () => {
-    if (!editP.amount || !editP.date) return
+    if (!editP.amount) return
+    if (editP.dueMode === 'fissa' && !editP.date) return
     setPayments(payments.map(p =>
       p.id === editingId
-        ? { ...editP, amount: parseFloat(editP.amount), date: isoToDisplay(editP.date) }
+        ? {
+            ...editP,
+            amount: parseFloat(editP.amount),
+            date: editP.dueMode === 'fissa' ? isoToDisplay(editP.date) : null,
+            dueOffsetDays: parseInt(editP.dueOffsetDays) || 0,
+            paidDate: editP.paid ? (isoToDisplay(editP.paidDate) || todayDisplay()) : null,
+          }
         : p
     ))
     cancelEdit()
   }
 
   const inp = { ...s.input }
+
+  // Selettore scadenza condiviso fra il form di inserimento e quello di
+  // modifica: data fissa oppure ancorata alla consegna reale + N giorni.
+  const DueFields = ({ value, onChange }) => {
+    const preview = paymentDue(order, { ...value, dueOffsetDays: parseInt(value.dueOffsetDays) || 0 })
+    return (
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={s.label}>Scadenza</label>
+            <select style={inp} value={value.dueMode || 'fissa'} onChange={e => onChange({ ...value, dueMode: e.target.value })}>
+              <option value="fissa">Data fissa</option>
+              <option value="consegna">Alla consegna</option>
+            </select>
+          </div>
+          {value.dueMode === 'consegna' ? (
+            <div>
+              <label style={s.label}>Giorni dopo la consegna</label>
+              <input type="number" min="0" style={inp} value={value.dueOffsetDays ?? 0}
+                onChange={e => onChange({ ...value, dueOffsetDays: e.target.value })} placeholder="0" />
+            </div>
+          ) : (
+            <DatePicker label="Data" value={value.date} onChange={v => onChange({ ...value, date: v })} />
+          )}
+        </div>
+        {value.dueMode === 'consegna' && (
+          <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 8 }}>
+            {preview.date
+              ? `Scade il ${formatItalian(preview.date)}${preview.estimated ? ' — stima sulla consegna prevista, si ricalcola alla consegna reale' : ''}`
+              : 'Nessuna data di consegna sull\'ordine: la scadenza si calcola quando la inserisci.'}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Data di incasso: compare solo quando il pagamento risulta saldato.
+  const PaidDateField = ({ value, onChange }) => value.paid ? (
+    <div style={{ marginBottom: 10 }}>
+      <DatePicker label="Incassato il" value={value.paidDate} onChange={v => onChange({ ...value, paidDate: v })} />
+    </div>
+  ) : null
 
   return (
     <div style={{ ...s.card }}>
@@ -146,10 +221,12 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
       {payments.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {[...payments].sort((a, b) => {
-            const parse = s => { if (!s) return 0; const [d,m,y] = s.split('/'); return new Date(y,m-1,d).getTime() }
-            return parse(a.date) - parse(b.date)
+            const when = p => paymentDue(order, p).date?.getTime() ?? 0
+            return when(a) - when(b)
           }).map(p => {
-            const tc = TYPE_COLORS[p.type] || TYPE_COLORS.acconto
+            const tc    = TYPE_COLORS[p.type] || TYPE_COLORS.acconto
+            const due   = paymentDue(order, p)
+            const delay = paymentDelay(order, p)
 
             if (editingId === p.id && editP) {
               return (
@@ -173,16 +250,16 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                       </select>
                     </div>
                   </div>
-                  <div style={{ marginBottom: 10 }}>
-                    <DatePicker label="Data" value={editP.date} onChange={v => setEditP({ ...editP, date: v })} />
-                  </div>
+                  <DueFields value={editP} onChange={setEditP} />
+                  <PaidDateField value={editP} onChange={setEditP} />
                   <div style={{ marginBottom: 10 }}>
                     <label style={s.label}>Nota</label>
                     <input style={inp} value={editP.note} onChange={e => setEditP({ ...editP, note: e.target.value })} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11, color: MUTED }}>
-                      <input type="checkbox" checked={editP.paid} onChange={e => setEditP({ ...editP, paid: e.target.checked })}
+                      <input type="checkbox" checked={editP.paid}
+                        onChange={e => setEditP({ ...editP, paid: e.target.checked, paidDate: e.target.checked ? (editP.paidDate || displayToIso(todayDisplay())) : '' })}
                         style={{ accentColor: GREEN }} />
                       Già pagato
                     </label>
@@ -217,9 +294,24 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                       <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, letterSpacing: 2, background: tc.bg, color: tc.color, border: `1px solid ${tc.border}` }}>
                         {TYPE_LABELS[p.type]}
                       </span>
-                      <span style={{ fontSize: 11, color: MUTED }}>{p.date}</span>
+                      <span style={{ fontSize: 11, color: MUTED }}>
+                        {due.date ? formatItalian(due.date) : '—'}
+                        {p.dueMode === 'consegna' && <span style={{ opacity: 0.6 }}> · alla consegna{p.dueOffsetDays ? ` +${p.dueOffsetDays}gg` : ''}{due.estimated ? ' (stima)' : ''}</span>}
+                      </span>
                       {p.method && <span style={{ fontSize: 10, color: MUTED, opacity: 0.7 }}>{p.method}</span>}
+                      {!p.paid && delay !== null && delay > 0 && (
+                        <span style={{ padding: '2px 8px', borderRadius: 2, fontSize: 9, letterSpacing: 1, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)' }}>
+                          SCADUTO DA {delay}GG
+                        </span>
+                      )}
                     </div>
+                    {p.paid && p.paidDate && (
+                      <div style={{ fontSize: 10, color: delay !== null && delay > 0 ? CLAY : GREEN, marginTop: 3 }}>
+                        Incassato il {p.paidDate}
+                        {delay !== null && delay > 0 && ` · ${delay}gg di ritardo`}
+                        {delay !== null && delay < 0 && ` · ${Math.abs(delay)}gg di anticipo`}
+                      </div>
+                    )}
                     {p.note && <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>{p.note}</div>}
                   </div>
                 </div>
@@ -264,16 +356,16 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             </select>
           </div>
         </div>
-        <div style={{ marginBottom: 10 }}>
-          <DatePicker label="Data" value={newP.date} onChange={v => setNewP({ ...newP, date: v })} />
-        </div>
+        <DueFields value={newP} onChange={setNewP} />
+        <PaidDateField value={newP} onChange={setNewP} />
         <div style={{ marginBottom: 10 }}>
           <label style={s.label}>Nota</label>
           <input style={inp} value={newP.note} onChange={e => setNewP({ ...newP, note: e.target.value })} placeholder="Es. Acconto 50%" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11, color: MUTED }}>
-            <input type="checkbox" checked={newP.paid} onChange={e => setNewP({ ...newP, paid: e.target.checked })}
+            <input type="checkbox" checked={newP.paid}
+              onChange={e => setNewP({ ...newP, paid: e.target.checked, paidDate: e.target.checked ? (newP.paidDate || displayToIso(todayDisplay())) : '' })}
               style={{ accentColor: GREEN }} />
             Già pagato
           </label>

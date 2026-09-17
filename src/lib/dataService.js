@@ -128,7 +128,13 @@ export async function fetchOrders() {
         sizes: { adult: (({ __qty, __uni, ...rest }) => rest)(a.sizes_adult || {}), kids: a.sizes_kids || {}, uni: (a.sizes_adult || {}).__uni || 0 }
       }))
     }))
-    const payments = paymentsByOrder[order.id] || []
+    const payments = (paymentsByOrder[order.id] || []).map(p => ({
+      id: p.id, type: p.type, amount: p.amount, date: p.date, method: p.method,
+      note: p.note, paid: p.paid,
+      dueMode: p.due_mode || 'fissa',
+      dueOffsetDays: p.due_offset_days || 0,
+      paidDate: p.paid_date || null,
+    }))
     return {
       id: order.id, client: order.client, clientId: order.client_id || null,
       clientEmail: order.client_email || '', clientPhone: order.client_phone || '',
@@ -212,6 +218,9 @@ function buildPaymentsPayload(order) {
   return (order.payments || []).map(p => ({
     id: p.id || `p${Date.now()}${Math.random()}`,
     type: p.type, amount: p.amount, date: p.date, method: p.method, note: p.note, paid: p.paid,
+    due_mode: p.dueMode || 'fissa',
+    due_offset_days: parseInt(p.dueOffsetDays) || 0,
+    paid_date: p.paidDate || null,
   }))
 }
 
@@ -283,8 +292,12 @@ export async function restoreFromStandby(orderId) {
   return true
 }
 
-export async function quickTogglePayment(paymentId, paid) {
-  const { error } = await supabase.from('payments').update({ paid }).eq('id', paymentId)
+// paidDate: data reale di incasso. Si passa esplicitamente perche' anche qui
+// vale la regola delle date di consegna — un pagamento si registra spesso a
+// giorni di distanza da quando i soldi sono arrivati davvero.
+export async function quickTogglePayment(paymentId, paid, paidDate = null) {
+  const fields = paid ? { paid: true, paid_date: paidDate } : { paid: false, paid_date: null }
+  const { error } = await supabase.from('payments').update(fields).eq('id', paymentId)
   if (error) { console.error('quickTogglePayment:', error); return false }
   return true
 }

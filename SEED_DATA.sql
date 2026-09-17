@@ -44,6 +44,23 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_date text;
 -- ----------------------------------------------------------------
 
 -- ----------------------------------------------------------------
+-- MIGRATION: scadenze pagamento ancorate e data di incasso reale
+-- (esegui una volta sola)
+-- due_mode: 'fissa' (scadenza digitata a mano, campo date)
+--         | 'consegna' (scadenza = consegna reale + due_offset_days)
+-- paid_date: quando i soldi sono arrivati davvero, distinta dalla
+-- scadenza. Serve a misurare il ritardo di pagamento per cliente.
+-- ----------------------------------------------------------------
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS due_mode text DEFAULT 'fissa';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS due_offset_days integer DEFAULT 0;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS paid_date text;
+UPDATE payments SET paid_date = date WHERE paid = true AND paid_date IS NULL;
+-- NOTA: anche la funzione save_order_atomic va aggiornata per scrivere
+-- orders.shipped_date e le tre colonne qui sopra, altrimenti il salvataggio
+-- di un ordine le azzera in silenzio.
+-- ----------------------------------------------------------------
+
+-- ----------------------------------------------------------------
 -- MIGRATION: sconto ordine/preventivo (esegui una volta sola)
 -- discount_type: 'percentuale' (% sul subtotale) | 'importo' (€ fissi)
 -- ----------------------------------------------------------------

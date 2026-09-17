@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, BORDER, SURFACE, GREEN } from '../tokens.js'
 import { s } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderTotal, isConfirmed, isCancelled } from '../utils/helpers.js'
+import { clientPaymentDelays } from '../utils/payments.js'
 import { sampleStats, euro, itemOutcome } from '../utils/samples.js'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
@@ -367,6 +368,10 @@ export default function Analytics({ orders, shipments = [] }) {
     return { avg: Math.round(days.reduce((s, d) => s + d, 0) / days.length * 10) / 10, total: days.length }
   })()
 
+  // Puntualita' di pagamento per cliente: media sugli incassi gia' avvenuti,
+  // piu' quanto e' ancora aperto e scaduto oggi.
+  const paymentBehaviour = clientPaymentDelays(orders).slice(0, 10)
+
   const byClientSplit = {}
   confirmed.forEach(o => {
     const tot = orderTotal(o)
@@ -449,6 +454,43 @@ export default function Analytics({ orders, shipments = [] }) {
           </div>
         )
       })()}
+
+      {paymentBehaviour.length > 0 && (
+        <div style={{ ...s.card, marginBottom: 24 }}>
+          <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 4 }}>PUNTUALITA' DI PAGAMENTO</div>
+          <div style={{ fontSize: 10, color: MUTED, opacity: 0.8, marginBottom: 16 }}>
+            Ritardo medio sugli incassi gia' avvenuti, rispetto alla scadenza concordata.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {paymentBehaviour.map(c => {
+              const tone = c.avg === null ? MUTED : c.avg <= 0 ? GREEN : c.avg <= 10 ? GOLD : c.avg <= 30 ? CLAY : '#ef4444'
+              const label = c.avg === null ? '—' : c.avg <= 0 ? `${Math.abs(c.avg)}gg in anticipo` : `+${c.avg}gg`
+              return (
+                <div key={c.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: CREAM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: 1, marginTop: 2 }}>
+                      {c.count > 0 ? `${c.count} ${c.count === 1 ? 'incasso' : 'incassi'}` : 'nessun incasso registrato'}
+                      {c.worst !== null && c.worst > 0 && ` · peggiore +${c.worst}gg`}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+                    {c.openAmount > 0 && (
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: '#ef4444' }}>
+                          € {c.openAmount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                        </div>
+                        <div style={{ fontSize: 9, color: '#ef4444', letterSpacing: 1, marginTop: 2 }}>scaduto da {c.openDays}gg</div>
+                      </div>
+                    )}
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, color: tone, minWidth: 110, textAlign: 'right' }}>{label}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={s.divider}/>
 
