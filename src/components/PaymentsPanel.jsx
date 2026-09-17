@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import DatePicker from './DatePicker.jsx'
-import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
+import { paymentDue, paymentDelay, formatItalian, splitPayment, splitAmount } from '../utils/payments.js'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
 const PAYMENT_METHODS = ['Bonifico', 'Contanti', 'Carta di Credito', 'Assegno', 'PayPal', 'Altro']
@@ -32,10 +32,11 @@ const displayToIso = (display) => {
   return `${y}-${m}-${d}`
 }
 
-export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order, clientTerms }) {
+export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order, clientTerms, onInstallmentsGranted }) {
   const emptyPayment = { type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false, dueMode: 'fissa', dueOffsetDays: 0, paidDate: '' }
   const [newP, setNewP] = useState(emptyPayment)
   const [editingId, setEditingId] = useState(null)
+  const [splitting, setSplitting] = useState(null)   // { id, parts, firstDate, everyDays }
   const [editP, setEditP] = useState(null)
 
   const totalPaid    = payments.filter(p => p.paid).reduce((s, p)  => s + (parseFloat(p.amount) || 0), 0)
@@ -57,6 +58,30 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
     if (form.dueMode !== 'consegna') return isoToDisplay(form.date)
     const due = paymentDue(order, { ...form, dueOffsetDays: parseInt(form.dueOffsetDays) || 0 })
     return formatItalian(due.date) || null
+  }
+
+  // Rateizzazione di una rata aperta. E' un'eccezione negoziata sul singolo
+  // ordine, non una condizione del cliente: per questo vive qui e non in
+  // anagrafica, e marca l'ordine come dilazionato.
+  const openSplit = (p) => setSplitting({
+    id: p.id,
+    parts: 3,
+    firstDate: displayToIso(paymentDue(order, p).date ? formatItalian(paymentDue(order, p).date) : '') || '',
+    everyDays: 30,
+  })
+
+  const confirmSplit = () => {
+    if (!splitting) return
+    const original = payments.find(p => p.id === splitting.id)
+    if (!original) { setSplitting(null); return }
+    const tranche = splitPayment(original, {
+      parts: splitting.parts,
+      firstDateISO: splitting.firstDate,
+      everyDays: splitting.everyDays,
+    })
+    setPayments(payments.flatMap(p => p.id === splitting.id ? tranche : [p]))
+    onInstallmentsGranted?.(true)
+    setSplitting(null)
   }
 
   // Condizioni concordate in anagrafica: si applicano con un clic invece di
@@ -341,6 +366,52 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
               )
             }
 
+            if (splitting?.id === p.id) {
+              const anteprima = splitAmount(p.amount, splitting.parts)
+              const start = splitting.firstDate ? new Date(`${splitting.firstDate}T00:00:00`) : null
+              return (
+                <div key={p.id} style={{ padding: '16px', marginBottom: 10, background: 'rgba(184,150,90,0.06)', border: `1px solid rgba(184,150,90,0.3)`, borderRadius: 8 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, marginBottom: 4 }}>RATEIZZA · {TYPE_LABELS[p.type]} € {(parseFloat(p.amount)||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+                  <div style={{ fontSize: 10, color: MUTED, opacity: 0.8, marginBottom: 14 }}>
+                    La rata viene sostituita da piu' tranche a date fisse. L'ordine resta segnato come dilazionato.
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+                    <div>
+                      <label style={s.label}>Numero tranche</label>
+                      <select style={inp} value={splitting.parts} onChange={e => setSplitting(v => ({ ...v, parts: parseInt(e.target.value) }))}>
+                        {[2,3,4,5,6,8,10,12].map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                    <DatePicker label="Prima scadenza" value={splitting.firstDate} onChange={v => setSplitting(s2 => ({ ...s2, firstDate: v }))}/>
+                    <div>
+                      <label style={s.label}>Ogni quanti giorni</label>
+                      <input type="number" min="1" style={inp} value={splitting.everyDays}
+                        onChange={e => setSplitting(v => ({ ...v, everyDays: e.target.value }))}/>
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 6, padding: '10px 12px', marginBottom: 12 }}>
+                    {anteprima.map((amount, i) => {
+                      const d = start ? new Date(start) : null
+                      if (d) d.setDate(d.getDate() + i * (parseInt(splitting.everyDays) || 30))
+                      return (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: MUTED, padding: '3px 0' }}>
+                          <span>{i === anteprima.length - 1 ? TYPE_LABELS[p.type] || 'Saldo' : `Rata ${i+1}`}</span>
+                          <span style={{ color: CREAM }}>
+                            € {amount.toLocaleString('it-IT',{minimumFractionDigits:2})}
+                            <span style={{ color: MUTED, marginLeft: 10 }}>{d ? formatItalian(d) : '—'}</span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button style={{ ...btnGoldStyle, padding: '7px 18px', fontSize: 9 }} onClick={confirmSplit} disabled={!splitting.firstDate}>Conferma</button>
+                    <button style={{ ...btnStyle(false), padding: '7px 18px', fontSize: 9 }} onClick={() => setSplitting(null)}>Annulla</button>
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div key={p.id} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -390,6 +461,13 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: p.paid ? GREEN : GOLD }}>
                     € {p.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                   </span>
+                  {!p.paid && (parseFloat(p.amount) || 0) > 0 && (
+                    <button onClick={() => openSplit(p)}
+                      style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 3, color: MUTED, cursor: 'pointer', fontSize: 9, letterSpacing: 1, padding: '3px 8px' }}
+                      title="Dividi questa rata in piu' tranche">
+                      RATEIZZA
+                    </button>
+                  )}
                   <button onClick={() => startEdit(p)}
                     style={{ background: 'none', border: 'none', color: GOLD, cursor: 'pointer', fontSize: 12, opacity: 0.7, padding: '0 4px' }}
                     title="Modifica pagamento">

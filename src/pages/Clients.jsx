@@ -569,6 +569,13 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                   </div>
                 </div>
 
+                {selected.installmentOrders > 0 && (
+                  <div style={{ fontSize:10, color:CLAY, letterSpacing:1, lineHeight:1.6, marginBottom:12 }}>
+                    Dilazione concessa su {selected.installmentOrders} {selected.installmentOrders === 1 ? 'ordine' : 'ordini'} su {selected.confirmed.length}:
+                    la puntualita' qui sopra e' misurata sulle tranche concordate, non sul saldo pieno.
+                  </div>
+                )}
+
                 {selected.payer.unverified > 0 && (
                   <div style={{ fontSize:9, color:MUTED, letterSpacing:1, lineHeight:1.6, marginBottom:16, opacity:0.8 }}>
                     {selected.payer.unverified} {selected.payer.unverified === 1 ? 'incasso proviene' : 'incassi provengono'} dall'archivio
