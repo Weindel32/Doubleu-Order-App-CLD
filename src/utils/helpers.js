@@ -1,3 +1,4 @@
+import { paymentDelay } from './payments.js'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 
 export function getAllArticles(order) {
@@ -168,12 +169,14 @@ export function hasMissingSizes(order) {
 // Pagamenti pianificati con data già passata e non ancora segnati come
 // incassati — vanno verificati ora, a differenza di un pagamento
 // pianificato per il mese prossimo che non richiede ancora nulla.
+// La scadenza effettiva di un pagamento puo' essere ancorata alla consegna
+// reale, quindi il calcolo vive in utils/payments.js. Qui resta solo il
+// filtro, per non spezzare i chiamanti storici.
 export function overduePayments(order) {
-  const today = new Date(); today.setHours(0, 0, 0, 0)
   return (order.payments || []).filter(p => {
     if (p.paid || !(parseFloat(p.amount) > 0)) return false
-    const due = parseDate(p.date)
-    return due !== null && due <= today
+    const delay = paymentDelay(order, p)
+    return delay !== null && delay > 0
   })
 }
 

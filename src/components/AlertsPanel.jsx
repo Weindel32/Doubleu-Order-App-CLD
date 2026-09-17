@@ -1,6 +1,7 @@
 import { GOLD, MUTED, CREAM, CLAY } from '../tokens.js'
 import { daysUntilDelivery, needsAlert, isConfirmed, isQuote,
   hasMissingSizes, missingSizeArticles, overduePayments, hasOverduePayment, parseDate } from '../utils/helpers.js'
+import { overdueSummary, paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
 import {
   needsFollowUp, returnOverdue, fmtDate, daysSince, recipientLabel,
   samplePieces, PURPOSE_LABELS, followUpBaseDate,
@@ -19,7 +20,9 @@ export default function AlertsPanel({ orders, setView, setEditOrder, shipments =
   const quoteAlerts = (orders||[]).filter(o => isQuote(o) && !o.lost && !o.standby)
     .sort((a, b) => (parseDate(a.date)?.getTime() ?? 0) - (parseDate(b.date)?.getTime() ?? 0))
 
+  // Crediti scaduti, dal ritardo maggiore: e' l'ordine in cui vanno chiamati.
   const overdueOrders = (orders||[]).filter(o => isConfirmed(o) && hasOverduePayment(o))
+    .sort((a, b) => overdueSummary(b).days - overdueSummary(a).days)
 
   // Campionature senza risposta e resi scaduti: un invio senza esito è
   // lavoro commerciale già pagato che rischia di restare a metà.
@@ -120,29 +123,39 @@ export default function AlertsPanel({ orders, setView, setEditOrder, shipments =
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
             <span>€</span>
             <span style={{ fontSize:9, letterSpacing:3, color:GOLD, textTransform:'uppercase', fontWeight:700 }}>
-              Acconti da Verificare · {overdueOrders.length} ordini
+              Crediti Scaduti · {overdueOrders.length} ordini · € {overdueOrders.reduce((s,o)=>s+overdueSummary(o).amount,0).toLocaleString('it-IT',{minimumFractionDigits:2})}
             </span>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {overdueOrders.map(order => {
               const overdue = overduePayments(order)
-              const amount = overdue.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
-              const oldest = overdue.reduce((min, p) => !min || p.date < min ? p.date : min, null)
+              const { amount, days } = overdueSummary(order)
+              const oldest  = overdue
+                .map(p => paymentDue(order, p).date)
+                .filter(Boolean)
+                .sort((a, b) => a - b)[0]
+              const anchored = overdue.some(p => p.dueMode === 'consegna')
+              const color = days > 30 ? '#ef4444' : GOLD
               return (
                 <div key={order.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.03)', borderRadius:6, padding:'10px 14px', cursor:'pointer' }}
                   onClick={() => { setEditOrder(order); setView('new') }}>
                   <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                    <div style={{ width:3, height:36, borderRadius:2, background:GOLD }} />
+                    <div style={{ width:3, height:36, borderRadius:2, background:color }} />
                     <div>
                       <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:16, color:CREAM }}>{order.client}</div>
-                      <div style={{ fontSize:10, color:MUTED, marginTop:1 }}>{order.id} · previsto {oldest}</div>
+                      <div style={{ fontSize:10, color:MUTED, marginTop:1 }}>
+                        {order.id} · scaduto il {formatItalian(oldest) || '—'}
+                        {anchored && <span style={{ opacity:0.7 }}> · alla consegna</span>}
+                      </div>
                     </div>
                   </div>
                   <div style={{ textAlign:'right' }}>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color:GOLD }}>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color }}>
                       € {amount.toLocaleString('it-IT', { minimumFractionDigits:2 })}
                     </div>
-                    <div style={{ fontSize:10, color:MUTED, marginTop:2 }}>da verificare</div>
+                    <div style={{ fontSize:10, color, marginTop:2, fontWeight:700, letterSpacing:1 }}>
+                      {days} {days === 1 ? 'giorno' : 'giorni'} di ritardo
+                    </div>
                   </div>
                 </div>
               )

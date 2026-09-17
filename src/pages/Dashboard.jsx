@@ -1,6 +1,7 @@
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderTotal, orderIVA, paymentSummary, daysUntilDelivery, needsAlert, isConfirmed } from '../utils/helpers.js'
+import { paymentDue, formatItalian } from '../utils/payments.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -49,9 +50,13 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
     acc[y].net   += orderTotal(o) - orderIVA(o)
     return acc
   }, {})
+  // L'incasso si attribuisce all'anno in cui i soldi sono arrivati davvero
+  // (paidDate). Per i pagamenti storici senza data di incasso si ricade sulla
+  // scadenza, che e' il dato migliore disponibile.
   const collectedByYear = confirmed.reduce((acc, o) => {
     (o.payments || []).filter(p => p.paid).forEach(p => {
-      const match = p.date?.match(/(\d{4})/)
+      const when  = p.paidDate || formatItalian(paymentDue(o, p).date)
+      const match = when?.match(/(\d{4})/)
       if (!match) return
       const y = match[1]
       acc[y] = (acc[y] || 0) + (parseFloat(p.amount) || 0)

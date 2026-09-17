@@ -1,6 +1,7 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery, artDiscountApplied } from '../utils/helpers.js'
+import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
 
 function fmt(n) {
   return '€' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -262,7 +263,17 @@ export default function MobileOrderDetail({ order, onBack }) {
                     <div style={{ fontSize: 13, color: p.paid ? GREEN : MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>
                       {p.paid ? '✓' : '○'} {p.type}
                     </div>
-                    {p.date && <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{p.date}</div>}
+                    {(() => {
+                      const due   = paymentDue(order, p)
+                      const delay = paymentDelay(order, p)
+                      const late  = !p.paid && delay !== null && delay > 0
+                      return (<>
+                        {due.date && <div style={{ fontSize: 12, color: late ? '#ef4444' : MUTED, marginTop: 2 }}>
+                          {formatItalian(due.date)}{late ? ` · scaduto da ${delay}gg` : ''}
+                        </div>}
+                        {p.paid && p.paidDate && <div style={{ fontSize: 12, color: GREEN, marginTop: 2 }}>Incassato il {p.paidDate}</div>}
+                      </>)
+                    })()}
                     {p.method && <div style={{ fontSize: 12, color: MUTED }}>{p.method}</div>}
                   </div>
                   <div style={{ textAlign: 'right' }}>

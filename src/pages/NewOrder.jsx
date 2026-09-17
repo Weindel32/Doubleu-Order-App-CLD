@@ -738,7 +738,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
 
       {/* ── STEP 4 ── */}
       {step===4 && <div>
-        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber}/>
+        <PaymentsPanel payments={payments} setPayments={setPayments} orderTotal={total} shipping={shipping} setShipping={setShipping} invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber} order={currentOrder}/>
         <NavBtns prev={()=>setStep(3)} next={()=>setStep(5)} nextLabel="Riepilogo →" withSave/>
       </div>}
 
