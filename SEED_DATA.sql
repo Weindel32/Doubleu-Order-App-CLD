@@ -54,7 +54,20 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_date text;
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS due_mode text DEFAULT 'fissa';
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS due_offset_days integer DEFAULT 0;
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS paid_date text;
+
+-- Trigger che tengono payments.date sempre allineata alla scadenza effettiva
+-- anche per le rate ancorate alla consegna (due_mode = 'consegna'): Doubleu
+-- Finance legge questa tabella direttamente e scarta le rate senza data, e
+-- una rata invisibile li' viene duplicata invece che chiusa. Le funzioni
+-- compute_payment_due_date / payments_sync_due_date /
+-- orders_sync_payment_due_dates sono applicate come migrazione Supabase
+-- (payments_due_date_denormalized_trigger).
 UPDATE payments SET paid_date = date WHERE paid = true AND paid_date IS NULL;
+-- NOTA: il backfill sopra e' attendibile SOLO per le rate incassate da
+-- Doubleu Finance, che gia' scriveva la data di incasso dentro date. Per
+-- quelle spuntate a mano nella Order App, date era la scadenza: usare
+-- scripts/backfill-order-app-paid-dates.mjs nel repo Finance per rimettere
+-- le date reali dalle transazioni e azzerare le altre.
 -- NOTA: anche la funzione save_order_atomic va aggiornata per scrivere
 -- orders.shipped_date e le tre colonne qui sopra, altrimenti il salvataggio
 -- di un ordine le azzera in silenzio.

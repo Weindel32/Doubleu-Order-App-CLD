@@ -48,6 +48,17 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
     setNewP(prev => ({ ...prev, ...updates }))
   }
 
+  // La scadenza effettiva resta sempre scritta nel campo date, anche quando e'
+  // ancorata alla consegna: Doubleu Finance legge la tabella pagamenti
+  // direttamente e scarta le rate senza data, quindi una rata ancorata con
+  // date vuoto sparirebbe dal suo modale incassi. Il database ha comunque un
+  // trigger che la ricalcola se la consegna si sposta.
+  const dueDateFor = (form) => {
+    if (form.dueMode !== 'consegna') return isoToDisplay(form.date)
+    const due = paymentDue(order, { ...form, dueOffsetDays: parseInt(form.dueOffsetDays) || 0 })
+    return formatItalian(due.date) || null
+  }
+
   // Con scadenza ancorata alla consegna la data fissa non serve: la calcola
   // paymentDue() sulla consegna reale dell'ordine.
   const addPayment = () => {
@@ -55,7 +66,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
     if (newP.dueMode === 'fissa' && !newP.date) return
     const p = {
       ...newP, id: `p${Date.now()}`, amount: parseFloat(newP.amount),
-      date: newP.dueMode === 'fissa' ? isoToDisplay(newP.date) : null,
+      date: dueDateFor(newP),
       dueOffsetDays: parseInt(newP.dueOffsetDays) || 0,
       paidDate: newP.paid ? (isoToDisplay(newP.paidDate) || todayDisplay()) : null,
     }
@@ -97,7 +108,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
         ? {
             ...editP,
             amount: parseFloat(editP.amount),
-            date: editP.dueMode === 'fissa' ? isoToDisplay(editP.date) : null,
+            date: dueDateFor(editP),
             dueOffsetDays: parseInt(editP.dueOffsetDays) || 0,
             paidDate: editP.paid ? (isoToDisplay(editP.paidDate) || todayDisplay()) : null,
           }

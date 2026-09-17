@@ -464,7 +464,10 @@ export default function Analytics({ orders, shipments = [] }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {paymentBehaviour.map(c => {
               const tone = c.avg === null ? MUTED : c.avg <= 0 ? GREEN : c.avg <= 10 ? GOLD : c.avg <= 30 ? CLAY : '#ef4444'
-              const label = c.avg === null ? '—' : c.avg <= 0 ? `${Math.abs(c.avg)}gg in anticipo` : `+${c.avg}gg`
+              const label = c.avg === null ? 'dati insufficienti'
+                : c.avg === 0 ? 'puntuale'
+                : c.avg < 0  ? `${Math.abs(c.avg)}gg in anticipo`
+                : `+${c.avg}gg`
               return (
                 <div key={c.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ minWidth: 0 }}>
