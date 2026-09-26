@@ -123,7 +123,7 @@ export default function AlertsPanel({ orders, setView, setEditOrder, shipments =
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
             <span>€</span>
             <span style={{ fontSize:9, letterSpacing:3, color:GOLD, textTransform:'uppercase', fontWeight:700 }}>
-              Crediti Scaduti · {overdueOrders.length} ordini · € {overdueOrders.reduce((s,o)=>s+overdueSummary(o).amount,0).toLocaleString('it-IT',{minimumFractionDigits:2})}
+              Crediti Scaduti · {overdueOrders.length} ordini · € {overdueOrders.reduce((s,o)=>s+overdueSummary(o).amount,0).toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}
             </span>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -151,7 +151,7 @@ export default function AlertsPanel({ orders, setView, setEditOrder, shipments =
                   </div>
                   <div style={{ textAlign:'right' }}>
                     <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color }}>
-                      € {amount.toLocaleString('it-IT', { minimumFractionDigits:2 })}
+                      € {amount.toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 })}
                     </div>
                     <div style={{ fontSize:10, color, marginTop:2, fontWeight:700, letterSpacing:1 }}>
                       {days} {days === 1 ? 'giorno' : 'giorni'} di ritardo

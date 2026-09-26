@@ -505,7 +505,7 @@ export default function Analytics({ orders, shipments = [] }) {
                   <div style={{ textAlign: 'right' }}>
                     {c.openAmount > 0 ? (<>
                       <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, color: '#ef4444' }}>
-                        € {c.openAmount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                        € {c.openAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                       <div style={{ fontSize: 9, color: '#ef4444', letterSpacing: 1, marginTop: 2 }}>scaduto da {c.openDays}gg</div>
                     </>) : (
@@ -552,7 +552,7 @@ export default function Analytics({ orders, shipments = [] }) {
           <div key={item.label} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${BORDER}`,borderRadius:8,padding:'16px 20px'}}>
             <div style={{fontSize:9,letterSpacing:2,color:MUTED,marginBottom:6}}>{item.label}</div>
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,color:item.color,lineHeight:1}}>
-              € {item.value.toLocaleString('it-IT',{minimumFractionDigits:2})}
+              € {item.value.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}
             </div>
             {item.pct!==undefined && <div style={{fontSize:10,color:MUTED,marginTop:4}}>{item.pct}% sul totale</div>}
           </div>

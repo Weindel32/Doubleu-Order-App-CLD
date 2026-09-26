@@ -682,7 +682,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                   <div>
                     <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:4 }}>SCADUTO OGGI</div>
                     <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, color: selected.payer.hasOverdue ? '#ef4444' : MUTED }}>
-                      {selected.payer.hasOverdue ? `€ ${selected.payer.openAmount.toLocaleString('it-IT',{minimumFractionDigits:2})}` : '—'}
+                      {selected.payer.hasOverdue ? `€ ${selected.payer.openAmount.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}` : '—'}
                     </div>
                     {selected.payer.hasOverdue && (
                       <div style={{ fontSize:9, color:'#ef4444', letterSpacing:1, marginTop:3 }}>da {selected.payer.openDays}gg</div>
@@ -719,7 +719,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
               {/* Revenue stats */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12, marginBottom:20 }}>
                 {[
-                  { l:'Fatturato',     v: selected.total    > 0 ? `€ ${selected.total.toLocaleString('it-IT',{minimumFractionDigits:2})}` : '—', color:GOLD },
+                  { l:'Fatturato',     v: selected.total    > 0 ? `€ ${selected.total.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}` : '—', color:GOLD },
                   { l:'Istituzionale', v: selected.totalIst > 0 ? `€ ${selected.totalIst.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—', color:CREAM },
                   { l:'Soci / Shop',   v: selected.totalSoci > 0 ? `€ ${selected.totalSoci.toLocaleString('it-IT',{maximumFractionDigits:0})}` : '—', color:'#7aaee8' },
                   { l:'Pezzi',         v: selected.pieces || 0, color:CREAM },
@@ -754,7 +754,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                             <td style={{ ...s.td, fontSize:12 }}>{o.date}</td>
                             <td style={s.td}><span style={badgeStyle(o.status)}>{o.status}</span></td>
                             <td style={{ ...s.td, fontFamily:"'Cormorant Garamond',serif", fontSize:16, color:GOLD }}>
-                              {tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                              {tot.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
                             </td>
                             <td style={s.td}>
                               <button

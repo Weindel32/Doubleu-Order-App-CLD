@@ -215,7 +215,7 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
                   )}
                   <td style={{ ...s.td, fontSize: 10, color: MUTED, letterSpacing: 1 }}>{pricingLabel}</td>
                   <td style={{ ...s.td, fontFamily: "'Cormorant Garamond',serif", fontSize: 17, color: GOLD }}>
-                    {tot > 0 ? `${tot.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €` : <span style={{ color: MUTED, fontSize: 11 }}>—</span>}
+                    {tot > 0 ? `${tot.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : <span style={{ color: MUTED, fontSize: 11 }}>—</span>}
                   </td>
                   <td style={s.td}>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

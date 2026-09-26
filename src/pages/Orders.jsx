@@ -277,7 +277,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                   </td>
                   <td style={s.td}><StatusSelector order={o} onStatusChange={handleStatusChange}/></td>
                   <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:GOLD}}>
-                    {tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                    {tot.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
                   </td>
                   <td style={s.td}><PaymentQuick order={o} onPaymentToggle={handlePaymentToggle}/></td>
                   <td style={s.td}>
