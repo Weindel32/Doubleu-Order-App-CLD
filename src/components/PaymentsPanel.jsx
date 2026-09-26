@@ -327,7 +327,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
             <div key={item.label} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '12px 16px' }}>
               <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 6 }}>{item.label}</div>
               <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: item.color }}>
-                € {item.value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                € {item.value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
           ))}
@@ -403,7 +403,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
               const start = splitting.firstDate ? new Date(`${splitting.firstDate}T00:00:00`) : null
               return (
                 <div key={p.id} style={{ padding: '16px', marginBottom: 10, background: 'rgba(184,150,90,0.06)', border: `1px solid rgba(184,150,90,0.3)`, borderRadius: 8 }}>
-                  <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, marginBottom: 4 }}>RATEIZZA · {TYPE_LABELS[p.type]} € {(parseFloat(p.amount)||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+                  <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, marginBottom: 4 }}>RATEIZZA · {TYPE_LABELS[p.type]} € {(parseFloat(p.amount)||0).toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}</div>
                   <div style={{ fontSize: 10, color: MUTED, opacity: 0.8, marginBottom: 14 }}>
                     La rata viene sostituita da piu' tranche a date fisse. L'ordine resta segnato come dilazionato.
                   </div>
@@ -429,7 +429,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: MUTED, padding: '3px 0' }}>
                           <span>{i === anteprima.length - 1 ? TYPE_LABELS[p.type] || 'Saldo' : `Rata ${i+1}`}</span>
                           <span style={{ color: CREAM }}>
-                            € {amount.toLocaleString('it-IT',{minimumFractionDigits:2})}
+                            € {amount.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}
                             <span style={{ color: MUTED, marginLeft: 10 }}>{d ? formatItalian(d) : '—'}</span>
                           </span>
                         </div>
@@ -507,7 +507,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: p.paid ? GREEN : GOLD }}>
-                    € {p.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                    € {p.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   {!p.paid && (parseFloat(p.amount) || 0) > 0 && (
                     <button onClick={() => openSplit(p)}

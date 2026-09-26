@@ -661,7 +661,7 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
                     {selected.city     && <InfoRow label="CITTÀ"    value={selected.city}/>}
                     {selected.province && <InfoRow label="PROVINCIA" value={selected.province}/>}
                     {selected.country  && <InfoRow label="PAESE"     value={selected.country}/>}
-                    {selected.deal_value_est && <InfoRow label="VALORE EST."  value={`€ ${parseFloat(selected.deal_value_est).toLocaleString('it-IT',{minimumFractionDigits:2})}`}/>}
+                    {selected.deal_value_est && <InfoRow label="VALORE EST."  value={`€ ${parseFloat(selected.deal_value_est).toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}`}/>}
                     {selected.next_action_date && (
                       <InfoRow label="PROSSIMA AZIONE"
                         value={<span style={{ color: selected.next_action_date <= today ? CLAY : CREAM }}>{selected.next_action_date}</span>}/>

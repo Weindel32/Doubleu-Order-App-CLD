@@ -152,7 +152,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
                 <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,color:CREAM}}>{item.name}</span>
               </div>
               <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:GOLD,fontWeight:300}}>
-                {item.total.toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                {item.total.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
               </span>
             </div>
           ))}
@@ -190,7 +190,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
                   <td style={s.td}><span style={badgeStyle(o.status)}>{o.status}</span></td>
                   <td style={{...s.td,textAlign:'center'}}>{o.pieces}</td>
                   <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:GOLD}}>
-                    {tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                    {tot.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
                   </td>
                   <td style={s.td}>
                     {tot>0&&<div>
@@ -221,7 +221,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2}}>Ultimi Ordini Incassati</div>
             <div style={{fontSize:11,color:MUTED,letterSpacing:1}}>
               Totale: <span style={{color:GREEN,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>
-                {fullyPaid.reduce((a,o)=>a+orderTotal(o),0).toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                {fullyPaid.reduce((a,o)=>a+orderTotal(o),0).toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
               </span>
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
                     <td style={s.td}><span style={badgeStyle(o.status)}>{o.status}</span></td>
                     <td style={{...s.td,textAlign:'center',color:MUTED}}>{o.pieces||'—'}</td>
                     <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:GREEN}}>
-                      ✓ {tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                      ✓ {tot.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
                     </td>
                   </tr>
                 )
@@ -258,7 +258,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:CREAM,letterSpacing:2}}>Preventivi in Attesa</div>
             <div style={{fontSize:11,color:MUTED,letterSpacing:1}}>
               Potenziale: <span style={{color:GOLD,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>
-                {quote.reduce((a,o)=>a+orderTotal(o),0).toLocaleString('it-IT',{minimumFractionDigits:2})} €
+                {quote.reduce((a,o)=>a+orderTotal(o),0).toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
               </span>
             </div>
           </div>
@@ -276,7 +276,7 @@ export default function Dashboard({ orders, setView, setEditOrder, onDelete, onO
                     <td style={{...s.td,fontSize:11,color:MUTED}}>{o.date||'—'}</td>
                     <td style={{...s.td,textAlign:'center',color:MUTED}}>{o.pieces||'—'}</td>
                     <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:'rgba(184,150,90,0.6)'}}>
-                      {tot>0?`${tot.toLocaleString('it-IT',{minimumFractionDigits:2})} €`:'—'}
+                      {tot>0?`${tot.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €`:'—'}
                     </td>
                     <td style={s.td}>
                       <button style={{...btnGoldStyle,padding:'4px 10px',fontSize:8}} onClick={()=>{setEditOrder(o);setView('newQuote')}}>Apri</button>
