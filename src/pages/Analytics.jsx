@@ -6,7 +6,7 @@ import { clientPaymentDelays, MIN_INCASSI_PER_GIUDIZIO } from '../utils/payments
 import { sampleStats, euro, itemOutcome } from '../utils/samples.js'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
-const LINE_COLORS = { 'Performance':CLAY,'Club':GOLD,'Training':'#7aaee8','Lifestyle':GREEN }
+const LINE_COLORS = { 'Premium':CLAY,'Basic':GOLD,'LS24':'#7aaee8','WFox':GREEN,'Surfaces':'#b48ee8' }
 
 function BarChart({ data, title, colorFn }) {
   const entries = Object.entries(data).sort((a,b)=>b[1]-a[1])

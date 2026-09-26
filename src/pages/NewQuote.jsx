@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_SIZES, withCurrent } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal as calcOrderTotal,
          artPieceCount, artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty } from '../utils/helpers.js'
@@ -14,7 +14,7 @@ import { useDraftRecovery } from '../hooks/useDraftRecovery.js'
 const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Taglie', 'Riepilogo']
 
 const emptyArticle = () => ({
-  sp: '', category: 'Felpa', line: 'Performance', description: '', color: '', price: '', estimatedQty: '', notes: '',
+  sp: '', category: 'T-Shirt PRF', line: 'Premium', description: '', color: '', price: '', estimatedQty: '', notes: '',
   delivered: false, omaggio: 0, discountType: 'percentuale', discountValue: '',
   sizes: { adult: {}, kids: {}, uni: 0 },
 })
@@ -472,7 +472,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
               {kit.articles.map((art, ai) => (
                 <div key={ai} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '14px', marginBottom: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr 1fr 1fr', gap: 10, marginBottom: 10, alignItems: 'end' }}>
-                    <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e => updateArt(ki, ai, 'category', e.target.value)}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
+                    <div><label style={s.label}>Categoria</label><select style={inp} value={art.category} onChange={e => updateArt(ki, ai, 'category', e.target.value)}>{withCurrent(CATEGORIES, art.category).map(c => <option key={c}>{c}</option>)}</select></div>
                     <SpAutocomplete
                       value={art.sp}
                       category={art.category}
@@ -483,7 +483,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
                     />
                     <div><label style={s.label}>Descrizione *</label><input style={inp} value={art.description} onChange={e => updateArt(ki, ai, 'description', e.target.value)} placeholder="Felpa zip cappuccio"/></div>
                     <div><label style={s.label}>Colore / Pantone</label><input style={inp} value={art.color} onChange={e => updateArt(ki, ai, 'color', e.target.value)} placeholder="Navy/Cream"/></div>
-                    <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e => updateArt(ki, ai, 'line', e.target.value)}>{LINES.map(l => <option key={l}>{l}</option>)}</select></div>
+                    <div><label style={s.label}>Linea</label><select style={inp} value={art.line} onChange={e => updateArt(ki, ai, 'line', e.target.value)}>{withCurrent(LINES, art.line).map(l => <option key={l}>{l}</option>)}</select></div>
                   </div>
                   {pricingMode === 'singolo' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '140px 100px 100px', gap: 10, marginBottom: 10, alignItems: 'end' }}>

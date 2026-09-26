@@ -46,7 +46,7 @@ export function generateClientPDF(order) {
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
             <div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${a.description}</div>
-              <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${a.category} · ${a.line} · ${a.color}</div>
+              <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${[a.category, a.color].filter(Boolean).join(' · ')}</div>
               ${(a.omaggio||0)>0?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">${a.omaggio} pz in omaggio</div>`:''}
             </div>
             <div style="text-align:right;">
@@ -104,7 +104,7 @@ export function generateClientPDF(order) {
         <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;">
           <div>
             <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#1a2744;">${art.description}</div>
-            <div style="font-size:10px;letter-spacing:2px;color:#8a9ab5;margin-top:2px;">${art.category} · ${art.line}</div>
+            <div style="font-size:10px;letter-spacing:2px;color:#8a9ab5;margin-top:2px;">${art.category}</div>
           </div>
           <div style="margin-left:auto;text-align:right;">
             <div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;">COLORE</div>
