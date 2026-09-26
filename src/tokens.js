@@ -40,8 +40,17 @@ export const STATUS_COLORS = {
 // ─── CONSTANTS ───────────────────────────────────────────────────
 export const ADULT_SIZES  = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 export const KIDS_SIZES   = ['4', '6', '8', '10', '12', '14', '16']
-export const CATEGORIES = ['Hoodie', 'Zip Hoodie', 'Sweatshirt', 'T-Shirt PRF', 'T-Shirt Cot', 'Polo', 'T-Shirt Ws', 'T-Shirt Bsc', 'Short', 'Skirt', 'Dress', 'Sweatpants', 'Jogger', 'Giacca', 'Cap BSC', 'Cap PRF', 'Altro']
-export const LINES = ['Premium', 'Club', 'WFox', 'Surfaces', 'Training', 'Lifestyle', 'LS24']
+export const CATEGORIES = ['Hoodie', 'Zip Hoodie', 'Sweatshirt', 'T-Shirt PRF', 'T-Shirt Cot', 'Polo', 'T-Shirt Ws', 'T-Shirt Bsc', 'Short', 'Skirt', 'Dress', 'Sweatpants', 'Giacca', 'Cap BSC', 'Cap PRF', 'Altro']
+// Premium: prodotto DOUBLEU tecnico e personalizzato. Basic: poca
+// personalizzazione e materiali economici (in parte acquistato già fatto).
+// LS24: catalogo del fornitore LS. WFox/Surfaces: collezioni dedicate.
+// Stessi nomi del Kit Builder: una linea, un nome solo in tutte le app.
+export const LINES = ['Premium', 'Basic', 'WFox', 'Surfaces', 'LS24']
+
+// Opzioni di un menu che includono anche il valore già salvato quando non è
+// più in elenco (es. una linea dismessa su un ordine vecchio): altrimenti il
+// menu mostra la prima voce ma salva il valore vecchio senza che si veda.
+export const withCurrent = (list, value) => (value && !list.includes(value) ? [...list, value] : list)
 export const PRICING_MODES = ['kit', 'singolo']
 
 // ─── SHARED STYLES ───────────────────────────────────────────────

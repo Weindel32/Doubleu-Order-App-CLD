@@ -113,7 +113,7 @@ export function generateQuotePDF(order) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">'
           + '<div>'
           + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;color:#1a2744;">' + a.description + '</div>'
-          + '<div style="font-size:10px;color:#8a9ab5;margin-top:2px;">' + [a.category, a.line, a.color].filter(Boolean).join(' &middot; ') + '</div>'
+          + '<div style="font-size:10px;color:#8a9ab5;margin-top:2px;">' + [a.category, a.color].filter(Boolean).join(' &middot; ') + '</div>'
           + '</div>'
           + '<div style="text-align:right;">' + priceRight + '</div>'
           + '</div>'
@@ -129,7 +129,7 @@ export function generateQuotePDF(order) {
       + '<div style="background:#f0ece4;padding:5px 12px;border-radius:2px;font-size:10px;letter-spacing:2px;color:#1a2744;font-weight:700;white-space:nowrap;flex-shrink:0;">' + (art.sp || '&mdash;') + '</div>'
       + '<div style="flex:1;">'
       + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;color:#1a2744;">' + (art.description || '&mdash;') + '</div>'
-      + '<div style="font-size:10px;color:#8a9ab5;margin-top:3px;letter-spacing:1px;">' + [art.category, art.line].filter(Boolean).join(' &middot; ') + '</div>'
+      + '<div style="font-size:10px;color:#8a9ab5;margin-top:3px;letter-spacing:1px;">' + [art.category].filter(Boolean).join(' &middot; ') + '</div>'
       + (art.color ? '<div style="font-size:11px;color:#c4623a;margin-top:3px;font-weight:600;">' + art.color + '</div>' : '')
       + (art.notes ? '<div style="font-size:10px;color:#8a9ab5;margin-top:4px;font-style:italic;">' + art.notes + '</div>' : '')
       + omRow

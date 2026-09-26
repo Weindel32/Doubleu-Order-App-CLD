@@ -52,7 +52,7 @@ export function generateDeliveryPDF(order, selectedArticles = null) {
         <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;">
           <div style="flex:1;">
             <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#1a2744;">${art.description}</div>
-            <div style="font-size:10px;letter-spacing:2px;color:#888;margin-top:2px;">${art.category} · ${art.line}</div>
+            <div style="font-size:10px;letter-spacing:2px;color:#888;margin-top:2px;">${art.category}</div>
             ${art.notes ? `<div style="font-size:11px;color:#555;margin-top:4px;font-style:italic;">${art.notes}</div>` : ''}
           </div>
           <div style="text-align:right;">
