@@ -125,7 +125,7 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(kitTotal)}</div>
-                      {qty > 0 && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {kit.price} × {qty} pers.</div>}
+                      {qty > 0 && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {(parseFloat(kit.price)||0).toFixed(2).replace('.', ',')} × {qty} pers.</div>}
                     </div>
                   </div>
                   {(kit.articles || []).map((art, ai) => (
@@ -171,10 +171,10 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                       {artTotal > 0
                         ? <>
                             <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(artTotal)}</div>
-                            <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {art.price} × {qty} pz</div>
+                            <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {(parseFloat(art.price)||0).toFixed(2).replace('.', ',')} × {qty} pz</div>
                           </>
                         : art.price
-                          ? <div style={{ fontSize: 14, color: GOLD }}>€ {art.price} / pz</div>
+                          ? <div style={{ fontSize: 14, color: GOLD }}>€ {(parseFloat(art.price)||0).toFixed(2).replace('.', ',')} / pz</div>
                           : null
                       }
                     </div>

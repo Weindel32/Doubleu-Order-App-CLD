@@ -231,7 +231,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
           return (
             <div key={ki}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
-                <span>{kit.name || `Kit ${ki + 1}`} — € {price} × {qty || '?'}</span>
+                <span>{kit.name || `Kit ${ki + 1}`} — € {price.toFixed(2).replace('.', ',')} × {qty || '?'}</span>
                 <span style={{ color: CREAM }}>€ {kitTotal.toFixed(2)}</span>
               </div>
               {kitOmaggio > 0 && (
@@ -265,7 +265,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
           return (
             <div key={i}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
-                <span>{art.description || `Articolo ${i + 1}`} — € {price} × {pieces} pz</span>
+                <span>{art.description || `Articolo ${i + 1}`} — € {price.toFixed(2).replace('.', ',')} × {pieces} pz</span>
                 <span style={{ color: CREAM }}>€ {gross.toFixed(2)}</span>
               </div>
               {artOmaggio > 0 && (
