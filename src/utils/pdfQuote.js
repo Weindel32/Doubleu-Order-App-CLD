@@ -1,10 +1,34 @@
-import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, kitBillableQty } from '../utils/helpers.js'
 
 // Riga sconto sotto il prezzo di listino della singola voce
 function lineDisc(disc, entity) {
   if (disc <= 0) return ''
   var label = entity.discountType !== 'importo' ? ' ' + (parseFloat(entity.discountValue) || 0) + '%' : ''
   return '<div style="font-size:11px;color:#c4623a;margin-top:2px;">sconto' + label + ' &minus; &euro; ' + disc.toFixed(2) + '</div>'
+}
+
+// Prezzi in formato italiano (81,53) per il preventivo a kit
+function eurIt(n) {
+  return '&euro; ' + (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function escHtml(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Articoli del kit su una riga: capi uguali raggruppati (Short ×2), colore
+// tra parentesi quando c'è, così due capi uguali di colore diverso restano distinti.
+function kitArticlesLine(kit) {
+  var groups = []
+  ;(kit.articles || []).forEach(function(a) {
+    var desc = String(a.description || '').trim()
+    if (!desc) return
+    var label = desc + (a.color ? ' (' + String(a.color).trim() + ')' : '')
+    var g = groups.find(function(x) { return x.label === label })
+    if (g) g.n++
+    else groups.push({ label: label, n: 1 })
+  })
+  return groups.map(function(g) { return escHtml(g.label) + (g.n > 1 ? ' &times;' + g.n : '') }).join(' + ')
 }
 
 const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -77,28 +101,66 @@ export function generateQuotePDF(order) {
   var total     = orderTotal(order)
   var anyHasSizes = articles.some(function(a) { return artSizeTotal(a) > 0 })
 
+  var isKit = order.pricingMode === 'kit'
+
+  /* Preventivo a kit: una riga per kit con i suoi articoli e il prezzo del
+     kit. Niente totali (né dell'ordine né per kit): le quantità sono stime
+     date dal club, quindi un totale sarebbe un numero che nessuno ha
+     confermato. La quantità si mostra come indicata dal club. */
+  var kitPricingBlock = function() {
+    var ivaTxt = order.ivaEnabled ? '+ IVA ' + (order.ivaRate || 22) + '%' : 'IVA esclusa'
+    return order.kits.map(function(kit) {
+      var list     = parseFloat(kit.price) || 0
+      var billable = kitBillableQty(order, kit)
+      var staff    = parseFloat(kit.omaggio) || 0
+      // Sconto sul singolo kit (modalità "per riga"): prezzo unitario già scontato
+      var kDisc    = kitDiscountApplied(order, kit)
+      var net      = kDisc > 0 && billable > 0 ? list - kDisc / billable : list
+      var discTxt  = kDisc > 0
+        ? '<div style="font-size:11px;color:#8a9ab5;margin-top:2px;"><span style="text-decoration:line-through;">' + eurIt(list) + '</span>'
+          + (kit.discountType !== 'importo' ? ' &middot; sconto ' + (parseFloat(kit.discountValue) || 0) + '%' : ' &middot; scontato') + '</div>'
+        : ''
+      var omaggioInKit = (kit.articles || []).filter(function(a) { return (a.omaggio || 0) > 0 })
+        .map(function(a) { return escHtml(a.description) }).join(', ')
+      var qtyTxt = billable > 0
+        ? 'Quantit&agrave; stimata indicata dal club: <strong style="color:#1a2744;">' + billable + '</strong>'
+          + (staff > 0 ? ' &middot; + ' + staff + ' kit staff in omaggio' : '')
+        : ''
+      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding:14px 0;border-bottom:1px solid #e8e0d0;page-break-inside:avoid;">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#1a2744;">' + escHtml(kit.name || 'Kit') + '</div>'
+        + '<div style="font-size:11px;color:#5a6a85;margin-top:4px;line-height:1.5;">' + kitArticlesLine(kit) + '</div>'
+        + (omaggioInKit ? '<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ' + omaggioInKit + '</div>' : '')
+        + (qtyTxt ? '<div style="font-size:10px;color:#8a9ab5;margin-top:6px;letter-spacing:.5px;">' + qtyTxt + '</div>' : '')
+        + '</div>'
+        + '<div style="text-align:right;white-space:nowrap;">'
+        + '<div style="font-size:9px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT</div>'
+        + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:24px;color:#c4623a;line-height:1.2;">' + eurIt(net) + '</div>'
+        + '<div style="font-size:10px;color:#8a9ab5;">' + ivaTxt + '</div>'
+        + discTxt
+        + '</div></div>'
+    }).join('')
+  }
+
+  // Condizioni valide per tutti i kit: sconto sull'intero ordine e spedizione
+  var kitExtras = (function() {
+    if (!isKit) return ''
+    var rows = []
+    if (order.discountMode !== 'nessuno' && order.discountMode !== 'articolo' && (parseFloat(order.discountValue) || 0) > 0) {
+      rows.push(order.discountType === 'importo'
+        ? 'Sconto sull\'ordine: ' + eurIt(parseFloat(order.discountValue) || 0)
+        : 'Sconto del ' + (parseFloat(order.discountValue) || 0) + '% sui prezzi indicati')
+    }
+    var ship = parseFloat(order.shipping) || 0
+    if (ship > 0) rows.push('Spedizione: ' + eurIt(ship))
+    if (!rows.length) return ''
+    return '<div style="margin-top:14px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#1a2744;">'
+      + rows.map(function(r) { return '<div>' + r + '</div>' }).join('') + '</div>'
+  })()
+
   var pricingBlock = (function() {
-    if (order.pricingMode === 'kit') {
-      return order.kits.map(function(kit) {
-        var qty      = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
-        var kitTotal = (parseFloat(kit.price) || 0) * qty
-        var omaggioInKit = kit.articles.filter(function(a) { return (a.omaggio || 0) > 0 })
-          .map(function(a) { return a.description + ' (' + a.omaggio + ' pz)' }).join(', ')
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">'
-          + '<div>'
-          + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;color:#1a2744;">' + (kit.name || 'Kit') + '</div>'
-          + '<div style="font-size:10px;color:#8a9ab5;margin-top:2px;">' + kit.articles.map(function(a) { return a.description }).filter(Boolean).join(' + ') + '</div>'
-          + (omaggioInKit ? '<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ' + omaggioInKit + '</div>' : '')
-          + '</div>'
-          + '<div style="text-align:right;">'
-          + '<div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT &times; N&deg; PERSONE</div>'
-          + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#c4623a;">&euro; ' + (parseFloat(kit.price) || 0).toFixed(2) + ' &times; ' + qty + ' pers.</div>'
-          + lineDisc(kitDiscountApplied(order, kit), kit)
-          + '<div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= &euro; ' + (kitTotal - kitDiscountApplied(order, kit)).toFixed(2) + '</div>'
-          + '</div></div>'
-      }).join('')
-    } else {
-      return articles.map(function(a) {
+    if (isKit) return kitPricingBlock()
+    return articles.map(function(a) {
         var sizesQty = artSizeTotal(a)
         var qty = sizesQty > 0 ? sizesQty : (parseInt(a.estimatedQty) || 0)
         var artTotal = (parseFloat(a.price) || 0) * qty
@@ -118,7 +180,6 @@ export function generateQuotePDF(order) {
           + '<div style="text-align:right;">' + priceRight + '</div>'
           + '</div>'
       }).join('')
-    }
   })()
 
   var articleRows = articles.map(function(art) {
@@ -176,9 +237,11 @@ export function generateQuotePDF(order) {
     + '<div style="display:flex;justify-content:space-between;width:300px;padding-top:8px;border-top:1px solid #e0d8cc;"><span style="font-size:11px;color:#1a2744;font-weight:700;letter-spacing:2px;">TOTALE PREVENTIVO' + (order.ivaEnabled ? ' IVA INCL.' : '') + '</span><span style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;font-weight:600;">&euro; ' + total.toFixed(2) + '</span></div>'
     + '</div></div>'
 
-  var kitPersoneBlock = order.pricingMode === 'kit'
-    ? '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PERSONE</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#1a2744;">' + kitPersone + '</div></div>'
-    : ''
+  // A kit: quanti kit propone il preventivo. Il totale persone era la somma
+  // delle stime del club, cioè un totale che il preventivo non deve dare.
+  var countBlock = isKit
+    ? '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">KIT PROPOSTI</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + order.kits.length + '</div></div>'
+    : '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">N&deg; ARTICOLI</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + articles.length + '</div></div>'
 
   var sizeBanner = anyHasSizes ? '' : '<div style="font-size:10px;color:#b8965a;letter-spacing:1px;margin-bottom:16px;padding:8px 12px;background:#fff7f0;border-radius:4px;border-left:3px solid #c4623a;">Le taglie specifiche verranno definite in fase di conferma ordine.</div>'
 
@@ -205,25 +268,28 @@ export function generateQuotePDF(order) {
     + '<div style="display:flex;gap:40px;flex-wrap:wrap;">'
     + '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:22px;color:#1a2744;">' + order.client + '</div></div>'
     + '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA PREVENTIVO</div><div style="font-size:14px;font-weight:600;">' + order.date + '</div></div>'
-    + '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">N&deg; ARTICOLI</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + articles.length + '</div></div>'
-    + kitPersoneBlock
+    + countBlock
     + '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#c4623a;">PREVENTIVO</div></div>'
     + '</div>'
     + clientDetailsBlock
     + notesBlock
     + '</div>'
 
-    + '<div style="padding:28px 40px;">'
-    + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e8e0d0;">Articoli del Preventivo</div>'
-    + sizeBanner
-    + articleRows
-    + '</div>'
+    // A kit gli articoli sono già elencati sotto ogni kit: l'elenco completo
+    // (una riga per capo) allungava il preventivo senza aggiungere nulla.
+    + (isKit ? '' : '<div style="padding:28px 40px;">'
+      + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e8e0d0;">Articoli del Preventivo</div>'
+      + sizeBanner
+      + articleRows
+      + '</div>')
 
-    + '<div style="margin:28px 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;page-break-inside:avoid;">'
+    + '<div style="margin:28px 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;' + (isKit ? '' : 'page-break-inside:avoid;') + '">'
     + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">' + (order.pricingMode === 'kit' ? 'COMPOSIZIONE KIT E PREZZI' : 'PREZZI PER ARTICOLO') + '</div>'
     + pricingBlock
-    + totalBlock
-    + '<div style="margin-top:12px;font-size:9px;color:#8a9ab5;font-style:italic;">* I prezzi sono indicativi e soggetti a conferma. Le quantit&agrave; finali potrebbero variare.</div>'
+    + (isKit ? kitExtras : totalBlock)
+    + '<div style="margin-top:12px;font-size:9px;color:#8a9ab5;font-style:italic;">' + (isKit
+      ? '* Prezzi per singolo kit, soggetti a conferma. Le quantit&agrave; sono stime indicate dal club e verranno definite in fase di conferma ordine.'
+      : '* I prezzi sono indicativi e soggetti a conferma. Le quantit&agrave; finali potrebbero variare.') + '</div>'
     + '</div>'
 
     + '<div style="margin:0 40px 40px;padding:22px 28px;border:1px solid #e0d8cc;border-radius:10px;">'
