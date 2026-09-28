@@ -31,6 +31,13 @@ function kitArticlesLine(kit) {
   return groups.map(function(g) { return escHtml(g.label) + (g.n > 1 ? ' &times;' + g.n : '') }).join(' + ')
 }
 
+// Un blocco "kit" con un solo articolo è un articolo venduto da solo (es.
+// la felpa per tutti): nel PDF va chiamato articolo, non kit.
+function isSingleArticle(kit) {
+  return (kit.articles || []).filter(function(a) { return String(a.description || '').trim() }).length <= 1
+}
+function normTxt(v) { return String(v || '').trim().toLowerCase().replace(/\s+/g, ' ') }
+
 const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const KIDS_SIZES  = ['4', '6', '8', '10', '12', '14', '16']
 
@@ -115,6 +122,10 @@ export function generateQuotePDF(order) {
       var list     = parseFloat(kit.price) || 0
       var billable = kitBillableQty(order, kit)
       var staff    = parseFloat(kit.omaggio) || 0
+      var single   = isSingleArticle(kit)
+      // Articolo singolo: la sottoriga ripeterebbe il nome, si mostra solo se dice altro
+      var subLine  = kitArticlesLine(kit)
+      if (single && normTxt((kit.articles || [])[0] && kit.articles[0].description) === normTxt(kit.name)) subLine = ''
       // Sconto sul singolo kit (modalità "per riga"): prezzo unitario già scontato
       var kDisc    = kitDiscountApplied(order, kit)
       var net      = grossUnitPrice(order, kDisc > 0 && billable > 0 ? list - kDisc / billable : list)
@@ -126,17 +137,17 @@ export function generateQuotePDF(order) {
         .map(function(a) { return escHtml(a.description) }).join(', ')
       var qtyTxt = billable > 0
         ? 'Quantit&agrave; stimata indicata dal club: <strong style="color:#1a2744;">' + billable + '</strong>'
-          + (staff > 0 ? ' &middot; + ' + staff + ' kit staff in omaggio' : '')
+          + (staff > 0 ? ' &middot; + ' + staff + (single ? ' in omaggio allo staff' : ' kit staff in omaggio') : '')
         : ''
       return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding:14px 0;border-bottom:1px solid #e8e0d0;page-break-inside:avoid;">'
         + '<div style="flex:1;min-width:0;">'
         + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#1a2744;">' + escHtml(kit.name || 'Kit') + '</div>'
-        + '<div style="font-size:11px;color:#5a6a85;margin-top:4px;line-height:1.5;">' + kitArticlesLine(kit) + '</div>'
+        + (subLine ? '<div style="font-size:11px;color:#5a6a85;margin-top:4px;line-height:1.5;">' + subLine + '</div>' : '')
         + (omaggioInKit ? '<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ' + omaggioInKit + '</div>' : '')
         + (qtyTxt ? '<div style="font-size:10px;color:#8a9ab5;margin-top:6px;letter-spacing:.5px;">' + qtyTxt + '</div>' : '')
         + '</div>'
         + '<div style="text-align:right;white-space:nowrap;">'
-        + '<div style="font-size:9px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT</div>'
+        + '<div style="font-size:9px;color:#8a9ab5;letter-spacing:2px;">' + (single ? 'PREZZO' : 'PREZZO KIT') + '</div>'
         + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:24px;color:#c4623a;line-height:1.2;">' + eurIt(net) + '</div>'
         + '<div style="font-size:10px;color:#8a9ab5;">' + ivaTxt + '</div>'
         + discTxt
@@ -241,8 +252,14 @@ export function generateQuotePDF(order) {
 
   // A kit: quanti kit propone il preventivo. Il totale persone era la somma
   // delle stime del club, cioè un totale che il preventivo non deve dare.
+  // Solo kit veri → "KIT PROPOSTI"; solo articoli singoli → "ARTICOLI
+  // PROPOSTI"; misti → "PROPOSTE".
+  var nSingle = isKit ? order.kits.filter(isSingleArticle).length : 0
+  var allSingle = isKit && nSingle === order.kits.length
+  var noSingle  = isKit && nSingle === 0
+  var kitCountLabel = allSingle ? 'ARTICOLI PROPOSTI' : noSingle ? 'KIT PROPOSTI' : 'PROPOSTE'
   var countBlock = isKit
-    ? '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">KIT PROPOSTI</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + order.kits.length + '</div></div>'
+    ? '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">' + kitCountLabel + '</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + order.kits.length + '</div></div>'
     : '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">N&deg; ARTICOLI</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + articles.length + '</div></div>'
 
   var sizeBanner = anyHasSizes ? '' : '<div style="font-size:10px;color:#b8965a;letter-spacing:1px;margin-bottom:16px;padding:8px 12px;background:#fff7f0;border-radius:4px;border-left:3px solid #c4623a;">Le taglie specifiche verranno definite in fase di conferma ordine.</div>'
@@ -286,11 +303,11 @@ export function generateQuotePDF(order) {
       + '</div>')
 
     + '<div style="margin:28px 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;' + (isKit ? '' : 'page-break-inside:avoid;') + '">'
-    + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">' + (order.pricingMode === 'kit' ? 'COMPOSIZIONE KIT E PREZZI' : 'PREZZI PER ARTICOLO') + '</div>'
+    + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">' + (order.pricingMode === 'kit' ? (allSingle ? 'ARTICOLI E PREZZI' : noSingle ? 'COMPOSIZIONE KIT E PREZZI' : 'KIT, ARTICOLI E PREZZI') : 'PREZZI PER ARTICOLO') + '</div>'
     + pricingBlock
     + (isKit ? kitExtras : totalBlock)
     + '<div style="margin-top:12px;font-size:9px;color:#8a9ab5;font-style:italic;">' + (isKit
-      ? '* Prezzi per singolo kit, soggetti a conferma. Le quantit&agrave; sono stime indicate dal club e verranno definite in fase di conferma ordine.'
+      ? '* ' + (allSingle ? 'Prezzi unitari' : noSingle ? 'Prezzi per singolo kit' : 'Prezzi per singolo kit o articolo') + ', soggetti a conferma. Le quantit&agrave; sono stime indicate dal club e verranno definite in fase di conferma ordine.'
       : '* I prezzi sono indicativi e soggetti a conferma. Le quantit&agrave; finali potrebbero variare.') + '</div>'
     + '</div>'
 
