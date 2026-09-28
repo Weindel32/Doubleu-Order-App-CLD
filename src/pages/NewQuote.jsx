@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_SIZES, withCurrent } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal as calcOrderTotal,
-         artPieceCount, artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty } from '../utils/helpers.js'
+         artPieceCount, artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty, grossUnitPrice } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import SpAutocomplete from '../components/SpAutocomplete.jsx'
@@ -231,7 +231,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
           return (
             <div key={ki}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED }}>
-                <span>{kit.name || `Kit ${ki + 1}`} — € {price.toFixed(2).replace('.', ',')} × {qty || '?'}</span>
+                <span>{kit.name || `Kit ${ki + 1}`} — € {price.toFixed(2).replace('.', ',')} × {qty || '?'}{ivaEnabled && price > 0 && <span style={{ color: CREAM }}> · € {grossUnitPrice(currentQuote, price).toFixed(2).replace('.', ',')} IVA incl.</span>}</span>
                 <span style={{ color: CREAM }}>€ {kitTotal.toFixed(2)}</span>
               </div>
               {kitOmaggio > 0 && (
@@ -446,7 +446,8 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
               {pricingMode === 'kit' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px 140px', gap: 16, marginBottom: 20, alignItems: 'end' }}>
                   <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e => updateKit(ki, 'name', e.target.value)} placeholder="Es. Kit Scuola Tennis"/></div>
-                  <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e => updateKit(ki, 'price', e.target.value)} placeholder="85"/></div>
+                  <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e => updateKit(ki, 'price', e.target.value)} placeholder="85"/>
+                    {ivaEnabled && parseFloat(kit.price) > 0 && <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>= € {grossUnitPrice(currentQuote, kit.price).toFixed(2).replace('.', ',')} IVA incl.</div>}</div>
                   <div>
                     <label style={s.label}>Quantità (n° persone) *</label>
                     <input type="number" min="1" style={{ ...inp, borderColor: !kit.quantity ? 'rgba(196,98,58,0.5)' : undefined }} value={kit.quantity} onChange={e => updateKit(ki, 'quantity', e.target.value)} placeholder="Es. 50"/>

@@ -117,6 +117,16 @@ export function orderIVA(order) {
   return orderTaxable(order) * ((parseFloat(order.ivaRate) || 22) / 100)
 }
 
+// Prezzo unitario IVA inclusa, ricavato dal netto salvato. Nel database i
+// prezzi restano netti (li leggono anche Finance e i pagamenti): questo è
+// solo il prezzo come lo si comunica al club. Arrotondato al centesimo, dal
+// netto a 4+ decimali torna sempre il prezzo ivato di partenza (37,7049 → 46,00).
+export function grossUnitPrice(order, net) {
+  const n = parseFloat(net) || 0
+  if (!order || !order.ivaEnabled) return n
+  return Math.round(n * (1 + (parseFloat(order.ivaRate) || 22) / 100) * 100) / 100
+}
+
 export function orderTotal(order) {
   return orderTaxable(order) + orderIVA(order) + orderShipping(order)
 }
