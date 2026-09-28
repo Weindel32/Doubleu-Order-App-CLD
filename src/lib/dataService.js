@@ -521,13 +521,24 @@ export async function markSampleReturned(shipmentId, returnedDate) {
   return true
 }
 
+// Numero del nuovo ordine/preventivo. save_order_atomic aggiorna un ordine
+// con lo stesso numero, quindi un numero sbagliato SOVRASCRIVE un ordine
+// esistente: se la lettura fallisce non si inventa niente (prima si
+// ripiegava su DU-anno-1601, che esiste già), e il numero scelto si
+// verifica libero prima di usarlo.
 export async function generateOrderId(orderDate) {
   const year = orderDate ? parseInt(orderDate.split('-')[0]) : new Date().getFullYear()
   const BASE = 1600
   const { data, error } = await supabase.from('orders').select('id')
     .like('id', `DU-${year}-%`).order('id', { ascending: false }).limit(1)
-  if (error || !data || data.length === 0) return `DU-${year}-${BASE + 1}`
-  const lastNum = parseInt(data[0].id.split('-')[2]) || BASE
-  const nextNum = lastNum < BASE ? BASE + 1 : lastNum + 1
-  return `DU-${year}-${nextNum}`
+  if (error || !data) throw new Error('numero preventivo non disponibile, controlla la connessione e riprova')
+  const lastNum = data.length ? (parseInt(data[0].id.split('-')[2]) || BASE) : BASE
+  let n = lastNum < BASE ? BASE + 1 : lastNum + 1
+  for (let i = 0; i < 20; i++, n++) {
+    const id = `DU-${year}-${n}`
+    const { data: ex, error: e2 } = await supabase.from('orders').select('id').eq('id', id).limit(1)
+    if (e2) throw new Error('numero preventivo non disponibile, controlla la connessione e riprova')
+    if (!ex || !ex.length) return id
+  }
+  throw new Error('numero preventivo non disponibile, riprova')
 }

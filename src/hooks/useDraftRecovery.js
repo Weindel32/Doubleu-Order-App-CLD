@@ -9,7 +9,13 @@ const DEBOUNCE_MS = 800
 // modifiche non salvate. `snapshot` è lo stato corrente del modulo (un
 // oggetto semplice); `restore(data)` deve richiamare i setter dello stato
 // per riapplicare i valori della bozza.
-export function useDraftRecovery(draftKey, snapshot, restore) {
+// `opts.identity` identifica l'ordine a cui la bozza appartiene (numero,
+// club, data): i numeri si possono riusare (si elimina l'ultimo preventivo
+// e il successivo riprende lo stesso numero), e una bozza rimasta nel
+// browser non deve essere proposta su un ordine diverso. `opts.belongsTo`
+// decide per le bozze salvate prima, che l'identità non la hanno.
+export function useDraftRecovery(draftKey, snapshot, restore, opts = {}) {
+  const { identity = null, belongsTo = null } = opts
   const [pendingDraft, setPendingDraft] = useState(null)
   const [checked, setChecked] = useState(false)
   const [, forceRender] = useState(0)
@@ -19,7 +25,14 @@ export function useDraftRecovery(draftKey, snapshot, restore) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(draftKey)
-      if (raw) setPendingDraft(JSON.parse(raw))
+      if (raw) {
+        const draft = JSON.parse(raw)
+        const mine = identity == null ? true
+          : draft.identity !== undefined ? draft.identity === identity
+          : (belongsTo ? belongsTo(draft) : true)
+        if (mine) setPendingDraft(draft)
+        else localStorage.removeItem(draftKey)   // bozza di un altro ordine con lo stesso numero
+      }
     } catch { /* bozza corrotta o storage non disponibile: ignora */ }
     setChecked(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -35,7 +48,7 @@ export function useDraftRecovery(draftKey, snapshot, restore) {
   useEffect(() => {
     if (!checked || pendingDraft) return
     const t = setTimeout(() => {
-      try { localStorage.setItem(draftKey, JSON.stringify({ savedAt: Date.now(), data: snapshot })) } catch { /* storage pieno o non disponibile */ }
+      try { localStorage.setItem(draftKey, JSON.stringify({ savedAt: Date.now(), identity, data: snapshot })) } catch { /* storage pieno o non disponibile */ }
     }, DEBOUNCE_MS)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -148,8 +148,15 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     setPayments(data.payments ?? [])
     setStep(data.step ?? 1)
   }
+  // La bozza vale solo per questo ordine: stesso numero, club e data.
+  const normClub = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  const draftIdentity = editOrder ? `${editOrder.id}|${normClub(editOrder.client)}|${editOrder.date || ''}` : null
   const { pendingDraft, acceptDraft, discardDraft, isDirty, markSaved, confirmDiscardIfDirty } =
-    useDraftRecovery(draftKey, draftSnapshot, restoreDraft)
+    useDraftRecovery(draftKey, draftSnapshot, restoreDraft, {
+      identity: draftIdentity,
+      // Bozze salvate prima di questa versione: si riconoscono dal club
+      belongsTo: (d) => normClub(d?.data?.club) === normClub(editOrder?.client),
+    })
 
   const allArticles = kits.flatMap(k=>k.articles)
   const totalPieces = allArticles.reduce((s,a)=>s+artPieceCount(a),0)
