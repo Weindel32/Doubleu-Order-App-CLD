@@ -21,6 +21,10 @@ export function useDraftRecovery(draftKey, snapshot, restore, opts = {}) {
   const [, forceRender] = useState(0)
   const savedSnapshotRef = useRef(null)
   const serialized = JSON.stringify(snapshot)
+  // Per decidere se ci sono modifiche conta il contenuto, non il passo del
+  // modulo su cui ci si trova: cambiare scheda non è una modifica.
+  const comparable = (obj) => JSON.stringify(obj && typeof obj === 'object' ? { ...obj, step: undefined } : obj)
+  const content = comparable(snapshot)
 
   useEffect(() => {
     try {
@@ -30,8 +34,10 @@ export function useDraftRecovery(draftKey, snapshot, restore, opts = {}) {
         const mine = identity == null ? true
           : draft.identity !== undefined ? draft.identity === identity
           : (belongsTo ? belongsTo(draft) : true)
-        if (mine) setPendingDraft(draft)
-        else localStorage.removeItem(draftKey)   // bozza di un altro ordine con lo stesso numero
+        // Bozza identica a quanto già salvato: non c'è niente da riprendere
+        const same = comparable(draft.data) === content
+        if (mine && !same) setPendingDraft(draft)
+        else localStorage.removeItem(draftKey)   // bozza inutile o di un altro ordine con lo stesso numero
       }
     } catch { /* bozza corrotta o storage non disponibile: ignora */ }
     setChecked(true)
@@ -41,12 +47,19 @@ export function useDraftRecovery(draftKey, snapshot, restore, opts = {}) {
   // La base di confronto per "modifiche da salvare" si fissa solo dopo il
   // controllo iniziale, così il form non risulta già "sporco" al primo giro.
   useEffect(() => {
-    if (checked && savedSnapshotRef.current === null) savedSnapshotRef.current = serialized
+    if (checked && savedSnapshotRef.current === null) savedSnapshotRef.current = content
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checked])
 
   useEffect(() => {
     if (!checked || pendingDraft) return
+    // Si salva una bozza solo se c'è davvero qualcosa di non salvato:
+    // prima bastava aprire un ordine e uscire per ritrovarsi, la volta
+    // dopo, una "bozza non salvata" identica all'ordine.
+    if (savedSnapshotRef.current === null || savedSnapshotRef.current === content) {
+      try { localStorage.removeItem(draftKey) } catch { /* noop */ }
+      return
+    }
     const t = setTimeout(() => {
       try { localStorage.setItem(draftKey, JSON.stringify({ savedAt: Date.now(), identity, data: snapshot })) } catch { /* storage pieno o non disponibile */ }
     }, DEBOUNCE_MS)
@@ -54,7 +67,7 @@ export function useDraftRecovery(draftKey, snapshot, restore, opts = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialized, checked, pendingDraft, draftKey])
 
-  const isDirty = checked && savedSnapshotRef.current !== null && savedSnapshotRef.current !== serialized
+  const isDirty = checked && savedSnapshotRef.current !== null && savedSnapshotRef.current !== content
 
   useEffect(() => {
     if (!isDirty) return
@@ -64,7 +77,7 @@ export function useDraftRecovery(draftKey, snapshot, restore, opts = {}) {
   }, [isDirty])
 
   const markSaved = () => {
-    savedSnapshotRef.current = serialized
+    savedSnapshotRef.current = content
     try { localStorage.removeItem(draftKey) } catch { /* noop */ }
     // savedSnapshotRef è un ref: mutarlo non fa ripartire il render, quindi
     // l'indicatore "Salvato" non cambierebbe finché non arriva un altro
