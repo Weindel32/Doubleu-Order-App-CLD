@@ -1,4 +1,4 @@
-import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, kitBillableQty } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, kitBillableQty, grossUnitPrice } from '../utils/helpers.js'
 
 // Riga sconto sotto il prezzo di listino della singola voce
 function lineDisc(disc, entity) {
@@ -108,16 +108,18 @@ export function generateQuotePDF(order) {
      date dal club, quindi un totale sarebbe un numero che nessuno ha
      confermato. La quantità si mostra come indicata dal club. */
   var kitPricingBlock = function() {
-    var ivaTxt = order.ivaEnabled ? '+ IVA ' + (order.ivaRate || 22) + '%' : 'IVA esclusa'
+    // Con IVA il prezzo al club è quello IVA inclusa (46,00), non il netto
+    // salvato (37,7049): è il numero deciso nel Kit Builder.
+    var ivaTxt = order.ivaEnabled ? 'IVA inclusa' : 'IVA esclusa'
     return order.kits.map(function(kit) {
       var list     = parseFloat(kit.price) || 0
       var billable = kitBillableQty(order, kit)
       var staff    = parseFloat(kit.omaggio) || 0
       // Sconto sul singolo kit (modalità "per riga"): prezzo unitario già scontato
       var kDisc    = kitDiscountApplied(order, kit)
-      var net      = kDisc > 0 && billable > 0 ? list - kDisc / billable : list
+      var net      = grossUnitPrice(order, kDisc > 0 && billable > 0 ? list - kDisc / billable : list)
       var discTxt  = kDisc > 0
-        ? '<div style="font-size:11px;color:#8a9ab5;margin-top:2px;"><span style="text-decoration:line-through;">' + eurIt(list) + '</span>'
+        ? '<div style="font-size:11px;color:#8a9ab5;margin-top:2px;"><span style="text-decoration:line-through;">' + eurIt(grossUnitPrice(order, list)) + '</span>'
           + (kit.discountType !== 'importo' ? ' &middot; sconto ' + (parseFloat(kit.discountValue) || 0) + '%' : ' &middot; scontato') + '</div>'
         : ''
       var omaggioInKit = (kit.articles || []).filter(function(a) { return (a.omaggio || 0) > 0 })

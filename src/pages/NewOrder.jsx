@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES, withCurrent } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
-         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty } from '../utils/helpers.js'
+         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty, grossUnitPrice } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -322,7 +322,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
           return (
             <div key={ki}>
               <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:MUTED }}>
-                <span>{kit.name||`Kit ${ki+1}`} — € {price.toFixed(2).replace('.', ',')} × {qty||'?'}</span>
+                <span>{kit.name||`Kit ${ki+1}`} — € {price.toFixed(2).replace('.', ',')} × {qty||'?'}{ivaEnabled && price>0 && <span style={{ color:CREAM }}> · € {grossUnitPrice(currentOrder, price).toFixed(2).replace('.', ',')} IVA incl.</span>}</span>
                 <span style={{ color:CREAM }}>€ {kitTotal.toFixed(2)}</span>
               </div>
               {kitOmaggio > 0 && (
@@ -600,7 +600,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
           <div key={ki} style={{...s.card,border:`1px solid rgba(184,150,90,0.25)`}}>
             {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 140px 140px 140px',gap:16,marginBottom:20,alignItems:'end'}}>
               <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e=>updateKit(ki,'name',e.target.value)} placeholder="Es. Kit Scuola Tennis"/></div>
-              <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="85"/></div>
+              <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="85"/>
+                {ivaEnabled && parseFloat(kit.price)>0 && <div style={{ fontSize:11, color:GOLD, marginTop:4 }}>= € {grossUnitPrice(currentOrder, kit.price).toFixed(2).replace('.', ',')} IVA incl.</div>}</div>
               <div>
                 <label style={s.label}>Quantità (n° persone) *</label>
                 <input type="number" min="1" style={{...inp,borderColor:!kit.quantity?'rgba(184,150,90,0.5)':undefined}} value={kit.quantity} onChange={e=>updateKit(ki,'quantity',e.target.value)} placeholder="Es. 50"/>

@@ -1,5 +1,5 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
-import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
+import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
 
 function fmt(n) {
@@ -126,6 +126,7 @@ export default function MobileQuoteDetail({ quote, onBack }) {
                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(kitTotal)}</div>
                       {qty > 0 && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {(parseFloat(kit.price)||0).toFixed(2).replace('.', ',')} × {qty} pers.</div>}
+                      {quote.ivaEnabled && parseFloat(kit.price) > 0 && <div style={{ fontSize: 11, color: CREAM, marginTop: 2 }}>€ {grossUnitPrice(quote, kit.price).toFixed(2).replace('.', ',')} IVA incl. a kit</div>}
                     </div>
                   </div>
                   {(kit.articles || []).map((art, ai) => (
