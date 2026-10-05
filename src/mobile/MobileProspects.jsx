@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, NAVY } from '../tokens.js'
 import ActIcon from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
+import WebRequests from '../components/WebRequests.jsx'
 import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
 
 // ─── Config (allineata alla pagina desktop) ──────────────────────
@@ -581,6 +582,9 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
 
   return (
     <div style={{ padding: '20px 16px' }}>
+
+      <WebRequests mobile prospects={prospects} onUpsert={onUpsert} onAddActivity={onAddActivity}
+        onOpenProspect={id => { setTab('club'); setSelectedId(id) }}/>
 
       {/* Segmented control */}
       <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: 3, marginBottom: 16 }}>
