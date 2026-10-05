@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import DatePicker from './DatePicker.jsx'
+import { hasPaymentTerms, paymentsFromNegotiation } from '../utils/negotiation.js'
 import { paymentDue, paymentDelay, formatItalian, splitPayment, splitAmount, isSuspectDueDate, depositDeviation } from '../utils/payments.js'
 
 const PAYMENT_TYPES   = ['acconto', 'intermedio', 'saldo']
@@ -32,7 +33,7 @@ const displayToIso = (display) => {
   return `${y}-${m}-${d}`
 }
 
-export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order, clientTerms, onInstallmentsGranted }) {
+export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order, clientTerms, onInstallmentsGranted, negotiation }) {
   const emptyPayment = { type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false, dueMode: 'fissa', dueOffsetDays: 0, paidDate: '' }
   const [newP, setNewP] = useState(emptyPayment)
   const [editingId, setEditingId] = useState(null)
@@ -124,6 +125,20 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
       rows.push(saldo)
     }
     if (rows.length) setPayments(rows)
+  }
+
+  // Condizioni concordate nella trattativa del preventivo (o importate dal
+  // Kit Builder): si applicano solo con il pulsante, mai da sole, e se ci
+  // sono gia' delle rate si chiede prima di sostituirle.
+  const negTerms = hasPaymentTerms(negotiation) && orderTotal > 0
+  const applyNegotiation = () => {
+    if (payments.some(p => p.paid)) { alert('Ci sono gia\' pagamenti incassati: aggiorna le rate a mano.'); return }
+    if (payments.length && !confirm('Sostituire le rate attuali con quelle delle condizioni concordate?')) return
+    const { rows, installments, over } = paymentsFromNegotiation(negotiation, orderTotal, todayDisplay())
+    if (over) { alert('Nelle condizioni concordate acconto e rate superano il 100%: correggile nella trattativa.'); return }
+    rows.forEach(r => { if (r.dueMode === 'consegna') r.date = dueDateFor({ ...r, date: '' }) })
+    setPayments(rows)
+    if (installments) onInstallmentsGranted?.(true)
   }
 
   // Con scadenza ancorata alla consegna la data fissa non serve: la calcola
@@ -238,6 +253,21 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
   return (
     <div style={{ ...s.card }}>
       <div style={s.cardTitle}>Pagamenti</div>
+
+      {negTerms && (
+        <div style={{ background:'rgba(74,158,110,0.06)', border:`1px solid rgba(74,158,110,0.3)`, borderRadius:8, padding:'14px 16px', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+          <div>
+            <div style={{ fontSize:9, letterSpacing:2, color:GREEN, marginBottom:3 }}>CONDIZIONI CONCORDATE NELLA TRATTATIVA</div>
+            <div style={{ fontSize:11, color:MUTED }}>
+              {Number(negotiation.depositPct) > 0 ? `Acconto ${negotiation.depositPct}%` : 'Nessun acconto'}
+              {(negotiation.installments || []).filter(r => Number(r.pct) > 0).map(r => ` · ${r.pct}% a ${r.days} gg dalla consegna`).join('')}
+            </div>
+          </div>
+          <button style={{ ...btnGoldStyle, padding:'8px 18px', fontSize:9 }} onClick={applyNegotiation}>
+            Applica condizioni
+          </button>
+        </div>
+      )}
 
       {canApplyTerms && (
         <div style={{ background:'rgba(184,150,90,0.06)', border:`1px solid rgba(184,150,90,0.25)`, borderRadius:8, padding:'14px 16px', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>

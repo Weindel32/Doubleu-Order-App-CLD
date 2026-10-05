@@ -1,6 +1,9 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
+import { useState } from 'react'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
+import NegotiationModal from '../components/NegotiationModal.jsx'
+import { stageOf, normalizeNegotiation } from '../utils/negotiation.js'
 
 function fmt(n) {
   return '€ ' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -30,7 +33,10 @@ function InfoRow({ label, value, valueColor, href }) {
   )
 }
 
-export default function MobileQuoteDetail({ quote, onBack }) {
+export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) {
+  const [negOpen, setNegOpen] = useState(false)
+  const neg = normalizeNegotiation(quote.negotiation)
+  const stage = stageOf(quote.negotiation)
   const subtotal    = orderSubtotal(quote)
   const discount    = orderDiscount(quote)
   const iva         = orderIVA(quote)
@@ -91,6 +97,20 @@ export default function MobileQuoteDetail({ quote, onBack }) {
           {quote.pricingMode === 'kit' && <InfoRow label="Kit" value={String(quote.kits?.length || 0)} />}
           <InfoRow label="Articoli" value={String(allArticles.length)} />
         </div>
+
+        {/* Trattativa: stato e condizioni concordate */}
+        <SectionTitle>Trattativa</SectionTitle>
+        <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px' }}>
+          <InfoRow label="Stato" value={stage.label} valueColor={stage.color} />
+          {neg.gifts.map((g, i) => <InfoRow key={i} label={i ? '' : 'Omaggi'} value={`${g.qty || 0} × ${g.label}${g.note ? ` · ${g.note}` : ''}`} />)}
+          {neg.depositPct !== null && neg.depositPct !== undefined && <InfoRow label="Acconto" value={`${neg.depositPct}%`} />}
+          {neg.installments.length > 0 && <InfoRow label="Rate" value={neg.installments.map(r => `${r.pct}% a ${r.days} gg`).join(' · ')} />}
+          {neg.note && <div style={{ fontSize: 13, color: CREAM, lineHeight: 1.5, marginBottom: 10 }}>{neg.note}</div>}
+          {onSaveNegotiation && (
+            <button onClick={() => setNegOpen(true)} style={{ width: '100%', padding: '12px', marginTop: 4, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', border: `1px solid rgba(184,150,90,0.4)`, background: 'rgba(184,150,90,0.08)', color: GOLD, borderRadius: 6, cursor: 'pointer' }}>Modifica trattativa</button>
+          )}
+        </div>
+        {negOpen && <NegotiationModal quote={quote} onClose={() => setNegOpen(false)} onSave={(n) => onSaveNegotiation(quote.id, n)} />}
 
         {/* Contatto */}
         {(quote.clientContact || quote.clientPhone || quote.clientEmail || quote.clientCity) && (
