@@ -34,10 +34,15 @@ export async function sendToProspectFinder(prospect, standbyMotivo) {
       contact_phone: prospect.contact_phone || null,
       notes: prospect.notes || null,
       standby_motivo: standbyMotivo,
-      activities: (prospect.prospect_activities || []).map(a => ({
+      // I passi sostituiti non sono mai avvenuti: non passano. Quelli da
+      // fare arrivano aperti, così il ricontatto riparte da lì.
+      activities: (prospect.prospect_activities || []).filter(a => a.status !== 'sostituita').map(a => ({
         type: a.type,
         content: a.content || null,
         created_at: a.created_at,
+        direction: a.direction || null,
+        outcome: a.outcome || null,
+        done: a.status !== 'da_fare',
       })),
     }),
   })

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import MobileApp from './mobile/MobileApp.jsx'
+import { saveProspectActivity, removeProspectActivity, retireOpenSteps } from './lib/prospectActivities.js'
 import { GOLD, MUTED, BORDER, CLAY } from './tokens.js'
 import { s } from './tokens.js'
 import Dashboard from './pages/Dashboard.jsx'
@@ -14,7 +15,7 @@ import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, resolveClientId, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, updateProspectActivity, deleteProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, markQuoteStandby, restoreFromStandby, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, resolveClientId, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, markQuoteStandby, restoreFromStandby, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
 import { needsAlert, isConfirmed } from './utils/helpers.js'
 import { buildReorderSeed } from './utils/reorder.js'
 import { needsFollowUp, returnOverdue, recipientLabel } from './utils/samples.js'
@@ -200,20 +201,34 @@ export default function App() {
 
   const handleSetHibernated = async (prospectId, hibernated) => {
     const ok = await setProspectHibernated(prospectId, hibernated)
+    if (ok && hibernated) {
+      // Da qui lo segue Prospect Finder: i passi aperti in Order App si
+      // chiudono, con i loro promemoria Todoist.
+      const p = prospects.find(x => x.id === prospectId)
+      if (p) await retireOpenSteps(p)
+    }
     if (ok) setProspects(await fetchProspects())
     return ok
   }
 
-  const handleUpdateActivity = async (activityId, activity) => {
-    const ok = await updateProspectActivity(activityId, activity)
-    if (ok) setProspects(await fetchProspects())
-    return ok
+  // Registro attività: salvataggio, prossimo passo, sostituzione e
+  // promemoria Todoist passano da prospectActivities.js. Restituisce
+  // { ok, warnings } — gli avvisi riguardano solo Todoist o il ricalcolo
+  // della prossima azione, mai il salvataggio dell'attività.
+  const handleSaveActivity = async (prospectId, payload) => {
+    const p = prospects.find(x => x.id === prospectId)
+    if (!p) return { ok: false, warnings: [] }
+    const result = await saveProspectActivity(p, payload)
+    if (result.ok) setProspects(await fetchProspects())
+    return result
   }
 
-  const handleDeleteActivity = async (activityId) => {
-    const ok = await deleteProspectActivity(activityId)
-    if (ok) setProspects(await fetchProspects())
-    return ok
+  const handleDeleteActivity = async (prospectId, act) => {
+    const p = prospects.find(x => x.id === prospectId)
+    if (!p) return { ok: false, warnings: [] }
+    const result = await removeProspectActivity(p, act)
+    if (result.ok) setProspects(await fetchProspects())
+    return result
   }
 
   // ── Campionature ────────────────────────────────────────────────
@@ -425,7 +440,7 @@ export default function App() {
     return <MobileApp orders={orders} clients={clients} prospects={prospects}
       onLogout={handleLogout} onUpsertClient={handleUpsertClient}
       onUpsertProspect={handleUpsertProspect} onAddActivity={handleAddActivity}
-      onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity}
+      onSaveActivity={handleSaveActivity} onDeleteActivity={handleDeleteActivity}
       onDeleteProspect={handleDeleteProspect}
       onSetHibernated={handleSetHibernated}
       shipments={shipments} onUpsertShipment={handleUpsertShipment}
@@ -445,7 +460,7 @@ export default function App() {
         {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote} onMarkStandby={handleMarkQuoteStandby} onRestoreFromStandby={handleRestoreFromStandby}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onReorder={handleReorder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} prospects={prospects} setView={navigate} setEditOrder={goToOrder} onOpenOrder={openOrderOrQuote} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedClientId} setSelectedId={setSelectedClientId}/>}
-        {view === 'prospects'  && <Prospects prospects={prospects} orders={orders} onOpenOrder={openOrderOrQuote} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onUpdateActivity={handleUpdateActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedProspectId} setSelectedId={setSelectedProspectId}/>}
+        {view === 'prospects'  && <Prospects prospects={prospects} orders={orders} onOpenOrder={openOrderOrQuote} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onSaveActivity={handleSaveActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedProspectId} setSelectedId={setSelectedProspectId}/>}
         {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
         {view === 'analytics'  && <Analytics orders={orders} shipments={shipments}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onResolveClientId={handleResolveClientId}/>}

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, NAVY } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
-import ActIcon  from '../components/ActIcon.jsx'
-import DatePicker from '../components/DatePicker.jsx'
+import ProspectActivities, { ActivitySummary } from '../components/ProspectActivities.jsx'
+import { fmtDay } from '../lib/activities.js'
 import SampleTimeline from '../components/SampleTimeline.jsx'
 import CommercialHistory from '../components/CommercialHistory.jsx'
 import WebRequests from '../components/WebRequests.jsx'
@@ -30,32 +30,13 @@ const CONTACT_TYPES   = ['cliente','ambassador','segnalatore']
 const CT_LABELS       = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
 const CHANNELS        = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
 const LANGUAGES       = ['it','de','es','en']
-// 'sample_shipped' resta per leggere le attività registrate prima del
-// registro campionature, ma i nuovi invii si registrano lì (vedi
-// Campionature nella scheda) e non più come nota libera.
-const ACT_TYPES       = ['email_sent','reply_received','sample_shipped','call','meeting','message_sent','message_received','note']
-const NEW_ACT_TYPES   = ACT_TYPES.filter(t => t !== 'sample_shipped')
-const REWARD_TYPES    = ['prodotto','provvigione']
-
-const ACT_LABELS = {
-  email_sent:        'Email inviata',
-  reply_received:    'Risposta ricevuta',
-  sample_shipped:    'Sample spedito',
-  call:              'Chiamata',
-  meeting:           'Meeting',
-  message_sent:      'Messaggio inviato',
-  message_received:  'Messaggio ricevuto',
-  note:              'Nota',
-}
-
 const EMPTY_PROSPECT = () => ({
   name:'', category:'', city:'', province:'', country:'', channel_origin:'',
   stage:'contatto', deal_value_est:'', contact_name:'', contact_email:'',
-  contact_phone:'', language:'', next_action_date:'', notes:'',
+  contact_phone:'', language:'', notes:'',
   contact_type:'cliente', referred_by:'', vincolo_altro_brand:false,
   relazione_pregressa:'',
 })
-const EMPTY_ACTIVITY = () => ({ type:'note', content:'', reward_type:'', reward_value:'', date: new Date().toISOString().slice(0,10) })
 
 // ─── Sub-components ───────────────────────────────────────────────
 function StageBadge({ stage }) {
@@ -182,9 +163,6 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
           </div>
 
           <div>
-            <DatePicker label="Prossima Azione" value={form.next_action_date} onChange={v => setForm(f => ({ ...f, next_action_date:v }))}/>
-          </div>
-          <div>
             <label style={s.label}>Categoria</label>
             <input style={inp} value={form.category} placeholder="es. circolo, scuola…" onChange={e => setForm(f => ({ ...f, category:e.target.value }))}/>
           </div>
@@ -225,7 +203,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
 }
 
 // ─── Main component ───────────────────────────────────────────────
-export default function Prospects({ prospects, orders = [], onOpenOrder, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample, selectedId, setSelectedId }) {
+export default function Prospects({ prospects, orders = [], onOpenOrder, onUpsert, onAddActivity, onSaveActivity, onDeleteActivity, onDelete, onSetHibernated, onNewQuote, shipments = [], onNewSample, selectedId, setSelectedId }) {
   const [tab,         setTab]         = useState('club')
   const [search,      setSearch]      = useState('')
   const [filterCT,    setFilterCT]    = useState('all')
@@ -233,9 +211,6 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
   const [editForm,    setEditForm]    = useState(null)
   const [saving,      setSaving]      = useState(false)
   const [newForm,     setNewForm]     = useState(null)
-  const [actForm,     setActForm]     = useState(null)
-  const [actSaving,   setActSaving]   = useState(false)
-  const [actError,    setActError]    = useState('')
   const [deleting,    setDeleting]    = useState(false)
   const [hibForm,     setHibForm]     = useState(null)  // null | { motivo }
   const [hibSending,  setHibSending]  = useState(false)
@@ -285,7 +260,7 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
   const reteOverdue    = rete.filter(p => p.next_action_date && p.next_action_date <= today).length
 
   const closeModal = () => {
-    setSelectedId(null); setEditForm(null); setActForm(null); setActError('')
+    setSelectedId(null); setEditForm(null)
     setHibForm(null); setHibResult(null)
   }
 
@@ -339,39 +314,6 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
     if (!selected) return
     const { prospect_activities, ...rest } = selected
     await onUpsert({ ...rest, stage })
-  }
-
-  const handleSaveAct = async () => {
-    if (!actForm || !selectedId) return
-    setActSaving(true)
-    setActError('')
-    // La data scelta si salva a mezzogiorno UTC: evita che, a seconda
-    // del fuso dell'utente, la data visualizzata (created_at.slice(0,10))
-    // scivoli al giorno prima o dopo quello selezionato.
-    const payload = { ...actForm, created_at: actForm.date ? `${actForm.date}T12:00:00.000Z` : undefined }
-    const ok = actForm.id
-      ? await onUpdateActivity(actForm.id, payload)
-      : await onAddActivity(selectedId, payload)
-    setActSaving(false)
-    if (!ok) { setActError('Salvataggio non riuscito. Riprova.'); return }
-    setActForm(null)
-  }
-
-  const handleEditAct = (act) => {
-    setActError('')
-    setActForm({
-      id:           act.id,
-      type:         act.type || 'note',
-      content:      act.content || '',
-      date:         act.created_at ? act.created_at.slice(0,10) : new Date().toISOString().slice(0,10),
-      reward_type:  act.reward_type || '',
-      reward_value: act.reward_value != null ? String(act.reward_value) : '',
-    })
-  }
-
-  const handleDeleteAct = async (act) => {
-    if (!confirm('Eliminare questa attività? L\'operazione non è reversibile.')) return
-    await onDeleteActivity(act.id)
   }
 
   const handleDelete = async (p) => {
@@ -474,7 +416,6 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
           {filtered.map(p => {
             const zona    = [p.city, p.province, p.country].filter(Boolean).join(', ')
             const sub     = [p.contact_name, p.channel_origin, zona].filter(Boolean).join('  ·  ')
-            const overdue = p.next_action_date && p.next_action_date <= today
             const nRef     = isRete ? referredBy(p.id).length : 0
             const rewProvv = isRete ? rewardsOf(p,'provvigione') : 0
             const rewProd  = isRete ? rewardsOf(p,'prodotto') : 0
@@ -499,15 +440,9 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
                       {sub}
                     </div>
                   )}
+                  {/* Ultima attività ed eventuale prossimo passo con scadenza */}
+                  <ActivitySummary prospect={p}/>
                 </div>
-
-                {/* Prossima azione — solo se presente */}
-                {p.next_action_date && (
-                  <div style={{ textAlign:'right', flexShrink:0 }}>
-                    <div style={{ fontSize:9, color:MUTED, letterSpacing:2, marginBottom:2 }}>PROSSIMA AZIONE</div>
-                    <div style={{ fontSize:12, color: overdue ? CLAY : CREAM }}>{p.next_action_date}</div>
-                  </div>
-                )}
 
                 {isRete ? (
                   <>
@@ -599,7 +534,7 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
                   </button>
                 )}
                 <button style={{ ...btnStyle(false), padding:'7px 18px', fontSize:9 }}
-                  onClick={() => setEditForm({ id:selected.id, ...selected, prospect_activities:undefined, deal_value_est: selected.deal_value_est||'', next_action_date: selected.next_action_date||'', referred_by: selected.referred_by||'' })}>
+                  onClick={() => setEditForm({ id:selected.id, ...selected, prospect_activities:undefined, deal_value_est: selected.deal_value_est||'', referred_by: selected.referred_by||'' })}>
                   Modifica
                 </button>
                 <button disabled={deleting}
@@ -668,7 +603,7 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
                     {selected.deal_value_est && <InfoRow label="VALORE EST."  value={`€ ${parseFloat(selected.deal_value_est).toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}`}/>}
                     {selected.next_action_date && (
                       <InfoRow label="PROSSIMA AZIONE"
-                        value={<span style={{ color: selected.next_action_date <= today ? CLAY : CREAM }}>{selected.next_action_date}</span>}/>
+                        value={<span style={{ color: selected.next_action_date <= today ? CLAY : CREAM }}>{fmtDay(selected.next_action_date)}</span>}/>
                     )}
                   </div>
                 </div>
@@ -774,98 +709,11 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
               {/* ── Right: activities ── */}
               <div>
                 <div style={s.card}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                    <div style={s.cardTitle}>Attività</div>
-                    {!actForm && (
-                      <button style={{ ...btnGoldStyle, padding:'4px 14px', fontSize:9 }} onClick={() => { setActError(''); setActForm(EMPTY_ACTIVITY()) }}>
-                        + Aggiungi
-                      </button>
-                    )}
-                  </div>
-
-                  {actForm && (
-                    <div style={{ marginBottom:16, padding:14, background:'rgba(255,255,255,0.03)', borderRadius:8, border:`1px solid ${BORDER}` }}>
-                      {actForm.id && (
-                        <div style={{ fontSize:9, color:GOLD, letterSpacing:2, marginBottom:10 }}>MODIFICA ATTIVITÀ</div>
-                      )}
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
-                        <div>
-                          <label style={s.label}>Tipo</label>
-                          <select style={{ ...inp, cursor:'pointer' }} value={actForm.type} onChange={e => setActForm(f => ({ ...f, type:e.target.value }))}>
-                            {ACT_TYPES.filter(t => NEW_ACT_TYPES.includes(t) || actForm.type === t)
-                              .map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label style={s.label}>Data</label>
-                          <DatePicker value={actForm.date} onChange={v => setActForm(f => ({ ...f, date:v }))}/>
-                        </div>
-                      </div>
-                      <div style={{ marginBottom:10 }}>
-                        <label style={s.label}>Contenuto</label>
-                        <textarea style={{ ...inp, minHeight:72, resize:'vertical' }} value={actForm.content} onChange={e => setActForm(f => ({ ...f, content:e.target.value }))}/>
-                      </div>
-                      {(selected.contact_type === 'ambassador' || selected.contact_type === 'segnalatore') && (
-                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
-                          <div>
-                            <label style={s.label}>Riconoscimento</label>
-                            <select style={{ ...inp, cursor:'pointer' }} value={actForm.reward_type} onChange={e => setActForm(f => ({ ...f, reward_type:e.target.value }))}>
-                              <option value="">— nessuno —</option>
-                              {REWARD_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-                          </div>
-                          {actForm.reward_type && (
-                            <div>
-                              <label style={s.label}>{actForm.reward_type === 'prodotto' ? 'Valore Prodotto (€)' : 'Provvigione (€)'}</label>
-                              <input style={inp} type="number" placeholder="es. 50" value={actForm.reward_value} onChange={e => setActForm(f => ({ ...f, reward_value:e.target.value }))}/>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {actError && (
-                        <div style={{ fontSize:11, color:'#ef4444', marginBottom:10 }}>{actError}</div>
-                      )}
-                      <div style={{ display:'flex', gap:8 }}>
-                        <button style={{ ...btnGoldStyle, padding:'6px 18px', fontSize:9 }} onClick={handleSaveAct} disabled={actSaving}>
-                          {actSaving ? 'Salvataggio…' : 'Salva'}
-                        </button>
-                        <button style={{ ...btnStyle(false), padding:'6px 14px', fontSize:9 }} onClick={() => { setActError(''); setActForm(null) }}>Annulla</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {(selected.prospect_activities || []).length === 0 && !actForm ? (
-                    <div style={{ fontSize:12, color:MUTED, fontStyle:'italic', textAlign:'center', padding:'24px 0' }}>
-                      Nessuna attività registrata
-                    </div>
-                  ) : (
-                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                      {[...(selected.prospect_activities || [])].sort((a,b) => b.created_at.localeCompare(a.created_at)).map(act => (
-                        <div key={act.id} style={{ padding:12, background:'rgba(255,255,255,0.02)', borderRadius:6, borderLeft:`3px solid ${STAGE_CFG.contatto.border}` }}>
-                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-                            <span style={{ fontSize:11, color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7 }}>
-                              <ActIcon type={act.type}/>{ACT_LABELS[act.type] || act.type}
-                            </span>
-                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                              <span style={{ fontSize:10, color:MUTED }}>{act.created_at?.slice(0,10)}</span>
-                              <button title="Modifica attività" onClick={() => handleEditAct(act)}
-                                style={{ background:'none', border:'none', color:MUTED, cursor:'pointer', lineHeight:1, padding:'2px 4px', display:'inline-flex' }}>
-                                <ActIcon type="note" size={12}/>
-                              </button>
-                              <button title="Elimina attività" onClick={() => handleDeleteAct(act)}
-                                style={{ background:'none', border:'none', color:CLAY, fontSize:15, cursor:'pointer', lineHeight:1, padding:'2px 4px' }}>×</button>
-                            </div>
-                          </div>
-                          {act.content && <div style={{ fontSize:12, color:CREAM, lineHeight:1.6 }}>{act.content}</div>}
-                          {act.reward_type && (
-                            <div style={{ marginTop:6, fontSize:10, color:GREEN }}>
-                              Riconoscimento: {act.reward_type}{act.reward_value != null ? ` · € ${parseFloat(act.reward_value).toLocaleString('it-IT',{maximumFractionDigits:0})}` : ''}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <ProspectActivities prospect={selected}
+                    showReward={selected.contact_type === 'ambassador' || selected.contact_type === 'segnalatore'}
+                    onSave={payload => onSaveActivity(selected.id, payload)}
+                    onDelete={act => onDeleteActivity(selected.id, act)}
+                    onAdvanceStage={handleStageClick}/>
                 </div>
               </div>
 

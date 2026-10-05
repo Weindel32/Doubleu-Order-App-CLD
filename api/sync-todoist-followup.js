@@ -11,14 +11,10 @@
 // attesa") viene creato un nuovo task invece di riaprire quello vecchio.
 
 import { requireUser } from './_auth.js'
+import { APP_URL, todoistFetch, todoistList, findOrCreateProject, findOrCreateSection } from './_todoist.js'
 
-// API unificata v1: le REST v2 rispondono 410 (dismesse).
-const TODOIST_API = 'https://api.todoist.com/api/v1'
 const PROJECT_NAME = 'Campionature'
 const SECTION_NAME = 'Follow up'
-
-// Indirizzo dell'app, usato solo come contenitore del marcatore.
-const APP_URL = 'https://doubleu-order-app-cld.vercel.app'
 
 // Il marcatore non è più racchiuso tra parentesi quadre: così può stare
 // dentro un link Markdown senza confondere la sintassi. I task creati
@@ -31,56 +27,6 @@ const marker = (shipmentId) => `order-app:${shipmentId}`
 // evitare doppioni — resta nell'indirizzo del link.
 const buildDescription = (shipmentId, purpose) =>
   `[${purpose || 'Campionatura'}](${APP_URL}/#${marker(shipmentId)})`
-
-async function todoistFetch(token, path, options = {}) {
-  const res = await fetch(`${TODOIST_API}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  })
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`Todoist ${options.method || 'GET'} ${path} → ${res.status} ${detail}`)
-  }
-  if (res.status === 204) return null
-  return res.json()
-}
-
-// Le liste di v1 sono paginate e arrivano come { results, next_cursor }:
-// fermarsi alla prima pagina significherebbe non trovare un progetto (o
-// un task) più in là nell'elenco e ricrearlo a ogni salvataggio. Il caso
-// dell'array nudo resta gestito per non dipendere dalla forma esatta
-// della risposta.
-async function todoistList(token, path) {
-  const out = []
-  let cursor = null
-  for (let page = 0; page < 20; page++) {
-    const sep = path.includes('?') ? '&' : '?'
-    const data = await todoistFetch(token, cursor ? `${path}${sep}cursor=${encodeURIComponent(cursor)}` : path)
-    if (Array.isArray(data)) return data
-    out.push(...((data && data.results) || []))
-    cursor = (data && data.next_cursor) || null
-    if (!cursor) break
-  }
-  return out
-}
-
-async function findOrCreateProject(token) {
-  const projects = await todoistList(token, '/projects')
-  const existing = projects.find(p => p.name === PROJECT_NAME)
-  if (existing) return existing
-  return todoistFetch(token, '/projects', { method: 'POST', body: JSON.stringify({ name: PROJECT_NAME }) })
-}
-
-async function findOrCreateSection(token, projectId) {
-  const sections = await todoistList(token, `/sections?project_id=${projectId}`)
-  const existing = sections.find(s => s.name === SECTION_NAME)
-  if (existing) return existing
-  return todoistFetch(token, '/sections', { method: 'POST', body: JSON.stringify({ project_id: projectId, name: SECTION_NAME }) })
-}
 
 async function findTask(token, sectionId, shipmentId) {
   const tasks = await todoistList(token, `/tasks?section_id=${sectionId}`)
@@ -107,8 +53,8 @@ export default async function handler(req, res) {
   if (!shipmentId) return res.status(400).json({ error: 'shipmentId mancante' })
 
   try {
-    const project = await findOrCreateProject(token)
-    const section = await findOrCreateSection(token, project.id)
+    const project = await findOrCreateProject(token, PROJECT_NAME)
+    const section = await findOrCreateSection(token, project.id, SECTION_NAME)
     const existing = await findTask(token, section.id, shipmentId)
 
     if (!open) {

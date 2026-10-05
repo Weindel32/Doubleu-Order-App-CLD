@@ -329,10 +329,12 @@ export async function fetchProspects() {
   return data || []
 }
 
+// next_action_date non è qui: la ricava refreshNextActionDate() dalle
+// attività da fare, così il form del prospect non può contraddirla.
 const PROSPECT_FIELDS = [
   'name','category','city','province','country','channel_origin','stage',
   'deal_value_est','contact_name','contact_email','contact_phone',
-  'language','next_action_date','notes','client_id',
+  'language','notes','client_id',
   'contact_type','referred_by','vincolo_altro_brand','relazione_pregressa',
 ]
 
@@ -389,28 +391,56 @@ export async function deleteProspect(prospectId) {
   return true
 }
 
-export async function addProspectActivity(prospectId, activity) {
-  const { data, error } = await supabase.from('prospect_activities').insert({
-    prospect_id:  prospectId,
+// Campi del registro attività. Direzione ed esito restano vuoti quando
+// non servono (note, attività da fare, attività registrate prima del
+// registro CRM); lo stato vale 'fatta' se non indicato.
+function activityRow(activity) {
+  return {
     type:         activity.type || 'note',
     content:      activity.content  || null,
     reward_type:  activity.reward_type  || null,
     reward_value: activity.reward_value ? parseFloat(activity.reward_value) : null,
+    direction:    activity.direction || null,
+    outcome:      activity.outcome || null,
+    ...(activity.status ? { status: activity.status } : {}),
+    ...(activity.completed_at !== undefined ? { completed_at: activity.completed_at } : {}),
     ...(activity.created_at ? { created_at: activity.created_at } : {}),
+  }
+}
+
+export async function addProspectActivity(prospectId, activity) {
+  const { data, error } = await supabase.from('prospect_activities').insert({
+    prospect_id: prospectId,
+    ...activityRow(activity),
   }).select().single()
   if (error) { console.error('addProspectActivity:', error); return null }
   return data
 }
 
 export async function updateProspectActivity(activityId, activity) {
-  const { error } = await supabase.from('prospect_activities').update({
-    type:         activity.type || 'note',
-    content:      activity.content  || null,
-    reward_type:  activity.reward_type  || null,
-    reward_value: activity.reward_value ? parseFloat(activity.reward_value) : null,
-    ...(activity.created_at ? { created_at: activity.created_at } : {}),
-  }).eq('id', activityId)
+  const { error } = await supabase.from('prospect_activities').update(activityRow(activity)).eq('id', activityId)
   if (error) { console.error('updateProspectActivity:', error); return false }
+  return true
+}
+
+// Aggiornamento mirato di pochi campi (stato, id del task Todoist) senza
+// riscrivere il resto dell'attività.
+export async function patchProspectActivity(activityId, patch) {
+  const { error } = await supabase.from('prospect_activities').update(patch).eq('id', activityId)
+  if (error) { console.error('patchProspectActivity:', error); return false }
+  return true
+}
+
+// La prossima azione del prospect è la scadenza più vicina tra le sue
+// attività da fare; vuota se non ce ne sono.
+export async function refreshNextActionDate(prospectId) {
+  const { data, error } = await supabase.from('prospect_activities')
+    .select('created_at').eq('prospect_id', prospectId).eq('status', 'da_fare')
+    .order('created_at', { ascending: true }).limit(1)
+  if (error) { console.error('refreshNextActionDate:', error); return false }
+  const next = data && data[0] ? data[0].created_at.slice(0, 10) : null
+  const { error: upErr } = await supabase.from('prospects').update({ next_action_date: next }).eq('id', prospectId)
+  if (upErr) { console.error('refreshNextActionDate update:', upErr); return false }
   return true
 }
 

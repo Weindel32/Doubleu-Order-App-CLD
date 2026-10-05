@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, NAVY } from '../tokens.js'
-import ActIcon from '../components/ActIcon.jsx'
-import DatePicker from '../components/DatePicker.jsx'
+import ProspectActivities, { ActivitySummary } from '../components/ProspectActivities.jsx'
+import { fmtDay } from '../lib/activities.js'
 import WebRequests from '../components/WebRequests.jsx'
 import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
 
@@ -23,19 +23,6 @@ const CT_CFG = {
 const CT_LABELS = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
 
 const CHANNELS   = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
-const ACT_TYPES  = ['email_sent','reply_received','sample_shipped','call','meeting','message_sent','message_received','note']
-const ACT_LABELS = {
-  email_sent:       'Email inviata',
-  reply_received:   'Risposta ricevuta',
-  sample_shipped:   'Sample spedito',
-  call:             'Chiamata',
-  meeting:          'Meeting',
-  message_sent:     'Messaggio inviato',
-  message_received: 'Messaggio ricevuto',
-  note:             'Nota',
-}
-const REWARD_TYPES = ['prodotto','provvigione']
-
 const fmt = n => '€ ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
 // ─── UI helpers ───────────────────────────────────────────────────
@@ -163,15 +150,9 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
       </div>
 
       {!isRete && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-          <div>
-            <label style={labelStyle}>Valore Est. (€)</label>
-            <input style={inputStyle} type="number" inputMode="decimal" placeholder="es. 2500" value={f.deal_value_est} onChange={e => set('deal_value_est', e.target.value)}/>
-          </div>
-          <div>
-            <label style={labelStyle}>Prossima Azione</label>
-            <DatePicker triggerStyle={inputStyle} value={f.next_action_date} onChange={v => set('next_action_date', v)}/>
-          </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Valore Est. (€)</label>
+          <input style={inputStyle} type="number" inputMode="decimal" placeholder="es. 2500" value={f.deal_value_est} onChange={e => set('deal_value_est', e.target.value)}/>
         </div>
       )}
 
@@ -198,73 +179,8 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
   )
 }
 
-// ─── Form attività (aggiungi / modifica) ─────────────────────────
-function ActivityForm({ initial, showReward, onSave, onCancel }) {
-  const [f, setF] = useState(initial)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const set = (k, v) => setF(x => ({ ...x, [k]: v }))
-
-  const handleSave = async () => {
-    setSaving(true)
-    setError('')
-    const ok = await onSave(f)
-    setSaving(false)
-    if (!ok) setError('Salvataggio non riuscito. Riprova.')
-  }
-
-  return (
-    <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
-      <div style={{ fontSize: 11, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
-        {f.id ? 'Modifica Attività' : 'Nuova Attività'}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-        <div>
-          <label style={labelStyle}>Tipo</label>
-          <select style={inputStyle} value={f.type} onChange={e => set('type', e.target.value)}>
-            {ACT_TYPES.map(t => <option key={t} value={t}>{ACT_LABELS[t]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>Data</label>
-          <DatePicker value={f.date} onChange={v => set('date', v)}/>
-        </div>
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={labelStyle}>Contenuto</label>
-        <textarea style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} value={f.content} onChange={e => set('content', e.target.value)}/>
-      </div>
-      {showReward && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-          <div>
-            <label style={labelStyle}>Riconoscimento</label>
-            <select style={inputStyle} value={f.reward_type} onChange={e => set('reward_type', e.target.value)}>
-              <option value="">— nessuno —</option>
-              {REWARD_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-          {f.reward_type && (
-            <div>
-              <label style={labelStyle}>{f.reward_type === 'prodotto' ? 'Costo Prod. (€)' : 'Provvigione (€)'}</label>
-              <input style={inputStyle} type="number" inputMode="decimal" placeholder="es. 50" value={f.reward_value} onChange={e => set('reward_value', e.target.value)}/>
-            </div>
-          )}
-        </div>
-      )}
-      {error && (
-        <div style={{ fontSize: 12, color: '#ef4444', marginBottom: 10 }}>{error}</div>
-      )}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <BtnGhost flex={1} onClick={onCancel}>Annulla</BtnGhost>
-        <BtnGold flex={2} onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</BtnGold>
-      </div>
-    </div>
-  )
-}
-
 // ─── Dettaglio prospect ───────────────────────────────────────────
-function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated }) {
-  const [actForm, setActForm] = useState(null)
+function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUpsert, onSaveActivity, onDeleteActivity, onDelete, onSetHibernated }) {
   const [editing, setEditing] = useState(false)
   const [hibForm,    setHibForm]    = useState(null) // null | { motivo }
   const [hibSending, setHibSending] = useState(false)
@@ -273,27 +189,10 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
   const isRete    = p.contact_type !== 'cliente'
   const today     = new Date().toISOString().slice(0,10)
   const referred  = prospects.filter(x => x.referred_by === p.id)
-  const activities = [...(p.prospect_activities || [])].sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''))
 
   const handleStageClick = async (stage) => {
     const { prospect_activities, ...rest } = p
     await onUpsert({ ...rest, stage })
-  }
-
-  const handleSaveAct = async (f) => {
-    // Mezzogiorno UTC: evita che la data scelta scivoli al giorno
-    // prima/dopo quando viene poi mostrata come created_at.slice(0,10)
-    const payload = { ...f, created_at: f.date ? `${f.date}T12:00:00.000Z` : undefined }
-    const ok = f.id
-      ? await onUpdateActivity(f.id, payload)
-      : await onAddActivity(p.id, payload)
-    if (ok) setActForm(null)
-    return ok
-  }
-
-  const handleDeleteAct = async (act) => {
-    if (!confirm('Eliminare questa attività?')) return
-    await onDeleteActivity(act.id)
   }
 
   const handleDeleteProspect = async () => {
@@ -341,7 +240,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
             stage: p.stage, contact_name: p.contact_name || '',
             contact_phone: p.contact_phone || '', contact_email: p.contact_email || '',
             city: p.city || '', channel_origin: p.channel_origin || '',
-            deal_value_est: p.deal_value_est || '', next_action_date: p.next_action_date || '',
+            deal_value_est: p.deal_value_est || '',
             referred_by: p.referred_by || '', notes: p.notes || '',
             province: p.province, country: p.country, category: p.category,
             language: p.language, vincolo_altro_brand: p.vincolo_altro_brand,
@@ -435,7 +334,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
           )}
           {p.next_action_date && (
             <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>
-              Prossima azione: <span style={{ color: p.next_action_date <= today ? CLAY : CREAM }}>{p.next_action_date}</span>
+              Prossima azione: <span style={{ color: p.next_action_date <= today ? CLAY : CREAM }}>{fmtDay(p.next_action_date)}</span>
             </div>
           )}
         </div>
@@ -490,49 +389,10 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
 
       {/* Attività */}
       <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16, marginBottom: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase' }}>Attività</div>
-          {!actForm && (
-            <button onClick={() => setActForm({ type:'note', content:'', reward_type:'', reward_value:'', date: new Date().toISOString().slice(0,10) })} style={{
-              background: 'rgba(184,150,90,0.12)', border: `1px solid ${GOLD}`, borderRadius: 6,
-              color: GOLD, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', padding: '7px 12px',
-              cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
-            }}>+ Aggiungi</button>
-          )}
-        </div>
-
-        {actForm && (
-          <ActivityForm initial={actForm} showReward={isRete} onSave={handleSaveAct} onCancel={() => setActForm(null)}/>
-        )}
-
-        {activities.length === 0 && !actForm ? (
-          <div style={{ fontSize: 12, color: MUTED, fontStyle: 'italic', textAlign: 'center', padding: '14px 0' }}>
-            Nessuna attività registrata
-          </div>
-        ) : activities.map(act => (
-          <div key={act.id} style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 6, borderLeft: `3px solid ${STAGE_CFG.contatto.border}`, marginBottom: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 12, color: GOLD, letterSpacing: 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                <ActIcon type={act.type}/>{ACT_LABELS[act.type] || act.type}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 12, color: MUTED }}>{act.created_at?.slice(0,10)}</span>
-                <button onClick={() => setActForm({ id: act.id, type: act.type || 'note', content: act.content || '', date: act.created_at ? act.created_at.slice(0,10) : new Date().toISOString().slice(0,10), reward_type: act.reward_type || '', reward_value: act.reward_value != null ? String(act.reward_value) : '' })}
-                  style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: '4px 5px', display: 'inline-flex', WebkitTapHighlightColor: 'transparent' }}>
-                  <ActIcon type="note" size={13}/>
-                </button>
-                <button onClick={() => handleDeleteAct(act)}
-                  style={{ background: 'none', border: 'none', color: CLAY, fontSize: 17, cursor: 'pointer', lineHeight: 1, padding: '2px 5px', WebkitTapHighlightColor: 'transparent' }}>×</button>
-              </div>
-            </div>
-            {act.content && <div style={{ fontSize: 13, color: CREAM, lineHeight: 1.6 }}>{act.content}</div>}
-            {act.reward_type && (
-              <div style={{ marginTop: 6, fontSize: 12, color: GREEN }}>
-                Riconoscimento: {act.reward_type}{act.reward_value != null ? ` · ${fmt(parseFloat(act.reward_value))}` : ''}
-              </div>
-            )}
-          </div>
-        ))}
+        <ProspectActivities prospect={p} mobile showReward={isRete}
+          onSave={payload => onSaveActivity(p.id, payload)}
+          onDelete={act => onDeleteActivity(p.id, act)}
+          onAdvanceStage={handleStageClick}/>
       </div>
 
       {/* Azioni */}
@@ -545,14 +405,13 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
 }
 
 // ─── Pagina principale ────────────────────────────────────────────
-export default function MobileProspects({ prospects, onUpsert, onAddActivity, onUpdateActivity, onDeleteActivity, onDelete, onSetHibernated }) {
+export default function MobileProspects({ prospects, onUpsert, onAddActivity, onSaveActivity, onDeleteActivity, onDelete, onSetHibernated }) {
   const [tab, setTab]           = useState('club')
   const [selectedId, setSelectedId] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [showHib, setShowHib]   = useState(false)
 
   const isRete = tab === 'rete'
-  const today  = new Date().toISOString().slice(0,10)
   const allClubs = prospects.filter(p => p.contact_type === 'cliente')
   const rete     = prospects.filter(p => p.contact_type !== 'cliente')
   // I club ibernati sono passati a Prospect Finder: restano salvati ma
@@ -573,8 +432,8 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
         prospect={selected} prospects={prospects}
         onBack={() => setSelectedId(null)}
         onSelectProspect={setSelectedId}
-        onUpsert={onUpsert} onAddActivity={onAddActivity}
-        onUpdateActivity={onUpdateActivity} onDeleteActivity={onDeleteActivity}
+        onUpsert={onUpsert}
+        onSaveActivity={onSaveActivity} onDeleteActivity={onDeleteActivity}
         onDelete={onDelete} onSetHibernated={onSetHibernated}
       />
     )
@@ -630,7 +489,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
           initial={{
             name:'', contact_type: isRete ? 'segnalatore' : 'cliente', stage:'contatto',
             contact_name:'', contact_phone:'', contact_email:'', city:'', country:'',
-            channel_origin:'', deal_value_est:'', next_action_date:'', referred_by:'', notes:'',
+            channel_origin:'', deal_value_est:'', referred_by:'', notes:'',
           }}
           isRete={isRete} prospects={prospects}
           onSave={async (f) => { const ok = await onUpsert(f); if (ok) setShowForm(false) }}
@@ -646,7 +505,6 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
           </div>
         </div>
       ) : list.map(p => {
-        const overdue = p.next_action_date && p.next_action_date <= today
         const nRef    = isRete ? referralCount(p.id) : 0
         const provv   = isRete ? rewardsOf(p, 'provvigione') : 0
         const prod    = isRete ? rewardsOf(p, 'prodotto') : 0
@@ -675,12 +533,12 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
                   </>
                 ) : (
                   <>
-                    {p.next_action_date && <span style={{ fontSize: 12, color: overdue ? CLAY : MUTED }}>{p.next_action_date}</span>}
                     {p.deal_value_est && <span style={{ fontSize: 13, color: GOLD, fontFamily: "'Cormorant Garamond', serif" }}>{fmt(parseFloat(p.deal_value_est))}</span>}
                   </>
                 )}
               </div>
             </div>
+            <ActivitySummary prospect={p} mobile/>
           </div>
         )
       })}

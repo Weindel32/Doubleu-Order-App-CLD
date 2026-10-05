@@ -5,16 +5,14 @@ import StatCard from '../components/StatCard.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
 import CommercialHistory from '../components/CommercialHistory.jsx'
 import ActIcon from '../components/ActIcon.jsx'
+import { OutcomeBadge } from '../components/ProspectActivities.jsx'
+import { activityLabel, doneActivities, fmtDay, actDay } from '../lib/activities.js'
 import { shipmentFromClient } from '../components/SampleModal.jsx'
 import { paymentSummary } from '../utils/helpers.js'
 import { euro } from '../utils/samples.js'
 import { enrichClient } from '../lib/clientStats.js'
 import { PAYER_LEVELS, MIN_INCASSI_PER_GIUDIZIO } from '../utils/payments.js'
 
-const ACT_LABELS = {
-  email_sent: 'Email inviata', reply_received: 'Risposta ricevuta', sample_shipped: 'Sample spedito',
-  call: 'Chiamata', meeting: 'Meeting', message_sent: 'Messaggio inviato', message_received: 'Messaggio ricevuto', note: 'Nota',
-}
 
 const TIER_COLORS = {
   ANCHOR: { bg: 'rgba(184,150,90,0.18)', color: GOLD,      border: 'rgba(184,150,90,0.35)' },
@@ -790,17 +788,18 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
               {/* Attività — lo storico pre-vendita registrato quando questo
                   club era ancora un prospect, se il collegamento esiste. */}
-              {linkedProspect && (linkedProspect.prospect_activities || []).length > 0 && (
+              {linkedProspect && doneActivities(linkedProspect).length > 0 && (
                 <div style={{ marginBottom:20 }}>
                   <div style={s.cardTitle}>Attività</div>
                   <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {[...linkedProspect.prospect_activities].sort((a,b) => b.created_at.localeCompare(a.created_at)).map(act => (
+                    {doneActivities(linkedProspect).map(act => (
                       <div key={act.id} style={{ padding:'10px 14px', background:'rgba(255,255,255,0.02)', borderRadius:6, borderLeft:'3px solid rgba(138,154,181,0.3)' }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10 }}>
                           <span style={{ fontSize:11, color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7 }}>
-                            <ActIcon type={act.type}/>{ACT_LABELS[act.type] || act.type}
+                            <ActIcon type={act.type}/>{activityLabel(act)}
+                            {act.outcome && <OutcomeBadge outcome={act.outcome}/>}
                           </span>
-                          <span style={{ fontSize:10, color:MUTED }}>{act.created_at?.slice(0,10)}</span>
+                          <span style={{ fontSize:10, color:MUTED }}>{fmtDay(actDay(act))}</span>
                         </div>
                         {act.content && <div style={{ fontSize:12, color:CREAM, marginTop:6, lineHeight:1.6 }}>{act.content}</div>}
                       </div>
