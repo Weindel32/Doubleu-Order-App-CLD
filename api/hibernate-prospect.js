@@ -17,13 +17,19 @@ const STANDBY_REASONS = ['risposta_negativa', 'pausa', 'escluso']
 // da Prospect Finder: qui li traduco, e tengo l'etichetta originale
 // dentro la nota così l'informazione non si perde.
 const ACT_TIPO = {
-  email_sent: 'email', reply_received: 'email',
+  email: 'email', email_sent: 'email', reply_received: 'email',
   call: 'call', meeting: 'meeting', note: 'nota', sample_shipped: 'altro',
 }
 const ACT_LABEL = {
+  email: 'Email', message: 'Messaggio', call: 'Chiamata', meeting: 'Meeting', note: 'Nota',
   email_sent: 'Email inviata', reply_received: 'Risposta ricevuta',
-  sample_shipped: 'Sample spedito', call: 'Chiamata', meeting: 'Meeting', note: 'Nota',
+  message_sent: 'Messaggio inviato', message_received: 'Messaggio ricevuto',
+  sample_shipped: 'Sample spedito',
 }
+// Direzione ed esito usano gli stessi valori dei due lati: passano così
+// come sono, purché ammessi dai vincoli di Prospect Finder.
+const DIREZIONI = ['inviata', 'ricevuta']
+const ESITI = ['positivo', 'interessato', 'neutro', 'negativo', 'nessuna_risposta', 'rinvio_referente']
 
 // Copia le attività registrate in Order App sulla scheda di Prospect
 // Finder. Salta quelle già presenti (confronto sul timestamp) così
@@ -48,7 +54,9 @@ async function syncActivities(prospectId, activities, headers) {
         tipo: ACT_TIPO[a.type] || 'altro',
         nota: text ? `[Order App] ${label} — ${text}` : `[Order App] ${label}`,
         data: a.created_at,
-        completata: true,
+        completata: a.done !== false,
+        direzione: DIREZIONI.includes(a.direction) ? a.direction : null,
+        esito: ESITI.includes(a.outcome) ? a.outcome : null,
       }
     })
   if (!payload.length) return 0

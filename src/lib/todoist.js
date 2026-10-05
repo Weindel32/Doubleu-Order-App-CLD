@@ -28,3 +28,21 @@ export async function syncFollowUpToTodoist(shipment, clubName) {
     throw new Error(parts.join(' — '))
   }
 }
+
+// Promemoria del prossimo passo di un prospect (progetto "Prospect
+// Follow Up" → sezione "Order App"), via api/sync-todoist-prospect.js.
+// 'upsert' restituisce l'id del task da salvare sull'attività; 'close'
+// lo chiude quando il passo è fatto o sostituito.
+export async function syncProspectStep(action, { taskId, activityId, prospectName, content, dueDate } = {}) {
+  const res = await fetch('/api/sync-todoist-prospect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify({ action, taskId: taskId || null, activityId, prospectName, content, dueDate: dueDate || null }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const parts = [data.error || 'Sincronizzazione Todoist fallita', data.detail].filter(Boolean)
+    throw new Error(parts.join(' — '))
+  }
+  return data
+}

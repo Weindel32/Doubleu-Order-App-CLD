@@ -137,7 +137,7 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
       }
       // Il messaggio originale entra nella cronologia del prospect con la
       // sua data vera: e' il primo contatto, non una nota scritta oggi.
-      await onAddActivity(prospectId, { type:'message_received', content:r.message, created_at:r.created_at })
+      await onAddActivity(prospectId, { type:'message', direction:'ricevuta', content:r.message, created_at:r.created_at })
       const ok = await setContactRequestStatus(r.id, 'convertita', prospectId)
       if (!ok) throw new Error('Prospect creato, ma la richiesta non e\' stata aggiornata')
       // Il club potrebbe essere in una sequenza a freddo su Prospect Finder:

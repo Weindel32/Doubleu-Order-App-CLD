@@ -44,6 +44,10 @@ const ACT_ICON_PATHS = {
   ),
 }
 
+// Tipi del registro CRM: la direzione è un campo a parte, l'icona resta quella.
+ACT_ICON_PATHS.email   = ACT_ICON_PATHS.email_sent
+ACT_ICON_PATHS.message = ACT_ICON_PATHS.message_sent
+
 export default function ActIcon({ type, size = 13 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"

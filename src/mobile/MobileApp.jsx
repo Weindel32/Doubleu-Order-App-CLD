@@ -24,7 +24,7 @@ const MORE_TABS = [
   { key: 'samples',   label: 'Campioni',   icon: 'samples' },
 ]
 
-export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onUpdateActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
+export default function MobileApp({ orders, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onSaveActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
   const [tab, setTab]                   = useState('home')
   const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -73,7 +73,7 @@ export default function MobileApp({ orders, clients, prospects, onLogout, onUpse
         {tab === 'orders'    && <MobileOrders    orders={activeOrders} onSelectOrder={setSelectedOrder} filter={ordersFilter} onFilterChange={setOrdersFilter} />}
         {tab === 'quotes'    && <MobileQuotes    quotes={quotes} onSelectQuote={setSelectedQuote} />}
         {tab === 'clients'   && <MobileClients   clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
-        {tab === 'prospects' && <MobileProspects prospects={prospects} onUpsert={onUpsertProspect} onAddActivity={onAddActivity} onUpdateActivity={onUpdateActivity} onDeleteActivity={onDeleteActivity} onDelete={onDeleteProspect} onSetHibernated={onSetHibernated} />}
+        {tab === 'prospects' && <MobileProspects prospects={prospects} onUpsert={onUpsertProspect} onAddActivity={onAddActivity} onSaveActivity={onSaveActivity} onDeleteActivity={onDeleteActivity} onDelete={onDeleteProspect} onSetHibernated={onSetHibernated} />}
         {tab === 'samples'   && <MobileSamples   shipments={shipments} clients={clients} prospects={prospects}
                                   onUpsert={onUpsertShipment} onDelete={onDeleteShipment}
                                   onItemOutcome={onSampleItemOutcome} onMarkReturned={onMarkSampleReturned} />}
