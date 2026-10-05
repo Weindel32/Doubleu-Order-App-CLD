@@ -15,7 +15,7 @@ import NewOrder  from './pages/NewOrder.jsx'
 import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
-import { fetchOrders, deleteOrder, fetchClients, upsertClient, resolveClientId, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, markQuoteStandby, restoreFromStandby, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
+import { fetchOrders, deleteOrder, fetchClients, upsertClient, resolveClientId, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, markQuoteStandby, restoreFromStandby, saveNegotiation, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
 import { needsAlert, isConfirmed } from './utils/helpers.js'
 import { buildReorderSeed } from './utils/reorder.js'
 import { needsFollowUp, returnOverdue, recipientLabel } from './utils/samples.js'
@@ -383,6 +383,13 @@ export default function App() {
     if (ok) setOrders(orders.map(o => o.id === orderId ? { ...o, lost: false, lostReason: '', lostDate: null } : o))
   }
 
+  const handleSaveNegotiation = async (orderId, negotiation) => {
+    const ok = await saveNegotiation(orderId, negotiation)
+    if (ok) setOrders(prev => prev.map(o => o.id === orderId ? { ...o, negotiation } : o))
+    else alert('Trattativa non salvata: riprova.')
+    return ok
+  }
+
   const handleMarkQuoteStandby = async (orderId, reason) => {
     const ok = await markQuoteStandby(orderId, reason)
     if (ok) setOrders(orders.map(o => o.id === orderId ? { ...o, standby: true, standbyReason: reason || '' } : o))
@@ -438,6 +445,7 @@ export default function App() {
 
   if (isMobile) {
     return <MobileApp orders={orders} clients={clients} prospects={prospects}
+      onSaveNegotiation={handleSaveNegotiation}
       onLogout={handleLogout} onUpsertClient={handleUpsertClient}
       onUpsertProspect={handleUpsertProspect} onAddActivity={handleAddActivity}
       onSaveActivity={handleSaveActivity} onDeleteActivity={handleDeleteActivity}
@@ -457,7 +465,7 @@ export default function App() {
             onOpenClient={openClientFromSearch} onOpenProspect={openProspectFromSearch} onOpenOrder={openOrderOrQuote}/>
         )}
         {view === 'dashboard'  && <Dashboard orders={orders} setView={navigate} setEditOrder={goToOrder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} navigateToOrders={navigateToOrders} onNavigateToQuotes={() => navigate('quotes')} shipments={shipments} clients={clients} prospects={prospects}/>}
-        {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote} onMarkStandby={handleMarkQuoteStandby} onRestoreFromStandby={handleRestoreFromStandby}/>}
+        {view === 'quotes'     && <Quotes    orders={orders} setView={navigate} setEditOrder={goToQuote} onDelete={handleDelete} onOrdersChange={handleOrdersChange} onConvertToOrder={handleConvertToOrder} onMarkLost={handleMarkQuoteLost} onRestoreQuote={handleRestoreQuote} onMarkStandby={handleMarkQuoteStandby} onRestoreFromStandby={handleRestoreFromStandby} onSaveNegotiation={handleSaveNegotiation}/>}
         {view === 'orders'     && <Orders    orders={orders} setView={navigate} setEditOrder={goToOrder} onReorder={handleReorder} onDelete={handleDelete} onOrdersChange={handleOrdersChange} initialFilter={ordersFilter}/>}
         {view === 'clients'    && <Clients   orders={orders} clients={clients} prospects={prospects} setView={navigate} setEditOrder={goToOrder} onOpenOrder={openOrderOrQuote} onNewOrderFromClient={handleNewOrderFromClient} onNewQuoteFromClient={handleNewQuoteFromClient} onUpsertClient={handleUpsertClient} onRenameClient={handleRenameClient} onUpdateClient={handleUpdateClient} onCreateClient={handleCreateClient} onLinkOrder={handleLinkOrder} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedClientId} setSelectedId={setSelectedClientId}/>}
         {view === 'prospects'  && <Prospects prospects={prospects} orders={orders} onOpenOrder={openOrderOrQuote} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onSaveActivity={handleSaveActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedProspectId} setSelectedId={setSelectedProspectId}/>}

@@ -150,6 +150,7 @@ export async function fetchOrders() {
       lost: order.lost || false, lostReason: order.lost_reason || '', lostDate: order.lost_date || null,
       standby: order.standby || false, standbyReason: order.standby_reason || '',
       installmentsGranted: order.installments_granted || false,
+      negotiation: order.negotiation || null,
       cancelReason: order.cancel_reason || '', cancelDate: order.cancel_date || null,
       convertedFromQuote: order.converted_from_quote || false,
       kitQuantity: order.kit_quantity || null,
@@ -283,6 +284,15 @@ export async function restoreQuote(orderId) {
 // (es. vincolo contrattuale in corso): resta come riferimento — stessa
 // data, stesso id — ma esce dalla lista "da seguire" finché non si
 // riattiva a mano.
+// Trattativa del preventivo (stato + condizioni concordate). Si scrive a
+// parte: save_order_atomic non tocca questa colonna, quindi salvare il
+// preventivo o convertirlo in ordine non la cancella.
+export async function saveNegotiation(orderId, negotiation) {
+  const { error } = await supabase.from('orders').update({ negotiation }).eq('id', orderId)
+  if (error) { console.error('saveNegotiation:', error); return false }
+  return true
+}
+
 export async function markQuoteStandby(orderId, reason) {
   const { error } = await supabase.from('orders')
     .update({ standby: true, standby_reason: reason || null })

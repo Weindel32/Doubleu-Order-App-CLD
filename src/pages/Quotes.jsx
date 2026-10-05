@@ -3,6 +3,8 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, LOSS_REASONS } from '../tokens
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderTotal } from '../utils/helpers.js'
 import { generateQuotePDF } from '../utils/pdfQuote.js'
+import NegotiationModal from '../components/NegotiationModal.jsx'
+import { stageOf } from '../utils/negotiation.js'
 
 const RED = '#ef4444'
 
@@ -74,7 +76,8 @@ function StandbyModal({ quote, onConfirm, onClose }) {
   )
 }
 
-export default function Quotes({ orders, setView, setEditOrder, onDelete, onConvertToOrder, onMarkLost, onRestoreQuote, onMarkStandby, onRestoreFromStandby }) {
+export default function Quotes({ orders, setView, setEditOrder, onDelete, onConvertToOrder, onMarkLost, onRestoreQuote, onMarkStandby, onRestoreFromStandby, onSaveNegotiation }) {
+  const [negModal, setNegModal] = useState(null)              // preventivo di cui si apre la trattativa
   const [search, setSearch]   = useState('')
   const [sortBy, setSortBy]   = useState('date')
   const [sortDir, setSortDir] = useState('desc')
@@ -196,6 +199,9 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
                 <tr key={o.id}>
                   <td style={{ ...s.td, fontFamily: "'Cormorant Garamond',serif", fontSize: 16 }}>
                     <span style={{ cursor: 'pointer' }} onClick={() => { setEditOrder(o); setView('newQuote') }}>{o.client}</span>
+                    {!isLostTab && (() => { const st = stageOf(o.negotiation); return (
+                      <div><span title="Stato della trattativa" onClick={() => setNegModal(o)} style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 3, fontFamily: "'Josefin Sans',sans-serif", fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', cursor: 'pointer', color: st.color, border: `1px solid ${st.color}66`, background: `${st.color}18` }}>{st.label}</span></div>
+                    ) })()}
                   </td>
                   <td style={{ ...s.td, color: MUTED, fontSize: 11, letterSpacing: 1 }}>{o.id}</td>
                   <td style={{ ...s.td, fontSize: 11, color: MUTED }}>{o.date || '—'}</td>
@@ -245,6 +251,8 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
                             onClick={() => { setEditOrder(o); setView('newQuote') }}>Modifica</button>
                           <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(196,98,58,0.4)`, background: 'rgba(196,98,58,0.08)', color: CLAY, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => openPDF(o)}>PDF</button>
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(184,150,90,0.4)`, background: 'rgba(184,150,90,0.08)', color: GOLD, borderRadius: 3, cursor: 'pointer' }}
+                            onClick={() => setNegModal(o)} title="Stato della trattativa e condizioni concordate">Trattativa</button>
                           <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(74,158,110,0.4)`, background: 'rgba(74,158,110,0.08)', color: GREEN, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => onConvertToOrder(o)}>→ Ordine</button>
                           <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(90,130,184,0.4)`, background: 'rgba(90,130,184,0.08)', color: BLUE, borderRadius: 3, cursor: 'pointer' }}
@@ -270,6 +278,11 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
           onClose={() => setLostModal(null)}
           onConfirm={(reason) => { onMarkLost(lostModal.id, reason); setLostModal(null) }}
         />
+      )}
+
+      {negModal && (
+        <NegotiationModal quote={negModal} onClose={() => setNegModal(null)}
+          onSave={(neg) => onSaveNegotiation(negModal.id, neg)}/>
       )}
 
       {standbyModal && (
