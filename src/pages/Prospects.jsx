@@ -6,6 +6,7 @@ import ActIcon  from '../components/ActIcon.jsx'
 import DatePicker from '../components/DatePicker.jsx'
 import SampleTimeline from '../components/SampleTimeline.jsx'
 import CommercialHistory from '../components/CommercialHistory.jsx'
+import WebRequests from '../components/WebRequests.jsx'
 import { shipmentFromProspect } from '../components/SampleModal.jsx'
 import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
 
@@ -396,6 +397,9 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
           {isRete ? '+ Nuovo Contatto' : '+ Nuovo Club'}
         </button>
       </div>
+
+      <WebRequests prospects={prospects} onUpsert={onUpsert} onAddActivity={onAddActivity}
+        onOpenProspect={id => { setTab('club'); setSelectedId(id) }}/>
 
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:`1px solid ${BORDER}`, marginBottom:24 }}>

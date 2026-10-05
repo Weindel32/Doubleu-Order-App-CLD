@@ -420,6 +420,30 @@ export async function deleteProspectActivity(activityId) {
   return true
 }
 
+// ─── RICHIESTE DAL SITO ──────────────────────────────────────────
+// Le scrive l'endpoint api/contact.js del sito (doubleu-redesign) nella
+// tabella contact_requests. Qui si leggono e si smistano: diventano un
+// prospect oppure si archiviano. Non si cancellano mai: l'archivio resta
+// la misura di quanto rende il canale web.
+
+export async function fetchContactRequests() {
+  const { data, error } = await supabase
+    .from('contact_requests')
+    .select('id, created_at, name, email, club, request_type, message, lang, status, source, prospect_id, handled_at')
+    .order('created_at', { ascending: false })
+  if (error) { console.error('fetchContactRequests:', error); return [] }
+  return data || []
+}
+
+export async function setContactRequestStatus(id, status, prospectId = null) {
+  const fields = status === 'nuova'
+    ? { status, prospect_id: null, handled_at: null }
+    : { status, prospect_id: prospectId, handled_at: new Date().toISOString() }
+  const { error } = await supabase.from('contact_requests').update(fields).eq('id', id)
+  if (error) { console.error('setContactRequestStatus:', error); return false }
+  return true
+}
+
 // ─── CAMPIONATURE ────────────────────────────────────────────────
 
 const SHIPMENT_FIELDS = [
