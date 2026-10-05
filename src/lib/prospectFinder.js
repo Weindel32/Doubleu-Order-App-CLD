@@ -45,3 +45,37 @@ export async function sendToProspectFinder(prospect, standbyMotivo) {
   if (!res.ok) throw new Error(data.error || 'Invio a Prospect Finder fallito')
   return data
 }
+
+// Una richiesta dal sito appena convertita: se il club e' gia' su Prospect
+// Finder dentro una sequenza a freddo, la ferma (vedi api/web-lead-sync.js).
+// Non bloccante: se fallisce, il prospect in Order App resta comunque creato.
+export async function syncWebLeadToProspectFinder(request) {
+  const res = await fetch('/api/web-lead-sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify({
+      email: request.email || null,
+      club: request.club || null,
+      message: request.message || null,
+      received_at: request.created_at || null,
+    }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Controllo su Prospect Finder fallito')
+  return data
+}
+
+export function webLeadSyncMessage(data) {
+  if (!data?.found) return null
+  const parts = []
+  if (data.stato_prima !== data.stato_dopo) {
+    parts.push(`"${data.nome_club}" era su Prospect Finder (${data.stato_prima}): sequenza fermata, ora e' tra chi ha risposto.`)
+  } else {
+    parts.push(`"${data.nome_club}" e' su Prospect Finder (${data.stato_prima}): richiesta aggiunta alla sua cronologia.`)
+  }
+  if (data.todoist_chiuso) parts.push('Promemoria Todoist del follow-up chiuso.')
+  if (data.email_programmate > 0) {
+    parts.push(`Attenzione: ${data.email_programmate} ${data.email_programmate === 1 ? "email programmata e' ancora" : 'email programmate sono ancora'} in partenza, annullale dal Calendario di Prospect Finder.`)
+  }
+  return parts.join(' ')
+}
