@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { btnGoldStyle } from '../tokens.js'
 import { fetchContactRequests, setContactRequestStatus } from '../lib/dataService.js'
+import { syncWebLeadToProspectFinder, webLeadSyncMessage } from '../lib/prospectFinder.js'
 
 // Richieste arrivate dal modulo contatti di doubleutennis.com.
 //
@@ -103,6 +104,7 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
   const [showAll,  setShowAll]  = useState(false)
   const [busyId,   setBusyId]   = useState(null)
   const [error,    setError]    = useState('')
+  const [notice,   setNotice]   = useState(null)  // null | { warn, text }
 
   const load = async () => { setRequests(await fetchContactRequests()); setLoaded(true) }
   useEffect(() => { load() }, [])
@@ -111,7 +113,7 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
   const visible = showAll ? requests : nuove
 
   const handleConvert = async (r) => {
-    setBusyId(r.id); setError('')
+    setBusyId(r.id); setError(''); setNotice(null)
     try {
       const existing = findExisting(prospects, r)
       let prospectId = null
@@ -138,6 +140,15 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
       await onAddActivity(prospectId, { type:'message_received', content:r.message, created_at:r.created_at })
       const ok = await setContactRequestStatus(r.id, 'convertita', prospectId)
       if (!ok) throw new Error('Prospect creato, ma la richiesta non e\' stata aggiornata')
+      // Il club potrebbe essere in una sequenza a freddo su Prospect Finder:
+      // va fermata. Un errore qui non annulla la conversione, ma si dice.
+      try {
+        const sync = await syncWebLeadToProspectFinder(r)
+        const text = webLeadSyncMessage(sync)
+        if (text) setNotice({ warn: sync.email_programmate > 0, text })
+      } catch (e) {
+        setNotice({ warn: true, text: `Prospect creato. Controllo su Prospect Finder non riuscito (${e.message}): verifica a mano che il club non sia in sequenza.` })
+      }
       await load()
     } catch (e) {
       setError(e.message || 'Operazione non riuscita, riprova.')
@@ -179,6 +190,12 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
       {expanded && (
         <>
           {error && <div style={{ fontSize:12, color:CLAY, marginBottom:10 }}>{error}</div>}
+          {notice && (
+            <div style={{ fontSize:12, color: notice.warn ? CLAY : GREEN, marginBottom:10, lineHeight:1.5 }}>
+              {notice.text}
+              <button onClick={() => setNotice(null)} style={{ background:'none', border:'none', color:MUTED, cursor:'pointer', marginLeft:8, fontSize:12 }}>×</button>
+            </div>
+          )}
           {visible.length === 0 ? (
             <div style={{ fontSize:12, color:MUTED, padding:'4px 0' }}>Nessuna richiesta da smistare.</div>
           ) : (
