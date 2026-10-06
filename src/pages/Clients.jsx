@@ -107,10 +107,17 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
   const [catFilter,  setCatFilter]    = useState('ALL')
   const [shopOnly,   setShopOnly]     = useState(false)
   const [overdueOnly, setOverdueOnly] = useState(false)
+  const [noOrders,   setNoOrders]     = useState(false)
   const [sortKey,    setSortKey]      = useState('total')
   const [sortDir,    setSortDir]      = useState('desc')
 
   const enriched = clients.map(c => enrichClient(c, orders, shipments))
+  // L'anagrafica nasce anche da un preventivo o da una campionatura: è
+  // cliente solo chi ha almeno un ordine confermato. Gli altri restano
+  // raggiungibili dal filtro "Senza ordini".
+  const isCustomer    = c => c.confirmed.length > 0
+  const customerCount = enriched.filter(isCustomer).length
+  const noOrdersCount = enriched.length - customerCount
 
   const totalRevenue = enriched.reduce((s, c) => s + c.total, 0)
   const anchorCount  = enriched.filter(c => c.tier === 'ANCHOR').length
@@ -118,6 +125,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
   const q = search.trim().toLowerCase()
   const filtered = enriched.filter(c => {
+    if (isCustomer(c) === noOrders) return false
     if (tierFilter !== 'ALL' && c.tier !== tierFilter) return false
     if (catFilter  !== 'ALL' && (c.category || '') !== catFilter) return false
     if (shopOnly && !c.shop_attivo) return false
@@ -264,7 +272,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
       </div>
 
       <div style={s.grid4}>
-        <StatCard label="Clienti in Archivio" value={clients.length}/>
+        <StatCard label="Clienti in Archivio" value={customerCount} sub={noOrdersCount ? `+ ${noOrdersCount} senza ordini` : undefined}/>
         <StatCard label="Fatturato Totale"     value={`${totalRevenue.toLocaleString('it-IT',{maximumFractionDigits:0})} €`} accent sub="Ordini confermati"/>
         <StatCard label="ANCHOR"               value={anchorCount} sub="Fatturato ≥ 4.000 €"/>
         <StatCard label="ALLIED"               value={alliedCount} sub="Fatturato ≥ 1.000 €"/>
@@ -306,6 +314,11 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
             <button onClick={() => setOverdueOnly(v => !v)} style={chipStyle(overdueOnly, { bg:'rgba(239,68,68,0.15)', color:'#ef4444', border:'rgba(239,68,68,0.35)' })}>
               ● Con crediti scaduti
             </button>
+            {(noOrdersCount > 0 || noOrders) && (
+              <button onClick={() => setNoOrders(v => !v)} style={chipStyle(noOrders, null)}>
+                Senza ordini ({noOrdersCount})
+              </button>
+            )}
           </div>
 
           {/* Contatore + ordinamento */}
