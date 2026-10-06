@@ -6,7 +6,7 @@ import DatePicker from './DatePicker.jsx'
 import {
   ACT_TYPES, TYPE_LABELS, DIRECTIONS, DIRECTION_LABELS, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   hasDirection, activityLabel, todayISO, fmtDay, actDay, isPlanned, isReplaced,
-  doneActivities, plannedActivities, lastActivity, nextStep, suggestedStage,
+  doneActivities, plannedActivities, lastActivity, nextStep, suggestedStage, byRecent,
 } from '../lib/activities.js'
 
 // Registro attività di un prospect, condiviso da desktop e mobile.
@@ -259,7 +259,7 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
   const history = [
     ...doneActivities(prospect),
     ...(prospect.prospect_activities || []).filter(isReplaced),
-  ].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+  ].sort(byRecent)
 
   const base = {
     type:'call', date: today, content:'', direction:'inviata', outcome:'',

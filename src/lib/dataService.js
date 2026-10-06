@@ -414,6 +414,7 @@ function activityRow(activity) {
     outcome:      activity.outcome || null,
     ...(activity.status ? { status: activity.status } : {}),
     ...(activity.completed_at !== undefined ? { completed_at: activity.completed_at } : {}),
+    ...(activity.logged_at ? { logged_at: activity.logged_at } : {}),
     ...(activity.created_at ? { created_at: activity.created_at } : {}),
   }
 }

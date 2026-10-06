@@ -62,7 +62,8 @@ export async function saveProspectActivity(prospect, { activity, nextStep, repla
     created_at: dayToTimestamp(activity.date),
     // Un passo da fare non ha ancora esito né verso: li riceve quando è fatto.
     ...(status === 'da_fare' ? { outcome: null, direction: null } : {}),
-    ...(completing ? { completed_at: now } : {}),
+    // Completare un passo lo mette in coda alle attività di quel giorno.
+    ...(completing ? { completed_at: now, logged_at: now } : {}),
   }
 
   let saved
@@ -79,7 +80,7 @@ export async function saveProspectActivity(prospect, { activity, nextStep, repla
   if (replaceId && replaceId !== saved.id) {
     const old = findAct(prospect, replaceId)
     if (old && isPlanned(old)) {
-      if (await patchProspectActivity(old.id, { status: 'sostituita', completed_at: now })) todoist.push(['close', old])
+      if (await patchProspectActivity(old.id, { status: 'sostituita', completed_at: now, logged_at: now })) todoist.push(['close', old])
       else warnings.push('Il passo precedente non è stato chiuso, chiudilo a mano.')
     }
   }
