@@ -77,12 +77,20 @@ export const isPlanned  = act => act.status === 'da_fare'
 export const isReplaced = act => act.status === 'sostituita'
 export const isDone     = act => !act.status || act.status === 'fatta'
 
+// created_at è solo il giorno scelto (fisso a mezzogiorno UTC): a parità
+// di giorno decide logged_at, il momento in cui l'attività è stata
+// registrata o completata, così l'ordine segue quello reale.
+const byDay = (a, b) =>
+  (a.created_at || '').localeCompare(b.created_at || '') ||
+  (a.logged_at  || '').localeCompare(b.logged_at  || '')
+export const byRecent = (a, b) => byDay(b, a)
+
 export const doneActivities = p =>
-  (p.prospect_activities || []).filter(isDone).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+  (p.prospect_activities || []).filter(isDone).sort(byRecent)
 
 // Attività da fare, dalla scadenza più vicina: la prima è il prossimo passo.
 export const plannedActivities = p =>
-  (p.prospect_activities || []).filter(isPlanned).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''))
+  (p.prospect_activities || []).filter(isPlanned).sort(byDay)
 
 export const lastActivity = p => doneActivities(p)[0] || null
 export const nextStep     = p => plannedActivities(p)[0] || null
