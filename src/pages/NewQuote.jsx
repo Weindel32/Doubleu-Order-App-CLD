@@ -10,6 +10,8 @@ import DiscountFields from '../components/DiscountFields.jsx'
 import DatePicker, { toItalianDate } from '../components/DatePicker.jsx'
 import { DraftBanner, SaveStatusBadge } from '../components/DraftStatus.jsx'
 import { useDraftRecovery } from '../hooks/useDraftRecovery.js'
+import NegotiationModal from '../components/NegotiationModal.jsx'
+import { stageOf, normalizeNegotiation, paymentTermsLines } from '../utils/negotiation.js'
 
 const STEPS = ['Club & Note', 'Articoli & Prezzi', 'Taglie', 'Riepilogo']
 
@@ -57,7 +59,10 @@ function ClientSearch({ clients, onSelect, inputStyle }) {
   )
 }
 
-export default function NewQuote({ editOrder, setView, onSaved, prefillClient, clients = [], onResolveClientId }) {
+export default function NewQuote({ editOrder, setView, onSaved, prefillClient, clients = [], onResolveClientId, onSaveNegotiation }) {
+  // Trattativa (stato e condizioni concordate): si salva a parte, non con il preventivo
+  const [negotiation, setNegotiation] = useState(editOrder?.negotiation || null)
+  const [negOpen, setNegOpen] = useState(false)
   const isEdit = !!editOrder && editOrder.status === 'PREVENTIVO'
 
   const [step, setStep]               = useState(prefillClient ? 2 : 1)
@@ -123,6 +128,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
   const allArticles = kits.flatMap(k => k.articles)
 
   const quoteObj = () => ({
+    negotiation,
     id: editOrder?.id || 'DU-NEW',
     client: club || '—', clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
     date: toItalianDate(orderDate) || new Date().toLocaleDateString('it-IT'),
@@ -636,6 +642,27 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
               ))}
             </div>
             <TotalBox/>
+            {editOrder?.id && (() => {
+              const neg = normalizeNegotiation(negotiation)
+              const st = stageOf(negotiation)
+              const terms = paymentTermsLines(negotiation, total)
+              return (
+                <div style={{ marginTop: 16, padding: '16px 18px', border: `1px solid ${BORDER}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, letterSpacing: 2, color: GOLD }}>TRATTATIVA · <span style={{ color: st.color }}>{st.label.toUpperCase()}</span></div>
+                    {onSaveNegotiation && <button style={{ ...btnGoldStyle, padding: '6px 14px', fontSize: 10 }} onClick={() => setNegOpen(true)}>Modifica</button>}
+                  </div>
+                  <div style={{ fontSize: 12, color: CREAM, lineHeight: 1.8 }}>
+                    <div><span style={{ color: MUTED }}>Pagamento: </span>{terms.length ? terms.join(' · ') : <span style={{ color: MUTED }}>non concordato</span>}</div>
+                    {neg.gifts.length > 0 && <div><span style={{ color: MUTED }}>Omaggi (interni, non nel PDF): </span>{neg.gifts.map(g => `${g.qty || 0} ${g.label}${g.note ? ` (${g.note})` : ''}`).join(' · ')}</div>}
+                    {neg.note && <div><span style={{ color: MUTED }}>Note: </span>{neg.note}</div>}
+                  </div>
+                  {terms.length > 0 && <div style={{ fontSize: 10, color: MUTED, marginTop: 8 }}>Le condizioni di pagamento compaiono nel PDF per il club, senza importi né omaggi.</div>}
+                </div>
+              )
+            })()}
+            {negOpen && <NegotiationModal quote={{ ...editOrder, negotiation }} onClose={() => setNegOpen(false)}
+              onSave={async (n) => { const ok = await onSaveNegotiation(editOrder.id, n); if (ok !== false) setNegotiation(n); return ok }}/>}
             {saveError && (
               <div style={{ marginTop: 12, padding: '10px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#ef4444', fontSize: 12 }}>{saveError}</div>
             )}
