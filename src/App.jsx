@@ -472,7 +472,7 @@ export default function App() {
         {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
         {view === 'analytics'  && <Analytics orders={orders} shipments={shipments}/>}
         {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onResolveClientId={handleResolveClientId}/>}
-        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onResolveClientId={handleResolveClientId}/>}
+        {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onResolveClientId={handleResolveClientId} onSaveNegotiation={handleSaveNegotiation}/>}
       </main>
     </div>
   )
