@@ -99,6 +99,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
   const [termsForm,  setTermsForm]    = useState(null)
   const [termsSaving, setTermsSaving] = useState(false)
   const [linking,    setLinking]      = useState(false)
+  const [actsOpen,   setActsOpen]     = useState(false)
   const [newForm,    setNewForm]      = useState(null)
   const [newSaving,  setNewSaving]    = useState(false)
   const [search,     setSearch]       = useState('')
@@ -144,7 +145,8 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
   // tale) porta con sé lo storico di attività commerciali pre-vendita.
   const linkedProspect = selected ? prospects.find(p => p.client_id === selected.id) : null
 
-  const closeModal = () => { setSelectedId(null); setEditForm(null); setTermsForm(null) }
+  const closeModal = () => { setSelectedId(null); setEditForm(null); setTermsForm(null); setActsOpen(false) }
+  const linkedActs = linkedProspect ? doneActivities(linkedProspect) : []
 
   const openEdit = () => {
     if (!selected) return
@@ -788,11 +790,26 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
 
               {/* Attività — lo storico pre-vendita registrato quando questo
                   club era ancora un prospect, se il collegamento esiste. */}
-              {linkedProspect && doneActivities(linkedProspect).length > 0 && (
+              {linkedActs.length > 0 && (
                 <div style={{ marginBottom:20 }}>
-                  <div style={s.cardTitle}>Attività</div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {doneActivities(linkedProspect).map(act => (
+                  {/* Compressa di default: lo storico pre-vendita può essere
+                      lungo e qui serve solo come contesto. */}
+                  <button onClick={() => setActsOpen(o => !o)}
+                    style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left', fontFamily:'inherit' }}>
+                    <div style={{ ...s.cardTitle, marginBottom:0 }}>Attività</div>
+                    <span style={{ fontSize:10, color:MUTED, letterSpacing:1 }}>{linkedActs.length}</span>
+                    <span style={{ marginLeft:'auto', fontSize:10, color:GOLD, letterSpacing:1 }}>{actsOpen ? 'Comprimi ▴' : 'Mostra tutte ▾'}</span>
+                  </button>
+                  {!actsOpen && (
+                    <div style={{ display:'flex', alignItems:'center', gap:7, marginTop:8, fontSize:11, color:MUTED, minWidth:0 }}>
+                      <span style={{ color:GOLD, display:'inline-flex' }}><ActIcon type={linkedActs[0].type} size={12}/></span>
+                      <span style={{ whiteSpace:'nowrap' }}>Ultima: {activityLabel(linkedActs[0])} · {fmtDay(actDay(linkedActs[0]))}</span>
+                      {linkedActs[0].outcome && <OutcomeBadge outcome={linkedActs[0].outcome}/>}
+                    </div>
+                  )}
+                  {actsOpen && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
+                    {linkedActs.map(act => (
                       <div key={act.id} style={{ padding:'10px 14px', background:'rgba(255,255,255,0.02)', borderRadius:6, borderLeft:'3px solid rgba(138,154,181,0.3)' }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10 }}>
                           <span style={{ fontSize:11, color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7 }}>
@@ -805,6 +822,7 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
               )}
 
