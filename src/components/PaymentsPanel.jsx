@@ -376,8 +376,13 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
       {payments.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {[...payments].sort((a, b) => {
-            const when = p => paymentDue(order, p).date?.getTime() ?? 0
-            return when(a) - when(b)
+            // Prima le scadenze note (anche stimate), in ordine di data.
+            // Le rate legate a una consegna non ancora datata vanno dopo,
+            // nell'ordine dei giorni dalla consegna (+30 prima di +60).
+            const when = p => paymentDue(order, p).date?.getTime() ?? Infinity
+            const ta = when(a), tb = when(b)
+            if (ta !== tb) return ta < tb ? -1 : 1
+            return (a.dueOffsetDays || 0) - (b.dueOffsetDays || 0)
           }).map(p => {
             const tc    = TYPE_COLORS[p.type] || TYPE_COLORS.acconto
             const due     = paymentDue(order, p)
