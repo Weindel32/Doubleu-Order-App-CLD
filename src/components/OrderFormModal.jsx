@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { artPieceCount, orderTotal } from '../utils/helpers.js'
 import { updateOrder } from '../lib/dataService.js'
 import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
-  buildFormLines, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, notifyRequestDone, sendFormEmail,
+  buildFormLines, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
   formUrl, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
 } from '../lib/orderForms.js'
 
@@ -236,6 +236,10 @@ function Comparison({ order, form }) {
 
 export default function OrderFormModal({ order, form: initialForm, onClose, onFormChange, onOrderUpdated }) {
   const [form, setForm]   = useState(initialForm || null)
+  // Descrizioni e colori del modulo allineati all'ordine attuale.
+  useEffect(() => {
+    if (initialForm) syncFormLabels(order).then(f => { if (f && f !== initialForm) { setForm(f); onFormChange(f) } })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [fresh, setFresh] = useState(!initialForm)
   const [busy, setBusy]   = useState(false)
   const [msg, setMsg]     = useState('')

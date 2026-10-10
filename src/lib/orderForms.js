@@ -162,6 +162,26 @@ export async function fetchOrderFormFor(orderId) {
   return data[0] || null
 }
 
+// Il modulo conserva le righe com'erano alla creazione del link: se poi
+// nell'ordine cambi descrizione o colore di un articolo (es. "Hoodie GM" →
+// "Felpa cappuccio"), il cliente vedrebbe ancora il testo vecchio. Qui si
+// riallineano descrizione, colore e categoria all'ordine attuale, senza
+// toccare righe, griglie e taglie gia' inserite. Ogni riga si ritrova nella
+// stessa posizione se il codice coincide, altrimenti per codice.
+export async function syncFormLabels(order) {
+  const form = await fetchOrderFormFor(order.id)
+  if (!form) return null
+  const lines = (form.lines || []).map(l => {
+    const arts = order.kits?.[l.kitIndex]?.articles || []
+    const same = arts[l.articleIndex]
+    const a = same && (same.sp || '') === (l.sp || '') ? same : (l.sp ? arts.find(x => x.sp === l.sp) : null)
+    if (!a) return l
+    return { ...l, description: a.description || '', color: a.color || '', category: a.category || l.category }
+  })
+  if (JSON.stringify(lines) === JSON.stringify(form.lines)) return form
+  return patchOrderForm(form.token, { lines })
+}
+
 // Prima di passare un ordine a uno stato che blocca il modulo (produzione,
 // consegna): se il cliente ha taglie in sospeso, l'app lo dice e chiede
 // conferma. Restituisce le opzioni per askConfirm (ConfirmDialog), o null
