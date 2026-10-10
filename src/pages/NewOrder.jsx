@@ -8,7 +8,7 @@ import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import { exportSizesCSV }        from '../utils/exportCSV.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
-import { pendingFormWarning }    from '../lib/orderForms.js'
+import { pendingFormWarning, syncFormLabels } from '../lib/orderForms.js'
 import { askConfirm, showAlert } from '../components/ConfirmDialog.jsx'
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
@@ -301,6 +301,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
       }
       const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces, clientId: resolvedClientId }
       const ok = editOrder ? await updateOrder(order) : await createOrder(order)
+      // Il modulo taglie del cliente segue descrizioni e colori aggiornati.
+      if (ok && editOrder) syncFormLabels(order).catch(() => {})
       if (ok) {
         markSaved()
         setClientId(resolvedClientId)
