@@ -162,6 +162,29 @@ export async function fetchOrderFormFor(orderId) {
   return data[0] || null
 }
 
+// Prima di passare un ordine a uno stato che blocca il modulo (produzione,
+// consegna): se il cliente ha taglie in sospeso, l'app lo dice e chiede
+// conferma. Restituisce il messaggio da mostrare, o null se non c'e' nulla
+// in sospeso. Un errore di lettura non blocca il cambio di stato.
+export async function pendingFormWarning(orderId, newStatus, oldStatus) {
+  const blocking = ['IN PRODUZIONE', 'CONSEGNA PARZIALE', 'CONSEGNATO']
+  if (!blocking.includes(newStatus) || LOCKING_STATUSES.includes(oldStatus)) return null
+  const form = await fetchOrderFormFor(orderId)
+  if (!form) return null
+  let what = null
+  if (form.status === 'inviato') {
+    what = `Il cliente ha inviato taglie (${formPieces(form.lines, form.sizes)} pezzi) non ancora applicate all'ordine.`
+  } else if (form.status === 'aperto' && (form.submit_count > 0 || form.applied_at)) {
+    what = 'Il cliente ha riaperto il modulo per correggere le taglie e non ha ancora reinviato.'
+  } else if (form.status === 'aperto') {
+    what = 'Il cliente non ha ancora compilato il modulo taglie.'
+  }
+  if (!what) return null
+  return `${what}\n\nPassando a ${newStatus} il modulo del cliente si blocca e in produzione vanno le taglie attuali dell'ordine.`
+    + (form.status === 'inviato' ? ' Conviene prima aprire Taglie e premere "Applica".' : '')
+    + '\n\nProcedere comunque?'
+}
+
 // Taglie applicate: chiude il task Todoist "Taglie ricevute" dell'ordine.
 // Best-effort: un errore qui non deve toccare l'ordine gia' salvato.
 export async function notifyFormApplied(orderId) {

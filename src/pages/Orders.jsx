@@ -7,7 +7,7 @@ import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import BollaModal                from '../components/BollaModal.jsx'
 import OrderFormModal            from '../components/OrderFormModal.jsx'
-import { fetchOrderForms }       from '../lib/orderForms.js'
+import { fetchOrderForms, pendingFormWarning } from '../lib/orderForms.js'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
 import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
 import { exportSizesCSV, exportAllOrdersCSV } from '../utils/exportCSV.js'
@@ -47,6 +47,8 @@ function StatusSelector({ order, onStatusChange }) {
 
   const handleSelect = async (newStatus) => {
     if (newStatus === order.status && !DATE_STATUSES.includes(newStatus)) { setOpen(false); return }
+    const pending = await pendingFormWarning(order.id, newStatus, order.status)
+    if (pending && !window.confirm(pending)) { setOpen(false); return }
     let cancelFields = {}
     if (newStatus === 'ANNULLATO') {
       const reason = window.prompt('Motivo annullamento (promemoria interno):', order.cancelReason || '')
