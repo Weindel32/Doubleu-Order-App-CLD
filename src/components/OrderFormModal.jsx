@@ -3,7 +3,7 @@ import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES } from
 import { artPieceCount } from '../utils/helpers.js'
 import { updateOrder } from '../lib/dataService.js'
 import {
-  buildFormLines, createOrderForm, setOrderFormStatus, applyFormToOrder,
+  buildFormLines, createOrderForm, setOrderFormStatus, applyFormToOrder, notifyFormApplied,
   formUrl, linePieces, formPieces, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
 } from '../lib/orderForms.js'
 
@@ -29,14 +29,17 @@ const btn = (color, filled) => ({
 function sizesText(grids, s) {
   if (!s) return '—'
   const parts = []
-  if (grids.includes('adult')) for (const sz of ADULT_SIZES) if ((s.adult?.[sz] || 0) > 0) parts.push(`${sz} ${s.adult[sz]}`)
-  if (grids.includes('kids'))  for (const sz of KIDS_SIZES)  if ((s.kids?.[sz]  || 0) > 0) parts.push(`${sz}a ${s.kids[sz]}`)
-  if (grids.includes('uni') && (s.uni || 0) > 0) parts.push(`TU ${s.uni}`)
+  if (grids.includes('adult')) for (const sz of ADULT_SIZES) if ((s.adult?.[sz] || 0) > 0) parts.push(`${sz}: ${s.adult[sz]}`)
+  if (grids.includes('kids'))  for (const sz of KIDS_SIZES)  if ((s.kids?.[sz]  || 0) > 0) parts.push(`${sz} anni: ${s.kids[sz]}`)
+  if (grids.includes('uni') && (s.uni || 0) > 0) parts.push(`TU: ${s.uni}`)
   return parts.join(' · ') || '—'
 }
 
+const shareText = (order) =>
+  `Ciao${order.clientContact ? ' ' + order.clientContact.split(' ')[0] : ''}, ecco il modulo per indicarci le taglie del vostro ordine DOUBLEU. Si compila dal telefono e si salva da solo:`
+
 function whatsappHref(order, url) {
-  const text = `Ciao${order.clientContact ? ' ' + order.clientContact.split(' ')[0] : ''}, ecco il modulo per indicarci le taglie del vostro ordine DOUBLEU. Si compila dal telefono e si salva da solo: ${url}`
+  const text = `${shareText(order)} ${url}`
   let phone = (order.clientPhone || '').replace(/[^\d+]/g, '')
   if (phone.startsWith('+')) phone = phone.slice(1)
   else if (phone.startsWith('00')) phone = phone.slice(2)
@@ -78,8 +81,8 @@ function Setup({ order, onCreated }) {
       </div>
       <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, overflowY: 'auto', maxHeight: 340 }}>
         {base.map(l => (
-          <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
               <div style={{ fontSize: 13, color: CREAM }}>{l.description || l.category || 'Articolo'} <span style={{ color: CLAY }}>{l.color}</span></div>
               <div style={{ fontSize: 10, color: MUTED }}>{[l.sp, l.kit, l.expected ? `${l.expected} pz previsti` : null].filter(Boolean).join(' · ')}</div>
             </div>
@@ -96,7 +99,7 @@ function Setup({ order, onCreated }) {
         <input type="checkbox" checked={prefill} onChange={e => setPrefill(e.target.checked)} style={{ accentColor: GOLD }}/>
         Parti dalle taglie già inserite nell'ordine
       </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: MUTED }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: MUTED, flexWrap: 'wrap' }}>
         Compilabile fino al
         <input type="date" value={expiry} onChange={e => setExpiry(e.target.value)}
           style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '6px 10px', color: CREAM, colorScheme: 'dark', fontSize: 12 }}/>
@@ -117,12 +120,17 @@ function LinkBox({ order, form }) {
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) }
     catch { window.prompt('Copia il link:', url) }
   }
+  // Sul telefono il foglio di condivisione di sistema arriva a WhatsApp,
+  // Messaggi, Mail: stesso testo del bottone WhatsApp.
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share
+  const share = () => navigator.share({ title: 'Modulo taglie DOUBLEU', text: shareText(order), url }).catch(() => {})
   return (
     <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 12 }}>
       <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 10 }}>{url}</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button style={btn(GOLD, false)} onClick={copy}>{copied ? 'Copiato ✓' : 'Copia link'}</button>
         <a style={{ ...btn(GREEN, false), textDecoration: 'none' }} href={whatsappHref(order, url)} target="_blank" rel="noreferrer">WhatsApp</a>
+        {canShare && <button style={btn(CREAM, false)} onClick={share}>Condividi…</button>}
         <a style={{ ...btn(MUTED, false), textDecoration: 'none' }} href={url} target="_blank" rel="noreferrer">Apri come cliente</a>
       </div>
     </div>
@@ -181,6 +189,7 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
     const ok = await updateOrder(next)
     if (!ok) { setBusy(false); setMsg('Salvataggio ordine non riuscito: nessuna modifica applicata.'); return }
     onOrderUpdated(next)
+    notifyFormApplied(order.id)
     const f = await setOrderFormStatus(form.token, 'applicato')
     setBusy(false)
     if (f) changed(f)
@@ -190,7 +199,7 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
   const status = form?.status
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#1e2d50', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 28, width: 620, maxWidth: '94vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#1e2d50', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 'clamp(16px, 4vw, 28px)', width: 620, maxWidth: '96vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div style={{ fontSize: 9, letterSpacing: 3, color: MUTED, marginBottom: 4 }}>MODULO TAGLIE CLIENTE</div>

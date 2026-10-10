@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js'
+import { supabase, authHeader } from './supabase.js'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { artPieceCount } from '../utils/helpers.js'
 
@@ -127,6 +127,28 @@ export async function createOrderForm(order, lines, { prefill = false, expiresAt
   return data
 }
 
+// Modulo piu' recente di un ordine (escluso il revocato), per il
+// dettaglio ordine su mobile.
+export async function fetchOrderFormFor(orderId) {
+  const { data, error } = await supabase
+    .from('order_forms').select('*').eq('order_id', orderId).neq('status', 'revocato')
+    .order('created_at', { ascending: false }).limit(1)
+  if (error) { console.error('fetchOrderFormFor:', error); return null }
+  return data[0] || null
+}
+
+// Taglie applicate: chiude il task Todoist "Taglie ricevute" dell'ordine.
+// Best-effort: un errore qui non deve toccare l'ordine gia' salvato.
+export async function notifyFormApplied(orderId) {
+  try {
+    await fetch('/api/order-form-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify({ action: 'applied', orderId }),
+    })
+  } catch (e) { console.error('notifyFormApplied:', e) }
+}
+
 export async function setOrderFormStatus(token, status) {
   const patch = { status, updated_at: new Date().toISOString() }
   if (status === 'applicato') patch.applied_at = patch.updated_at
@@ -188,5 +210,13 @@ export async function savePublicForm(token, { sizes, contact, note, submit = fal
     p_token: token, p_sizes: sizes, p_contact: contact || '', p_note: note || '', p_submit: submit,
   })
   if (error) return { error: error.message || 'errore' }
+  // Invio riuscito: avviso su Todoist. keepalive perche' parta anche se il
+  // cliente chiude subito la pagina; un errore qui non riguarda il cliente.
+  if (submit) {
+    fetch('/api/order-form-notify', {
+      method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'submitted', token }),
+    }).catch(() => {})
+  }
   return { form: data }
 }

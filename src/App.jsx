@@ -446,6 +446,7 @@ export default function App() {
   if (isMobile) {
     return <MobileApp orders={orders} clients={clients} prospects={prospects}
       onSaveNegotiation={handleSaveNegotiation}
+      onOrderUpdated={next => setOrders(prev => prev.map(o => o.id === next.id ? next : o))}
       onLogout={handleLogout} onUpsertClient={handleUpsertClient}
       onUpsertProspect={handleUpsertProspect} onAddActivity={handleAddActivity}
       onSaveActivity={handleSaveActivity} onDeleteActivity={handleDeleteActivity}

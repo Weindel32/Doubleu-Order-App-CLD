@@ -24,7 +24,7 @@ const MORE_TABS = [
   { key: 'samples',   label: 'Campioni',   icon: 'samples' },
 ]
 
-export default function MobileApp({ orders, onSaveNegotiation, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onSaveActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
+export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onSaveActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
   const [tab, setTab]                   = useState('home')
   const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -39,7 +39,7 @@ export default function MobileApp({ orders, onSaveNegotiation, clients, prospect
 
   const goToOrders = (filter) => { setOrdersFilter(filter); setTab('orders') }
 
-  if (selectedOrder) return <MobileOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} />
+  if (selectedOrder) return <MobileOrderDetail order={orders.find(o => o.id === selectedOrder.id) || selectedOrder} onBack={() => setSelectedOrder(null)} onOrderUpdated={onOrderUpdated} />
   if (selectedQuote) return <MobileQuoteDetail quote={orders.find(o => o.id === selectedQuote.id) || selectedQuote} onBack={() => setSelectedQuote(null)} onSaveNegotiation={onSaveNegotiation} />
 
   return (

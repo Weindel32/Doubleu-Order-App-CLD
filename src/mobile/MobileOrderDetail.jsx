@@ -1,7 +1,48 @@
+import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery, artDiscountApplied } from '../utils/helpers.js'
 import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
+import OrderFormModal from '../components/OrderFormModal.jsx'
+import { fetchOrderFormFor, formPieces, FORM_STATUS_LABEL } from '../lib/orderForms.js'
+
+// Modulo taglie dal telefono: e' qui che parte il link su WhatsApp.
+function OrderFormCard({ order, onOrderUpdated }) {
+  const [form, setForm] = useState(undefined)   // undefined = in caricamento
+  const [open, setOpen] = useState(false)
+  useEffect(() => { fetchOrderFormFor(order.id).then(setForm) }, [order.id])
+  const openModal = async () => { setForm(await fetchOrderFormFor(order.id)); setOpen(true) }
+
+  const st = form?.status
+  const color = st === 'inviato' ? GREEN : st === 'aperto' ? GOLD : MUTED
+  const text = form === undefined ? 'Caricamento…'
+    : !form ? 'Manda al cliente il link per compilare le taglie'
+    : st === 'inviato' ? `${formPieces(form.lines, form.sizes)} pezzi ricevuti${form.contact_name ? ' da ' + form.contact_name : ''} · da applicare`
+    : st === 'aperto' ? 'Link inviato, il cliente sta compilando'
+    : 'Taglie del cliente applicate all\'ordine'
+  return (
+    <>
+      <button onClick={openModal} style={{
+        width: '100%', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+        background: st === 'inviato' ? 'rgba(74,158,110,0.14)' : SURFACE,
+        border: `1px solid ${st === 'inviato' ? 'rgba(74,158,110,0.5)' : BORDER}`,
+        borderRadius: 10, padding: '14px 16px', cursor: 'pointer', color: CREAM,
+        fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, letterSpacing: 2, color, textTransform: 'uppercase' }}>
+            Taglie cliente{form ? ` · ${FORM_STATUS_LABEL[st]}` : ''}
+          </div>
+          <div style={{ fontSize: 13, color: CREAM, marginTop: 4 }}>{text}</div>
+        </div>
+        <span style={{ color: GOLD, fontSize: 22, lineHeight: 1 }}>›</span>
+      </button>
+      {open && <OrderFormModal order={order} form={form} onClose={() => setOpen(false)}
+        onFormChange={f => setForm(f.status === 'revocato' ? null : f)}
+        onOrderUpdated={onOrderUpdated}/>}
+    </>
+  )
+}
 
 function fmt(n) {
   return '€' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -36,7 +77,7 @@ function InfoRow({ label, value, valueColor, href }) {
   )
 }
 
-export default function MobileOrderDetail({ order, onBack }) {
+export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
   const articles = getAllArticles(order)
   const { total, paid, pending, residual } = paymentSummary(order)
   const days = daysUntilDelivery(order)
@@ -104,6 +145,8 @@ export default function MobileOrderDetail({ order, onBack }) {
               : `Consegna tra ${days} giorni`}
           </div>
         )}
+
+        <OrderFormCard order={order} onOrderUpdated={onOrderUpdated}/>
 
         {/* Nota ordine */}
         {order.orderNote && (

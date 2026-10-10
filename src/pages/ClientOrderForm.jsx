@@ -25,10 +25,10 @@ const SIZE_LIST = { adult: ADULT_SIZES, kids: KIDS_SIZES }
 function sizesSummary(line, s) {
   const parts = []
   for (const g of line.grids) {
-    if (g === 'uni') { if ((s?.uni || 0) > 0) parts.push(`TU ${s.uni}`); continue }
+    if (g === 'uni') { if ((s?.uni || 0) > 0) parts.push(`TU: ${s.uni}`); continue }
     for (const sz of SIZE_LIST[g]) {
       const v = s?.[g]?.[sz] || 0
-      if (v > 0) parts.push(`${g === 'kids' ? sz + ' anni' : sz} ${v}`)
+      if (v > 0) parts.push(`${g === 'kids' ? sz + ' anni' : sz}: ${v}`)
     }
   }
   return parts.join(' · ')
