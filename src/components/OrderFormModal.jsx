@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { artPieceCount, orderTotal } from '../utils/helpers.js'
 import { updateOrder } from '../lib/dataService.js'
-import { askConfirm } from './ConfirmDialog.jsx'
+import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
   buildFormLines, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, notifyRequestDone, sendFormEmail,
   formUrl, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
@@ -149,7 +149,7 @@ function LinkBox({ order, form }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-    catch { window.prompt('Copia il link:', url) }
+    catch { askText({ title: 'Copia il link', body: ['Il browser non permette la copia automatica: seleziona il link e copialo.'], value: url, confirmLabel: 'Fatto' }) }
   }
   // Sul telefono il foglio di condivisione di sistema arriva a WhatsApp,
   // Messaggi, Mail: stesso testo del bottone WhatsApp.

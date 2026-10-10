@@ -1,3 +1,4 @@
+import { showAlert } from '../components/ConfirmDialog.jsx'
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_SIZES, withCurrent } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
@@ -190,7 +191,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
     }
     const h = generateQuotePDF(quoteForPDF)
     const w = window.open('', '_blank')
-    if (!w) { alert('Popup bloccato dal browser. Abilita i popup per visualizzare il PDF.'); return }
+    if (!w) { showAlert({ title: 'Popup bloccato', body: ['Il browser ha bloccato la finestra: abilita i popup per visualizzare il PDF.'] }); return }
     w.document.write(h)
     w.document.close()
   }
@@ -199,8 +200,8 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
   const inp    = { ...s.input }
 
   const handleSave = async () => {
-    if (!club.trim()) { alert('Inserisci il nome del club'); return }
-    if (pricingMode === 'kit' && kits.some(k => !k.quantity)) { alert('Inserisci la quantità per ogni kit'); return }
+    if (!club.trim()) { showAlert({ title: 'Manca il club', body: ['Inserisci il nome del club.'] }); return }
+    if (pricingMode === 'kit' && kits.some(k => !k.quantity)) { showAlert({ title: 'Manca la quantità', body: ['Inserisci la quantità per ogni kit.'] }); return }
     setSaving(true); setSaveError(null)
     try {
       const id    = editOrder?.id || await generateOrderId(orderDate)
@@ -402,7 +403,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
             <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={clientNotes} onChange={e => setCN(e.target.value)} placeholder="Es. Prezzi validi 30 giorni, personalizzazione colori club inclusa..."/>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-            <button style={btnStyle(false)} onClick={() => confirmDiscardIfDirty() && setView('quotes')}>Annulla</button>
+            <button style={btnStyle(false)} onClick={async () => (await confirmDiscardIfDirty()) && setView('quotes')}>Annulla</button>
             <button style={btnStyle(true)} onClick={() => setStep(2)}>Continua →</button>
           </div>
         </div>

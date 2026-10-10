@@ -1,3 +1,4 @@
+import { askConfirm, showAlert } from './components/ConfirmDialog.jsx'
 import { useState, useEffect } from 'react'
 import MobileApp from './mobile/MobileApp.jsx'
 import { saveProspectActivity, removeProspectActivity, retireOpenSteps } from './lib/prospectActivities.js'
@@ -365,7 +366,7 @@ export default function App() {
   }
 
   const handleDelete = async (orderId) => {
-    if (!confirm('Sei sicuro di voler eliminare questo elemento?')) return
+    if (!(await askConfirm({ title: 'Eliminare questo elemento?', body: ['L\'operazione non è reversibile.'], confirmLabel: 'Elimina', tone: 'danger' }))) return
     const ok = await deleteOrder(orderId)
     if (ok) setOrders(orders.filter(o => o.id !== orderId))
   }
@@ -386,7 +387,7 @@ export default function App() {
   const handleSaveNegotiation = async (orderId, negotiation) => {
     const ok = await saveNegotiation(orderId, negotiation)
     if (ok) setOrders(prev => prev.map(o => o.id === orderId ? { ...o, negotiation } : o))
-    else alert('Trattativa non salvata: riprova.')
+    else showAlert({ title: 'Trattativa non salvata', body: ['Il salvataggio non è riuscito: riprova.'] })
     return ok
   }
 

@@ -1,3 +1,4 @@
+import { askConfirm, showAlert } from './ConfirmDialog.jsx'
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
@@ -131,11 +132,11 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
   // Kit Builder): si applicano solo con il pulsante, mai da sole, e se ci
   // sono gia' delle rate si chiede prima di sostituirle.
   const negTerms = hasPaymentTerms(negotiation) && orderTotal > 0
-  const applyNegotiation = () => {
-    if (payments.some(p => p.paid)) { alert('Ci sono gia\' pagamenti incassati: aggiorna le rate a mano.'); return }
-    if (payments.length && !confirm('Sostituire le rate attuali con quelle delle condizioni concordate?')) return
+  const applyNegotiation = async () => {
+    if (payments.some(p => p.paid)) { showAlert({ title: 'Pagamenti già incassati', body: ['Ci sono già pagamenti incassati: aggiorna le rate a mano.'] }); return }
+    if (payments.length && !(await askConfirm({ title: 'Sostituire le rate?', body: ['Le rate attuali vengono sostituite con quelle delle condizioni concordate.'], confirmLabel: 'Sostituisci', tone: 'gold' }))) return
     const { rows, installments, over } = paymentsFromNegotiation(negotiation, orderTotal, todayDisplay())
-    if (over) { alert('Nelle condizioni concordate acconto e rate superano il 100%: correggile nella trattativa.'); return }
+    if (over) { showAlert({ title: 'Condizioni da correggere', body: ['Nelle condizioni concordate acconto e rate superano il 100%: correggile nella trattativa.'] }); return }
     rows.forEach(r => { if (r.dueMode === 'consegna') r.date = dueDateFor({ ...r, date: '' }) })
     setPayments(rows)
     if (installments) onInstallmentsGranted?.(true)

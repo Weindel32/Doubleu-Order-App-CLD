@@ -1,3 +1,4 @@
+import { askConfirm } from '../components/ConfirmDialog.jsx'
 import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
@@ -76,7 +77,7 @@ export default function Samples({
   }
 
   const handleDelete = async (sh) => {
-    if (!confirm(`Eliminare la campionatura del ${fmtDate(sh.shipped_date)} per ${recipientLabel(sh, clients, prospects)}? L'operazione non è reversibile.`)) return
+    if (!(await askConfirm({ title: 'Eliminare la campionatura?', body: [`Invio del ${fmtDate(sh.shipped_date)} per ${recipientLabel(sh, clients, prospects)}. L'operazione non è reversibile.`], confirmLabel: 'Elimina', tone: 'danger' }))) return
     setDeleting(true)
     await onDelete(sh.id)
     setDeleting(false)

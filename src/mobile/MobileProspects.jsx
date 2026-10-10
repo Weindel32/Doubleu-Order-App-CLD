@@ -1,3 +1,4 @@
+import { askConfirm } from '../components/ConfirmDialog.jsx'
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, NAVY } from '../tokens.js'
 import ProspectActivities, { ActivitySummary } from '../components/ProspectActivities.jsx'
@@ -196,7 +197,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
   }
 
   const handleDeleteProspect = async () => {
-    if (!confirm(`Eliminare "${p.name}"? L'operazione non è reversibile.`)) return
+    if (!(await askConfirm({ title: `Eliminare «${p.name}»?`, body: ['L\'operazione non è reversibile.'], confirmLabel: 'Elimina', tone: 'danger' }))) return
     const ok = await onDelete(p.id)
     if (ok) onBack()
   }

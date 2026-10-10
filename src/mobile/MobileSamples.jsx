@@ -1,3 +1,4 @@
+import { askConfirm } from '../components/ConfirmDialog.jsx'
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER, CATEGORIES, WHITE } from '../tokens.js'
 import {
@@ -125,7 +126,7 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
   }
 
   const handleDelete = async (sh) => {
-    if (!confirm(`Eliminare la campionatura del ${fmtDate(sh.shipped_date)}?`)) return
+    if (!(await askConfirm({ title: 'Eliminare la campionatura?', body: [`Invio del ${fmtDate(sh.shipped_date)}. L'operazione non è reversibile.`], confirmLabel: 'Elimina', tone: 'danger' }))) return
     await onDelete(sh.id)
     setOpenId(null)
   }

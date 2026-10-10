@@ -1,3 +1,4 @@
+import { askConfirm } from './ConfirmDialog.jsx'
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, NAVY } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
@@ -310,10 +311,10 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
   }
 
   const handleDelete = async (act) => {
-    const msg = isPlanned(act)
-      ? 'Eliminare questa attività da fare? Il promemoria su Todoist si chiude.'
-      : 'Eliminare questa attività? L\'operazione non è reversibile.'
-    if (!confirm(msg)) return
+    const ok = await askConfirm(isPlanned(act)
+      ? { title: 'Eliminare questa attività da fare?', body: ['Il promemoria su Todoist si chiude.'], confirmLabel: 'Elimina', tone: 'danger' }
+      : { title: 'Eliminare questa attività?', body: ['L\'operazione non è reversibile.'], confirmLabel: 'Elimina', tone: 'danger' })
+    if (!ok) return
     const result = await onDelete(act)
     setWarnings(result?.warnings || (result?.ok === false ? ['Eliminazione non riuscita, riprova.'] : []))
   }

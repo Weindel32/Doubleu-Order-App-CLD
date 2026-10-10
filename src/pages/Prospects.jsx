@@ -1,3 +1,4 @@
+import { askConfirm } from '../components/ConfirmDialog.jsx'
 import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, NAVY } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
@@ -317,7 +318,7 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
   }
 
   const handleDelete = async (p) => {
-    if (!confirm(`Eliminare "${p.name}"? L'operazione non è reversibile.`)) return
+    if (!(await askConfirm({ title: `Eliminare «${p.name}»?`, body: ['L\'operazione non è reversibile.'], confirmLabel: 'Elimina', tone: 'danger' }))) return
     setDeleting(true)
     const ok = await onDelete(p.id)
     setDeleting(false)
