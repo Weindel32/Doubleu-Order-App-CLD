@@ -4,7 +4,7 @@ import { artPieceCount } from '../utils/helpers.js'
 
 // Modulo taglie per il cliente.
 //
-// Il cliente riceve un link /m/<token> e compila solo le taglie degli
+// Il cliente riceve un link /taglie/<token> e compila solo le taglie degli
 // articoli dell'ordine. Il modulo conserva una fotografia delle righe al
 // momento della creazione (lines): il cliente vede sempre quella, anche se
 // nel frattempo l'ordine viene modificato. Le taglie inviate restano nel
@@ -35,7 +35,12 @@ export function newToken(len = 24) {
   return out.join('')
 }
 
-export const formUrl = (token) => `${window.location.origin}/m/${token}`
+// Dominio dei link al cliente: VITE_FORM_ORIGIN (es. https://ordini.doubleutennis.com,
+// impostato su Vercel solo per Production) invece dell'indirizzo tecnico
+// *.vercel.app. Senza, si usa il dominio da cui si sta usando l'app: e' il
+// caso delle preview, dove il link deve puntare alla preview stessa.
+const FORM_ORIGIN = (import.meta.env.VITE_FORM_ORIGIN || '').replace(/\/+$/, '')
+export const formUrl = (token) => `${FORM_ORIGIN || window.location.origin}/taglie/${token}`
 
 const hasAny = (obj) => Object.values(obj || {}).some(v => (parseInt(v) || 0) > 0)
 

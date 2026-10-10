@@ -116,7 +116,7 @@ export default async function handler(req, res) {
   if (typeof token !== 'string' || !/^[A-Za-z0-9]{20,64}$/.test(token)) return res.status(400).json({ error: 'Token non valido' })
   // Il link deve essere quello di questo modulo: niente indirizzi arbitrari
   // dentro una mail che parte dal dominio DOUBLEU.
-  if (typeof url !== 'string' || !/^https:\/\/[a-z0-9.-]+\/m\/[A-Za-z0-9]{20,64}$/i.test(url) || !url.endsWith(`/m/${token}`)) {
+  if (typeof url !== 'string' || !/^https:\/\/[a-z0-9.-]+\/(taglie|m)\/[A-Za-z0-9]{20,64}$/i.test(url) || !url.endsWith(`/${token}`)) {
     return res.status(400).json({ error: 'Link del modulo non valido' })
   }
 

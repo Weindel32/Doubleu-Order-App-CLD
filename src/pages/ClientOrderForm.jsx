@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL } from '../lib/orderForms.js'
 
-// Pagina pubblica del modulo taglie (/m/<token>): la vede il cliente, dal
+// Pagina pubblica del modulo taglie (/taglie/<token>): la vede il cliente, dal
 // telefono, senza login. Mostra solo gli articoli dell'ordine e le
 // taglie: nessun prezzo, nessun dato interno. Fondo chiaro e non il navy
 // dell'app: si compila spesso in piedi, al circolo, anche in pieno sole.
