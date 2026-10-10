@@ -1,4 +1,8 @@
 {
+  "rewrites": [
+    { "source": "/taglie/:token", "destination": "/index.html" },
+    { "source": "/m/:token", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",
