@@ -38,13 +38,24 @@ function sizesText(grids, s) {
 const shareText = (order) =>
   `Ciao${order.clientContact ? ' ' + order.clientContact.split(' ')[0] : ''}, ecco il modulo per indicarci le taglie del vostro ordine DOUBLEU. Si compila dal telefono e si salva da solo:`
 
-function whatsappHref(order, url) {
-  const text = `${shareText(order)} ${url}`
-  let phone = (order.clientPhone || '').replace(/[^\d+]/g, '')
+// Numero in formato internazionale senza '+': '333 123 4567' → '393331234567'.
+// Un cellulare italiano scritto senza prefisso prende il +39.
+function intlPhone(raw) {
+  let phone = (raw || '').replace(/[^\d+]/g, '')
   if (phone.startsWith('+')) phone = phone.slice(1)
   else if (phone.startsWith('00')) phone = phone.slice(2)
-  else if (phone && /^3\d{8,9}$/.test(phone)) phone = '39' + phone
-  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+  else if (/^3\d{8,9}$/.test(phone)) phone = '39' + phone
+  return phone.replace(/\D/g, '')
+}
+
+function whatsappHref(order, url, phone) {
+  return `https://wa.me/${intlPhone(phone)}?text=${encodeURIComponent(`${shareText(order)} ${url}`)}`
+}
+
+// iOS vuole '&body=', Android '?body=': '?&body=' funziona su entrambi.
+function smsHref(order, url, phone) {
+  const n = intlPhone(phone)
+  return `sms:${n ? '+' + n : ''}?&body=${encodeURIComponent(`${shareText(order)} ${url}`)}`
 }
 
 function Setup({ order, onCreated }) {
@@ -123,13 +134,20 @@ function LinkBox({ order, form }) {
   // Sul telefono il foglio di condivisione di sistema arriva a WhatsApp,
   // Messaggi, Mail: stesso testo del bottone WhatsApp.
   const canShare = typeof navigator !== 'undefined' && !!navigator.share
+  const [phone, setPhone] = useState(order.clientPhone || '')
+  const validPhone = intlPhone(phone).length >= 8
   const share = () => navigator.share({ title: 'Modulo taglie DOUBLEU', text: shareText(order), url }).catch(() => {})
   return (
     <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 12 }}>
-      <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 10 }}>{url}</div>
+      <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 12 }}>{url}</div>
+      <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6 }}>Invia al numero</label>
+      <input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)}
+        placeholder="es. 333 123 4567 oppure +41 79…"
+        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '10px 12px', color: CREAM, fontSize: 16, marginBottom: 10, outline: 'none' }}/>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button style={btn(GOLD, false)} onClick={copy}>{copied ? 'Copiato ✓' : 'Copia link'}</button>
-        <a style={{ ...btn(GREEN, false), textDecoration: 'none' }} href={whatsappHref(order, url)} target="_blank" rel="noreferrer">WhatsApp</a>
+        <a style={{ ...btn(GREEN, validPhone), textDecoration: 'none' }} href={whatsappHref(order, url, phone)} target="_blank" rel="noreferrer">WhatsApp</a>
+        <a style={{ ...btn(GREEN, false), textDecoration: 'none' }} href={smsHref(order, url, phone)}>SMS</a>
         {canShare && <button style={btn(CREAM, false)} onClick={share}>Condividi…</button>}
         <a style={{ ...btn(MUTED, false), textDecoration: 'none' }} href={url} target="_blank" rel="noreferrer">Apri come cliente</a>
       </div>
