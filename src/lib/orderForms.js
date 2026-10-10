@@ -149,6 +149,22 @@ export async function notifyFormApplied(orderId) {
   } catch (e) { console.error('notifyFormApplied:', e) }
 }
 
+// Email impaginata DOUBLEU via Resend (api/order-form-email.js).
+export async function sendFormEmail({ token, to, firstName, copyToMe }) {
+  try {
+    const res = await fetch('/api/order-form-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify({ token, to, firstName, copyToMe, url: formUrl(token) }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return { error: [data.error || 'Invio non riuscito', data.detail].filter(Boolean).join(' — ') }
+    return { ok: true }
+  } catch {
+    return { error: 'Invio non riuscito: controlla la connessione' }
+  }
+}
+
 export async function setOrderFormStatus(token, status) {
   const patch = { status, updated_at: new Date().toISOString() }
   if (status === 'applicato') patch.applied_at = patch.updated_at

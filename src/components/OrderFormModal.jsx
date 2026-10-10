@@ -3,7 +3,7 @@ import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES } from
 import { artPieceCount } from '../utils/helpers.js'
 import { updateOrder } from '../lib/dataService.js'
 import {
-  buildFormLines, createOrderForm, setOrderFormStatus, applyFormToOrder, notifyFormApplied,
+  buildFormLines, createOrderForm, setOrderFormStatus, applyFormToOrder, notifyFormApplied, sendFormEmail,
   formUrl, linePieces, formPieces, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
 } from '../lib/orderForms.js'
 
@@ -157,6 +157,16 @@ function LinkBox({ order, form }) {
   const validPhone = intlPhone(phone).length >= 8
   const [email, setEmail] = useState(order.clientEmail || '')
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const [copyToMe, setCopyToMe] = useState(true)
+  const [mail, setMail] = useState({ state: 'idle', msg: '' })   // idle | sending | sent | error
+  const sendMail = async () => {
+    setMail({ state: 'sending', msg: '' })
+    const r = await sendFormEmail({
+      token: form.token, to: email.trim(), copyToMe,
+      firstName: order.clientContact ? order.clientContact.split(' ')[0] : '',
+    })
+    setMail(r.ok ? { state: 'sent', msg: `Email inviata a ${email.trim()}` } : { state: 'error', msg: r.error })
+  }
   const share = () => navigator.share({ title: 'Modulo taglie DOUBLEU', text: shareText(order), url }).catch(() => {})
   return (
     <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 12 }}>
@@ -174,8 +184,16 @@ function LinkBox({ order, form }) {
         placeholder="es. segreteria@tennisclub.it"
         style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '10px 12px', color: CREAM, fontSize: 16, marginBottom: 10, outline: 'none' }}/>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <a style={{ ...btn(GOLD, validEmail), textDecoration: 'none' }} href={mailHref(order, url, email)}>Email</a>
+        <button style={btn(GOLD, validEmail && mail.state !== 'sending')} disabled={!validEmail || mail.state === 'sending'} onClick={sendMail}>
+          {mail.state === 'sending' ? 'Invio…' : mail.state === 'sent' ? 'Invia di nuovo' : 'Invia email'}
+        </button>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: MUTED, cursor: 'pointer' }}>
+          <input type="checkbox" checked={copyToMe} onChange={e => setCopyToMe(e.target.checked)} style={{ accentColor: GOLD }}/>
+          copia a me
+        </label>
+        <a style={{ fontSize: 11, color: MUTED, alignSelf: 'center', marginLeft: 'auto' }} href={mailHref(order, url, email)}>oppure dalla mia posta</a>
       </div>
+      {mail.msg && <div style={{ fontSize: 12, color: mail.state === 'sent' ? GREEN : CLAY, marginTop: -6, marginBottom: 12 }}>{mail.state === 'sent' ? '✓ ' : ''}{mail.msg}</div>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
         <button style={btn(GOLD, false)} onClick={copy}>{copied ? 'Copiato ✓' : 'Copia link'}</button>
         {canShare && <button style={btn(CREAM, false)} onClick={share}>Condividi…</button>}
