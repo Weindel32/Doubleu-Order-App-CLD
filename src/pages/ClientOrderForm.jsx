@@ -98,6 +98,7 @@ function LineCard({ line, sizes, setLineSizes, readOnly }) {
           <div style={{ fontFamily: serif, fontSize: 21, lineHeight: 1.15 }}>{line.description || line.category || 'Articolo'}</div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {line.color && <span style={{ color: C.clay, fontWeight: 600 }}>{line.color}</span>}
+            {line.sp && <span>{line.sp}</span>}
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
