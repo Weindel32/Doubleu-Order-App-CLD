@@ -47,7 +47,7 @@ function formDiff(lines, base, cur) {
     const parts = []
     const push = (label, x, y) => { const d = (y || 0) - (x || 0); if (d) parts.push(`${label} ${d > 0 ? '+' : '−'}${Math.abs(d)}`) }
     if ((l.grids || []).includes('adult')) for (const sz of ADULT) push(sz, b.adult?.[sz], c.adult?.[sz])
-    if ((l.grids || []).includes('kids'))  for (const sz of KIDS)  push(`${sz}a`, b.kids?.[sz], c.kids?.[sz])
+    if ((l.grids || []).includes('kids'))  for (const sz of KIDS)  push(`${sz} anni`, b.kids?.[sz], c.kids?.[sz])
     if ((l.grids || []).includes('uni'))   push('TU', b.uni, c.uni)
     if (parts.length) out.push(`${plain(l.description || l.category)}${l.color ? ' ' + plain(l.color) : ''}: ${parts.join(', ')}`)
   }

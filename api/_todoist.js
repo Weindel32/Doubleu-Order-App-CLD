@@ -6,7 +6,7 @@
 const TODOIST_API = 'https://api.todoist.com/api/v1'
 
 // Indirizzo dell'app, usato come contenitore dei marcatori nei task.
-export const APP_URL = 'https://doubleu-order-app-cld.vercel.app'
+export const APP_URL = 'https://ordini.doubleutennis.com'
 
 export async function todoistFetch(token, path, options = {}) {
   const res = await fetch(`${TODOIST_API}${path}`, {
