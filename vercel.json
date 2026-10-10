@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/m/:token", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

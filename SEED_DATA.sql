@@ -278,6 +278,122 @@ UPDATE sample_shipments SET purpose = 'promozione' WHERE purpose = 'omaggio';
 ALTER TABLE sample_shipments ADD COLUMN IF NOT EXISTS delivery_date text;
 -- ----------------------------------------------------------------
 
+-- ----------------------------------------------------------------
+-- MIGRATION: modulo taglie per il cliente (esegui una volta sola)
+--
+-- Il cliente riceve un link /m/<token> e compila solo le taglie degli
+-- articoli dell'ordine: niente prezzi, niente login. Il token e' la
+-- chiave (lungo e casuale, generato dall'app). Il cliente non tocca mai
+-- le tabelle: legge e scrive solo attraverso le due funzioni qui sotto,
+-- che lavorano sul singolo modulo e scartano qualunque taglia o riga
+-- non prevista. Le taglie inviate restano nel modulo finche' non le
+-- applichi tu dall'app: l'ordine non cambia senza la tua verifica.
+-- ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS order_forms (
+  token         text PRIMARY KEY CHECK (length(token) >= 20),
+  order_id      text NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  client_name   text,
+  lines         jsonb NOT NULL DEFAULT '[]'::jsonb,
+  sizes         jsonb NOT NULL DEFAULT '{}'::jsonb,
+  contact_name  text,
+  client_note   text,
+  status        text NOT NULL DEFAULT 'aperto' CHECK (status IN ('aperto','inviato','applicato','revocato')),
+  expires_at    timestamptz,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  submitted_at  timestamptz,
+  applied_at    timestamptz
+);
+CREATE INDEX IF NOT EXISTS order_forms_order_idx ON order_forms (order_id);
+
+ALTER TABLE order_forms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS order_forms_all ON order_forms;
+CREATE POLICY order_forms_all ON order_forms
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Quello che il cliente vede del modulo: niente id interni oltre al
+-- codice ordine, e "applicato" gli appare come "inviato".
+CREATE OR REPLACE FUNCTION order_form_view(f order_forms)
+RETURNS jsonb LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT jsonb_build_object(
+    'client_name',  f.client_name,
+    'order_id',     f.order_id,
+    'lines',        f.lines,
+    'sizes',        f.sizes,
+    'contact_name', f.contact_name,
+    'client_note',  f.client_note,
+    'status',       CASE WHEN f.status = 'aperto' THEN 'aperto' ELSE 'inviato' END,
+    'expired',      (f.expires_at IS NOT NULL AND f.expires_at < now()),
+    'expires_at',   f.expires_at,
+    'submitted_at', f.submitted_at
+  )
+$$;
+REVOKE ALL ON FUNCTION order_form_view(order_forms) FROM public, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION order_form_get(p_token text)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE f order_forms;
+BEGIN
+  SELECT * INTO f FROM order_forms WHERE token = p_token AND status <> 'revocato';
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN order_form_view(f);
+END $$;
+
+CREATE OR REPLACE FUNCTION order_form_save(
+  p_token text, p_sizes jsonb, p_contact text, p_note text, p_submit boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  f order_forms;
+  ln jsonb; k text; grid text; sz text; v int;
+  src jsonb; out_line jsonb; grid_obj jsonb; clean jsonb := '{}'::jsonb;
+  adult_sizes text[] := ARRAY['XS','S','M','L','XL','XXL'];
+  kids_sizes  text[] := ARRAY['4','6','8','10','12','14','16'];
+BEGIN
+  SELECT * INTO f FROM order_forms WHERE token = p_token FOR UPDATE;
+  IF NOT FOUND OR f.status = 'revocato' THEN RAISE EXCEPTION 'modulo non disponibile'; END IF;
+  IF f.status <> 'aperto' THEN RAISE EXCEPTION 'modulo gia inviato'; END IF;
+  IF f.expires_at IS NOT NULL AND f.expires_at < now() THEN RAISE EXCEPTION 'modulo scaduto'; END IF;
+
+  -- Solo le righe e le taglie previste dal modulo, interi 0..9999:
+  -- quello che arriva dal browser del cliente non entra mai cosi' com'e'.
+  FOR ln IN SELECT * FROM jsonb_array_elements(f.lines) LOOP
+    k := ln->>'key';
+    src := COALESCE(p_sizes->k, '{}'::jsonb);
+    out_line := '{}'::jsonb;
+    FOR grid IN SELECT jsonb_array_elements_text(COALESCE(ln->'grids', '[]'::jsonb)) LOOP
+      IF grid = 'uni' THEN
+        v := round(LEAST(GREATEST(COALESCE(CASE WHEN jsonb_typeof(src->'uni') = 'number' THEN (src->>'uni')::numeric END, 0), 0), 9999))::int;
+        out_line := out_line || jsonb_build_object('uni', v);
+      ELSIF grid IN ('adult','kids') THEN
+        grid_obj := '{}'::jsonb;
+        FOREACH sz IN ARRAY (CASE WHEN grid = 'adult' THEN adult_sizes ELSE kids_sizes END) LOOP
+          v := round(LEAST(GREATEST(COALESCE(CASE WHEN jsonb_typeof(src->grid->sz) = 'number' THEN (src->grid->>sz)::numeric END, 0), 0), 9999))::int;
+          grid_obj := grid_obj || jsonb_build_object(sz, v);
+        END LOOP;
+        out_line := out_line || jsonb_build_object(grid, grid_obj);
+      END IF;
+    END LOOP;
+    clean := clean || jsonb_build_object(k, out_line);
+  END LOOP;
+
+  UPDATE order_forms SET
+    sizes        = clean,
+    contact_name = NULLIF(left(trim(COALESCE(p_contact, '')), 120), ''),
+    client_note  = NULLIF(left(trim(COALESCE(p_note, '')), 2000), ''),
+    status       = CASE WHEN p_submit THEN 'inviato' ELSE status END,
+    submitted_at = CASE WHEN p_submit THEN now() ELSE submitted_at END,
+    updated_at   = now()
+  WHERE token = p_token
+  RETURNING * INTO f;
+  RETURN order_form_view(f);
+END $$;
+
+REVOKE ALL ON FUNCTION order_form_get(text) FROM public;
+REVOKE ALL ON FUNCTION order_form_save(text, jsonb, text, text, boolean) FROM public;
+GRANT EXECUTE ON FUNCTION order_form_get(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION order_form_save(text, jsonb, text, text, boolean) TO anon, authenticated;
+-- ----------------------------------------------------------------
+
 -- ORDINE 1: ECO VILLAGE
 INSERT INTO orders VALUES ('DU-2026-0038','ECO VILLAGE','10/12/2025','28/02/2026',10,'CONSEGNATO',242,'kit','Cliente premium - priorità assoluta','Verde ECO pantone 356C. Logo fronte ricamato, retro stampa.',true,now());
 INSERT INTO kits (order_id,name,price,position) VALUES ('DU-2026-0038','Kit Completo ECO Village',90,0);

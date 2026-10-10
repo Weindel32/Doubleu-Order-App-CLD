@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../utils/helpers.js'
@@ -6,6 +6,8 @@ import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import BollaModal                from '../components/BollaModal.jsx'
+import OrderFormModal            from '../components/OrderFormModal.jsx'
+import { fetchOrderForms }       from '../lib/orderForms.js'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
 import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
 import { exportSizesCSV, exportAllOrdersCSV } from '../utils/exportCSV.js'
@@ -151,12 +153,39 @@ function PaymentQuick({ order, onPaymentToggle }) {
   )
 }
 
+// Taglie dal cliente: lo stato del modulo si legge dal bottone stesso,
+// verde quando il cliente ha inviato e le taglie aspettano di essere applicate.
+function FormButton({ form, onClick }) {
+  const st = form?.status
+  const look = st === 'inviato'   ? { c: GREEN, bg: 'rgba(74,158,110,0.18)', label: 'Taglie ●' }
+             : st === 'aperto'    ? { c: GOLD,  bg: 'rgba(184,150,90,0.08)', label: 'Taglie …' }
+             : { c: MUTED, bg: 'rgba(255,255,255,0.04)', label: 'Taglie' }
+  const title = st === 'inviato' ? 'Il cliente ha inviato le taglie: da applicare'
+              : st === 'aperto' ? 'Modulo inviato al cliente, in compilazione'
+              : st === 'applicato' ? 'Taglie del cliente applicate' : 'Manda al cliente il modulo taglie'
+  return <button title={title} style={{padding:'4px 8px',fontSize:8,border:`1px solid ${look.c}55`,background:look.bg,color:look.c,borderRadius:3,cursor:'pointer',fontWeight:st==='inviato'?700:400}} onClick={onClick}>{look.label}</button>
+}
+
 export default function Orders({ orders, setView, setEditOrder, onReorder, onDelete, onOrdersChange, initialFilter = 'Tutti' }) {
   const [filter, setFilter]   = useState(initialFilter)
   const [search, setSearch]   = useState('')
   const [sortBy, setSortBy]   = useState('date')
   const [sortDir, setSortDir] = useState('desc')
   const [bollaOrder, setBollaOrder] = useState(null)
+  const [formOrderId, setFormOrderId] = useState(null)
+  // Modulo taglie piu' recente per ordine (il cliente lo compila da fuori:
+  // si ricarica a ogni apertura per vedere l'ultimo stato).
+  const [formsByOrder, setFormsByOrder] = useState({})
+  const loadForms = async () => {
+    const rows = await fetchOrderForms()
+    if (!rows) return
+    const map = {}
+    for (const f of rows) if (!map[f.order_id]) map[f.order_id] = f
+    setFormsByOrder(map)
+  }
+  useEffect(() => { loadForms() }, [])
+  const openForm = async (orderId) => { await loadForms(); setFormOrderId(orderId) }
+  const formOrder = formOrderId ? orders.find(o => o.id === formOrderId) : null
   const filters = ['Tutti','Confermato','In Produzione','Consegna Parziale','Consegnato','Annullato','Da Incassare']
 
   const handleSort = (col) => {
@@ -283,6 +312,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                   <td style={s.td}>
                     <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                       <button style={{...btnGoldStyle,padding:'4px 8px',fontSize:8}} onClick={()=>{setEditOrder(o);setView('new')}}>Apri</button>
+                      <FormButton form={formsByOrder[o.id]} onClick={()=>openForm(o.id)}/>
                       <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(74,158,110,0.35)',background:'rgba(74,158,110,0.08)',color:GREEN,borderRadius:3,cursor:'pointer'}} onClick={()=>onReorder(o)} title="Nuovo ordine con gli stessi articoli, colori e prezzi">↻ Riordina</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(196,98,58,0.4)',background:'rgba(196,98,58,0.08)',color:CLAY,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateProductionPDF,o)}>Prod.</button>
                       <button style={{padding:'4px 8px',fontSize:8,border:`1px solid rgba(184,150,90,0.3)`,background:'rgba(184,150,90,0.06)',color:GOLD,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateClientPDF,o)}>Cliente</button>
@@ -298,5 +328,8 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
       )}
     </div>
     {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} />}
+    {formOrder && <OrderFormModal order={formOrder} form={formsByOrder[formOrder.id]} onClose={() => setFormOrderId(null)}
+      onFormChange={f => setFormsByOrder(m => ({ ...m, [f.order_id]: f.status === 'revocato' ? undefined : f }))}
+      onOrderUpdated={next => onOrdersChange(orders.map(o => o.id === next.id ? next : o))}/>}
   </>)
 }
