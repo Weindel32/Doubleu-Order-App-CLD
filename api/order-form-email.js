@@ -9,6 +9,8 @@
 // Configurazione su Vercel:
 //   RESEND_API_KEY      obbligatoria
 //   ORDER_FORM_FROM     facoltativa, default "DOUBLEU <ordini@doubleutennis.com>"
+//   ORDER_FORM_REPLY_TO facoltativa: casella di lavoro per risposte del cliente
+//                       e "copia a me"; senza, si usa l'email del login.
 
 import { createClient } from '@supabase/supabase-js'
 import { requireUser } from './_auth.js'
@@ -137,13 +139,14 @@ export default async function handler(req, res) {
       expiresAt: form.expires_at,
     })
 
+    const replyTo = (process.env.ORDER_FORM_REPLY_TO || '').trim() || user.email
     const payload = {
       from: process.env.ORDER_FORM_FROM || DEFAULT_FROM,
       to: [recipient],
       subject: `DOUBLEU · Taglie per il vostro ordine ${form.order_id}`,
       html, text,
-      ...(user.email ? { reply_to: [user.email] } : {}),
-      ...(copyToMe && user.email ? { bcc: [user.email] } : {}),
+      ...(replyTo ? { reply_to: [replyTo] } : {}),
+      ...(copyToMe && replyTo ? { bcc: [replyTo] } : {}),
       tags: [{ name: 'tipo', value: 'modulo_taglie' }],
     }
     const r = await fetch('https://api.resend.com/emails', {
