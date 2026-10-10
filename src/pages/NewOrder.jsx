@@ -9,6 +9,7 @@ import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import { exportSizesCSV }        from '../utils/exportCSV.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import { pendingFormWarning }    from '../lib/orderForms.js'
+import { askConfirm }            from '../components/ConfirmDialog.jsx'
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
 import SpAutocomplete            from '../components/SpAutocomplete.jsx'
@@ -249,7 +250,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     // mandare in produzione, che blocca il modulo.
     if (editOrder?.id) {
       const pending = await pendingFormWarning(editOrder.id, newStatus, status)
-      if (pending && !window.confirm(pending)) return
+      if (pending && !(await askConfirm(pending))) return
     }
     setStatus(newStatus)
     // Le date reali si precompilano a oggi solo se ancora vuote: l'ordine
