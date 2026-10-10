@@ -11,6 +11,8 @@
 //     taglie" se corregge dopo; in descrizione le variazioni (M +2, L −1).
 //   · action 'change_request' — richiesta di modifica a testo dal cliente
 //     (ordine gia' in produzione, o articoli da aggiungere): task a parte.
+//   Per 'submitted' e 'change_request' parte anche un'email di avviso a
+//   ORDER_FORM_NOTIFY_TO (via Resend), indipendente da Todoist.
 //   · action 'applied' / 'request_done' — le chiama l'app (sessione
 //     obbligatoria): taglie applicate o richiesta gestita, il task si chiude.
 //
@@ -67,6 +69,49 @@ async function sectionTasks(token) {
   return { project, section, tasks }
 }
 
+async function upsertTask(token, tag, content, description) {
+  const { project, section, tasks } = await sectionTasks(token)
+  const existing = tasks.find(t => (t.description || '').includes(`${tag})`))
+  const body = { content, description, due_string: 'today', priority: 4 }
+  if (existing) {
+    await todoistFetch(token, `/tasks/${existing.id}`, { method: 'POST', body: JSON.stringify(body) })
+    return 'updated'
+  }
+  await todoistFetch(token, '/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ project_id: project.id, section_id: section.id, ...body }),
+  })
+  return 'created'
+}
+
+// Email a DOUBLEU per ogni evento del modulo: Todoist non notifica i task
+// creati dal proprio account, la posta si'. Indirizzi in ORDER_FORM_NOTIFY_TO
+// (anche piu' di uno, separati da virgola); senza, l'email non parte.
+const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+
+async function notifyByEmail(subject, details) {
+  const key = process.env.RESEND_API_KEY
+  const to = (process.env.ORDER_FORM_NOTIFY_TO || '').split(',').map(x => x.trim()).filter(Boolean)
+  if (!key || !to.length) return 'noop'
+  const html = `<div style="font-family:Helvetica,Arial,sans-serif;color:#111d38;max-width:560px;">
+    <div style="font-family:Georgia,serif;font-size:20px;letter-spacing:5px;margin-bottom:14px;">DOUBLEU</div>
+    <div style="font-size:17px;font-weight:bold;margin-bottom:12px;">${escHtml(subject)}</div>
+    ${details.map(d => `<p style="margin:0 0 8px;font-size:14px;line-height:1.5;white-space:pre-wrap;">${escHtml(d)}</p>`).join('')}
+    <p style="margin:18px 0 0;"><a href="${APP_URL}" style="display:inline-block;background:#111d38;color:#fff;text-decoration:none;padding:11px 20px;border-radius:6px;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">Apri Order App</a></p>
+  </div>`
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: process.env.ORDER_FORM_FROM || 'DOUBLEU <ordini@doubleutennis.com>',
+      to, subject, html, text: [subject, '', ...details, '', APP_URL].join('\n'),
+      tags: [{ name: 'tipo', value: 'avviso_modulo_taglie' }],
+    }),
+  })
+  if (!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`)
+  return 'sent'
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -80,15 +125,12 @@ export default async function handler(req, res) {
   }
 
   const token = process.env.TODOIST_API_TOKEN
-  if (!token) {
-    console.error('order-form-notify: TODOIST_API_TOKEN mancante')
-    return res.status(500).json({ error: 'Configurazione mancante lato server' })
-  }
 
   try {
     // Chiusure dall'app: taglie applicate, oppure richiesta gestita.
     if (action === 'applied' || action === 'request_done') {
       if (!orderId) return res.status(400).json({ error: 'orderId mancante' })
+      if (!token) return res.status(200).json({ action: 'noop' })
       const tag = action === 'applied' ? marker(orderId) : reqMarker(orderId)
       const { tasks } = await sectionTasks(token)
       const open = tasks.filter(t => (t.description || '').includes(`${tag})`))
@@ -107,13 +149,14 @@ export default async function handler(req, res) {
     if (!form) return res.status(200).json({ action: 'noop' })
     const club = plain(form.client_name) || form.order_id
 
-    let tag, content, description
+    let tag, content, description, details
     if (action === 'change_request') {
       const at = form.change_requested_at ? new Date(form.change_requested_at).getTime() : 0
       if (!form.change_request || Date.now() - at > FRESH_MS) return res.status(200).json({ action: 'noop' })
       tag = reqMarker(form.order_id)
       content = `Richiesta modifica${form.locked ? ' (in produzione)' : ''} · ${club}`
       description = `[${form.order_id} — ${plain(form.change_request).slice(0, 400)}](${APP_URL}/#${tag})`
+      details = [`Ordine ${form.order_id}`, `Richiesta: ${String(form.change_request).slice(0, 2000)}`]
     } else {
       const submittedAt = form.submitted_at ? new Date(form.submitted_at).getTime() : 0
       if (form.status !== 'inviato' || Date.now() - submittedAt > FRESH_MS) return res.status(200).json({ action: 'noop' })
@@ -126,21 +169,25 @@ export default async function handler(req, res) {
       const note = form.client_note ? ` · nota: ${plain(form.client_note).slice(0, 200)}` : ''
       const what = changes ? ` · variazioni: ${changes}` : ''
       description = `[${form.order_id} · ${pieces} pezzi${who}${what}${note} — da applicare](${APP_URL}/#${tag})`.slice(0, 1500)
+      details = [
+        `Ordine ${form.order_id} · ${pieces} pezzi${form.contact_name ? ' · compilato da ' + form.contact_name : ''}`,
+        ...(changes ? [`Variazioni: ${changes}`] : []),
+        ...(form.client_note ? [`Nota del cliente: ${String(form.client_note).slice(0, 2000)}`] : []),
+        'Da verificare e applicare nella Order App (Archivio Ordini → Taglie).',
+      ]
     }
 
-    const { project, section, tasks } = await sectionTasks(token)
-    const existing = tasks.find(t => (t.description || '').includes(`${tag})`))
-    const body = { content, description, due_string: 'today', priority: 4 }
-
-    if (existing) {
-      await todoistFetch(token, `/tasks/${existing.id}`, { method: 'POST', body: JSON.stringify(body) })
-      return res.status(200).json({ action: 'updated' })
-    }
-    await todoistFetch(token, '/tasks', {
-      method: 'POST',
-      body: JSON.stringify({ project_id: project.id, section_id: section.id, ...body }),
+    // Due canali indipendenti: se uno fallisce, l'altro parte comunque.
+    const [todo, mail] = await Promise.allSettled([
+      token ? upsertTask(token, tag, content, description) : Promise.resolve('noop'),
+      notifyByEmail(content, details),
+    ])
+    if (todo.status === 'rejected') console.error('order-form-notify: Todoist', todo.reason)
+    if (mail.status === 'rejected') console.error('order-form-notify: email', mail.reason)
+    return res.status(200).json({
+      todoist: todo.status === 'fulfilled' ? todo.value : 'error',
+      email: mail.status === 'fulfilled' ? mail.value : 'error',
     })
-    return res.status(200).json({ action: 'created' })
   } catch (err) {
     console.error('order-form-notify: errore imprevisto', err)
     return res.status(500).json({
