@@ -1,3 +1,4 @@
+import { showAlert } from '../components/ConfirmDialog.jsx'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
 import { useState } from 'react'
@@ -46,7 +47,7 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
   const openPDF = () => {
     const h = generateQuotePDF(quote)
     const w = window.open('', '_blank')
-    if (!w) { alert('Abilita i popup per visualizzare il PDF.'); return }
+    if (!w) { showAlert({ title: 'Popup bloccato', body: ['Abilita i popup per visualizzare il PDF.'] }); return }
     w.document.write(h)
     w.document.close()
   }

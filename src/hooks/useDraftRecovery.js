@@ -1,3 +1,4 @@
+import { askConfirm } from '../components/ConfirmDialog.jsx'
 import { useEffect, useRef, useState } from 'react'
 
 const DEBOUNCE_MS = 800
@@ -93,8 +94,9 @@ export function useDraftRecovery(draftKey, snapshot, restore, opts = {}) {
     try { localStorage.removeItem(draftKey) } catch { /* noop */ }
     setPendingDraft(null)
   }
-  const confirmDiscardIfDirty = (message = 'Ci sono modifiche non salvate. Uscire comunque?') =>
-    !isDirty || window.confirm(message)
+  // Promise<boolean>: finestra dell'app (ConfirmDialog), non quella del browser.
+  const confirmDiscardIfDirty = async (message = 'Le modifiche non salvate andranno perse.') =>
+    !isDirty || askConfirm({ title: 'Uscire senza salvare?', body: [message], confirmLabel: 'Esci', cancelLabel: 'Resta', tone: 'danger' })
 
   return { pendingDraft, acceptDraft, discardDraft, isDirty, markSaved, confirmDiscardIfDirty }
 }

@@ -1,3 +1,4 @@
+import { askConfirm } from './ConfirmDialog.jsx'
 import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { btnGoldStyle } from '../tokens.js'
@@ -117,7 +118,7 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
     try {
       const existing = findExisting(prospects, r)
       let prospectId = null
-      if (existing && confirm(`Esiste gia' il prospect "${existing.name}". Collego la richiesta a quello invece di crearne uno nuovo?`)) {
+      if (existing && await askConfirm({ title: 'Prospect già presente', body: [`Esiste già il prospect «${existing.name}». Collego la richiesta a quello invece di crearne uno nuovo?`], confirmLabel: 'Collega', cancelLabel: 'Crea nuovo', tone: 'gold' })) {
         prospectId = existing.id
       } else {
         const when = new Date(r.created_at).toLocaleDateString('it-IT', { timeZone:'Europe/Rome' })

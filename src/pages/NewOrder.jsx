@@ -9,6 +9,7 @@ import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import { exportSizesCSV }        from '../utils/exportCSV.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import { pendingFormWarning }    from '../lib/orderForms.js'
+import { askConfirm, showAlert } from '../components/ConfirmDialog.jsx'
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
 import SpAutocomplete            from '../components/SpAutocomplete.jsx'
@@ -249,7 +250,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     // mandare in produzione, che blocca il modulo.
     if (editOrder?.id) {
       const pending = await pendingFormWarning(editOrder.id, newStatus, status)
-      if (pending && !window.confirm(pending)) return
+      if (pending && !(await askConfirm(pending))) return
     }
     setStatus(newStatus)
     // Le date reali si precompilano a oggi solo se ancora vuote: l'ordine
@@ -284,8 +285,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   })
 
   const handleSave = async (confirmOrder=false) => {
-    if (!club.trim()) { alert('Inserisci il nome del club'); return }
-    if (pricingMode==='kit' && kits.some(k => !k.quantity)) { alert('Inserisci la quantità per ogni kit'); return }
+    if (!club.trim()) { showAlert({ title: 'Manca il club', body: ['Inserisci il nome del club.'] }); return }
+    if (pricingMode==='kit' && kits.some(k => !k.quantity)) { showAlert({ title: 'Manca la quantità', body: ['Inserisci la quantità per ogni kit.'] }); return }
     setSaving(true); setSaveError(null)
     try {
       const id = editOrder?.id || await generateOrderId(orderDate)
@@ -552,7 +553,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
           </label>
         </div>
         <div style={{display:'flex',justifyContent:'flex-end',gap:12,marginTop:8}}>
-          <button style={btnStyle(false)} onClick={()=>confirmDiscardIfDirty() && setView('orders')}>Annulla</button>
+          <button style={btnStyle(false)} onClick={async ()=>(await confirmDiscardIfDirty()) && setView('orders')}>Annulla</button>
           <button style={btnStyle(true)} onClick={()=>setStep(2)}>Continua →</button>
         </div>
       </div>}

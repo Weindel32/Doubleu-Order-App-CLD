@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { artPieceCount, orderTotal } from '../utils/helpers.js'
 import { updateOrder } from '../lib/dataService.js'
+import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
   buildFormLines, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, notifyRequestDone, sendFormEmail,
   formUrl, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
@@ -148,7 +149,7 @@ function LinkBox({ order, form }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-    catch { window.prompt('Copia il link:', url) }
+    catch { askText({ title: 'Copia il link', body: ['Il browser non permette la copia automatica: seleziona il link e copialo.'], value: url, confirmLabel: 'Fatto' }) }
   }
   // Sul telefono il foglio di condivisione di sistema arriva a WhatsApp,
   // Messaggi, Mail: stesso testo del bottone WhatsApp.
@@ -241,8 +242,8 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
 
   const changed = (f) => { setForm(f); onFormChange(f) }
 
-  const setStatus = async (status, confirmText) => {
-    if (confirmText && !window.confirm(confirmText)) return
+  const setStatus = async (status, confirm) => {
+    if (confirm && !(await askConfirm(confirm))) return
     setBusy(true)
     const f = await setOrderFormStatus(form.token, status)
     setBusy(false)
@@ -253,15 +254,22 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
 
   const apply = async () => {
     const { order: next, unmatched } = applyFormToOrder(order, form)
-    const warn = unmatched.length
-      ? `\n\nAttenzione: ${unmatched.length} righe non corrispondono più all'ordine (articolo modificato o rimosso) e non verranno applicate:\n` + unmatched.map(l => `· ${l.description} ${l.color}`).join('\n')
-      : ''
     // Piu' o meno pezzi cambiano il totale, non le rate gia' impostate.
     const before = orderTotal(order), after = orderTotal(next)
     const money = Math.abs(after - before) >= 0.01
-      ? `\n\nIl totale dell'ordine passa da ${eur(before)} a ${eur(after)}: controlla acconto e rate nei pagamenti.`
+      ? `Il totale dell'ordine passa da ${eur(before)} a ${eur(after)}: controlla acconto e rate nei pagamenti.`
       : ''
-    if (!window.confirm(`Sostituire le taglie dell'ordine con quelle inviate dal cliente (${formPieces(form.lines, form.sizes)} pezzi)?${warn}${money}`)) return
+    const confirmed = await askConfirm({
+      title: 'Applicare le taglie del cliente?',
+      body: [
+        `Le taglie dell'ordine vengono sostituite con quelle inviate dal cliente: ${formPieces(form.lines, form.sizes)} pezzi.`,
+        unmatched.length ? `${unmatched.length === 1 ? 'Una riga non corrisponde' : `${unmatched.length} righe non corrispondono`} più all'ordine (articolo modificato o rimosso) e non verrà applicata:` : null,
+      ],
+      list: unmatched.map(l => `${l.description} ${l.color}`.trim()),
+      warning: money || null,
+      confirmLabel: 'Applica', tone: 'green',
+    })
+    if (!confirmed) return
     setBusy(true); setMsg('')
     const ok = await updateOrder(next)
     if (!ok) { setBusy(false); setMsg('Salvataggio ordine non riuscito: nessuna modifica applicata.'); return }
@@ -350,8 +358,8 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
             )}
             {msg && <div style={{ fontSize: 12, color: msg.startsWith('Taglie applicate') ? GREEN : CLAY }}>{msg}</div>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button style={btn('#ef4444', false)} disabled={busy} onClick={() => setStatus('revocato', 'Disattivare il link? Il cliente non potrà più aprirlo.')}>Revoca link</button>
-              {status === 'inviato' && !LOCKING_STATUSES.includes(order.status) && !form.locked && <button style={btn(MUTED, false)} disabled={busy} onClick={() => setStatus('aperto', 'Riaprire il modulo al cliente? Potrà modificarlo e inviarlo di nuovo.')}>Riapri al cliente</button>}
+              <button style={btn('#ef4444', false)} disabled={busy} onClick={() => setStatus('revocato', { title: 'Revocare il link?', body: ['Il cliente non potrà più aprire il modulo. Le taglie già inviate restano visibili qui.'], confirmLabel: 'Revoca', tone: 'danger' })}>Revoca link</button>
+              {status === 'inviato' && !LOCKING_STATUSES.includes(order.status) && !form.locked && <button style={btn(MUTED, false)} disabled={busy} onClick={() => setStatus('aperto', { title: 'Riaprire il modulo al cliente?', body: ['Potrà modificare le taglie e inviarle di nuovo dallo stesso link.'], confirmLabel: 'Riapri', tone: 'gold' })}>Riapri al cliente</button>}
               {status === 'inviato' && <button style={btn(GREEN, true)} disabled={busy} onClick={apply}>{busy ? 'Applico…' : 'Applica all\'ordine'}</button>}
             </div>
           </>
