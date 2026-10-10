@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { artPieceCount } from '../utils/helpers.js'
+import { artPieceCount, orderTotal } from '../utils/helpers.js'
 import { updateOrder } from '../lib/dataService.js'
 import {
-  buildFormLines, createOrderForm, setOrderFormStatus, applyFormToOrder, notifyFormApplied, sendFormEmail,
-  formUrl, linePieces, formPieces, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
+  buildFormLines, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, notifyRequestDone, sendFormEmail,
+  formUrl, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
 } from '../lib/orderForms.js'
 
 // Modulo taglie da mandare al cliente, per un ordine: crea il link,
@@ -203,8 +203,13 @@ function LinkBox({ order, form }) {
   )
 }
 
+const eur = (n) => `€ ${(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 function Comparison({ order, form }) {
   const arts = (order.kits || []).map(k => k.articles || [])
+  // Cosa e' cambiato: rispetto alle taglie applicate, oppure (se non ancora
+  // applicate) rispetto all'invio precedente.
+  const base = form.status === 'inviato' ? (form.applied_sizes || form.prev_submitted_sizes) : null
   return (
     <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, overflowY: 'auto', maxHeight: 300 }}>
       {form.lines.map(l => {
@@ -219,6 +224,7 @@ function Comparison({ order, form }) {
               </div>
             </div>
             <div style={{ fontSize: 11, color: CREAM, marginTop: 3 }}>Cliente: {sizesText(l.grids, form.sizes?.[l.key])}</div>
+            {base && (d => d && <div style={{ fontSize: 11, color: GOLD, marginTop: 2 }}>Variazioni{form.applied_sizes ? ' rispetto all\'ordine' : ' rispetto all\'invio precedente'}: {d}</div>)(lineDiff(l, base, form.sizes))}
             {cur && artPieceCount(cur) > 0 && <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Ordine ora: {sizesText(GRIDS, cur.sizes)}</div>}
           </div>
         )
@@ -229,7 +235,7 @@ function Comparison({ order, form }) {
 
 export default function OrderFormModal({ order, form: initialForm, onClose, onFormChange, onOrderUpdated }) {
   const [form, setForm]   = useState(initialForm || null)
-  const [fresh, setFresh] = useState(!initialForm || initialForm.status === 'applicato')
+  const [fresh, setFresh] = useState(!initialForm)
   const [busy, setBusy]   = useState(false)
   const [msg, setMsg]     = useState('')
 
@@ -250,16 +256,38 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
     const warn = unmatched.length
       ? `\n\nAttenzione: ${unmatched.length} righe non corrispondono più all'ordine (articolo modificato o rimosso) e non verranno applicate:\n` + unmatched.map(l => `· ${l.description} ${l.color}`).join('\n')
       : ''
-    if (!window.confirm(`Sostituire le taglie dell'ordine con quelle inviate dal cliente (${formPieces(form.lines, form.sizes)} pezzi)?${warn}`)) return
+    // Piu' o meno pezzi cambiano il totale, non le rate gia' impostate.
+    const before = orderTotal(order), after = orderTotal(next)
+    const money = Math.abs(after - before) >= 0.01
+      ? `\n\nIl totale dell'ordine passa da ${eur(before)} a ${eur(after)}: controlla acconto e rate nei pagamenti.`
+      : ''
+    if (!window.confirm(`Sostituire le taglie dell'ordine con quelle inviate dal cliente (${formPieces(form.lines, form.sizes)} pezzi)?${warn}${money}`)) return
     setBusy(true); setMsg('')
     const ok = await updateOrder(next)
     if (!ok) { setBusy(false); setMsg('Salvataggio ordine non riuscito: nessuna modifica applicata.'); return }
     onOrderUpdated(next)
     notifyFormApplied(order.id)
-    const f = await setOrderFormStatus(form.token, 'applicato')
+    const f = await setOrderFormStatus(form.token, 'applicato', { applied_sizes: form.sizes })
     setBusy(false)
     if (f) changed(f)
-    setMsg(unmatched.length ? `Taglie applicate. ${unmatched.length} righe da sistemare a mano.` : 'Taglie applicate all\'ordine.')
+    setMsg((unmatched.length ? `Taglie applicate. ${unmatched.length} righe da sistemare a mano.` : 'Taglie applicate all\'ordine.')
+      + (money ? ` Totale ordine ora ${eur(after)}: controlla i pagamenti.` : ''))
+  }
+
+  const toggleLock = async () => {
+    setBusy(true)
+    const f = await patchOrderForm(form.token, { locked: !form.locked })
+    setBusy(false)
+    if (f) changed(f); else setMsg('Operazione non riuscita.')
+  }
+
+  const requestDone = async () => {
+    setBusy(true)
+    const f = await patchOrderForm(form.token, { change_request: null, change_requested_at: null })
+    setBusy(false)
+    if (!f) { setMsg('Operazione non riuscita.'); return }
+    changed(f)
+    notifyRequestDone(order.id)
   }
 
   const status = form?.status
@@ -277,15 +305,37 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
 
         {fresh || !form ? (
           <>
-            {form?.status === 'applicato' && <div style={{ fontSize: 12, color: MUTED }}>Ultimo modulo applicato il {fmtDateTime(form.applied_at)}. Puoi crearne uno nuovo.</div>}
             <Setup order={order} onCreated={(f) => { changed(f); setFresh(false) }}/>
           </>
         ) : (
           <>
             <LinkBox order={order} form={form}/>
+            {form.change_request && (
+              <div style={{ background: 'rgba(196,98,58,0.12)', border: '1px solid rgba(196,98,58,0.4)', borderRadius: 6, padding: '12px 14px' }}>
+                <div style={{ fontSize: 10, letterSpacing: 1.5, color: CLAY, textTransform: 'uppercase', marginBottom: 6 }}>
+                  Richiesta del cliente · {fmtDateTime(form.change_requested_at)}
+                </div>
+                <div style={{ fontSize: 13, color: CREAM, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{form.change_request}</div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                  <button style={btn(CLAY, false)} disabled={busy} onClick={requestDone}>Segna come gestita</button>
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: MUTED }}>
+              <span style={{ flex: 1 }}>
+                {LOCKING_STATUSES.includes(order.status)
+                  ? <>Modifiche del cliente <b style={{ color: CLAY }}>bloccate</b>: ordine {order.status.toLowerCase()}. Può solo mandarti richieste.</>
+                  : form.locked
+                    ? <>Modifiche del cliente <b style={{ color: CLAY }}>bloccate a mano</b>. Può solo mandarti richieste.</>
+                    : <>Il cliente può correggere le taglie dallo stesso link fino a IN PRODUZIONE.</>}
+              </span>
+              {!LOCKING_STATUSES.includes(order.status) && (
+                <button style={btn(MUTED, false)} disabled={busy} onClick={toggleLock}>{form.locked ? 'Sblocca' : 'Blocca ora'}</button>
+              )}
+            </div>
             {status === 'aperto' && (
               <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
-                Il cliente non ha ancora inviato.{form.updated_at && form.updated_at !== form.created_at ? ` Ultima modifica ${fmtDateTime(form.updated_at)}.` : ''}
+                {form.applied_at ? 'Il cliente ha riaperto il modulo per correggere le taglie già applicate: non ha ancora reinviato.' : 'Il cliente non ha ancora inviato.'}{form.updated_at && form.updated_at !== form.created_at ? ` Ultima modifica ${fmtDateTime(form.updated_at)}.` : ''}
                 {form.expires_at ? ` Scade il ${new Date(form.expires_at).toLocaleDateString('it-IT')}.` : ''}
               </div>
             )}
@@ -301,8 +351,7 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
             {msg && <div style={{ fontSize: 12, color: msg.startsWith('Taglie applicate') ? GREEN : CLAY }}>{msg}</div>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <button style={btn('#ef4444', false)} disabled={busy} onClick={() => setStatus('revocato', 'Disattivare il link? Il cliente non potrà più aprirlo.')}>Revoca link</button>
-              {status === 'inviato' && <button style={btn(MUTED, false)} disabled={busy} onClick={() => setStatus('aperto', 'Riaprire il modulo al cliente? Potrà modificarlo e inviarlo di nuovo.')}>Riapri al cliente</button>}
-              {status === 'applicato' && <button style={btn(GOLD, false)} disabled={busy} onClick={() => setFresh(true)}>Nuovo modulo</button>}
+              {status === 'inviato' && !LOCKING_STATUSES.includes(order.status) && !form.locked && <button style={btn(MUTED, false)} disabled={busy} onClick={() => setStatus('aperto', 'Riaprire il modulo al cliente? Potrà modificarlo e inviarlo di nuovo.')}>Riapri al cliente</button>}
               {status === 'inviato' && <button style={btn(GREEN, true)} disabled={busy} onClick={apply}>{busy ? 'Applico…' : 'Applica all\'ordine'}</button>}
             </div>
           </>

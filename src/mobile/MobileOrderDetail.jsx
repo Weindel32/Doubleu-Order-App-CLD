@@ -14,18 +14,20 @@ function OrderFormCard({ order, onOrderUpdated }) {
   const openModal = async () => { setForm(await fetchOrderFormFor(order.id)); setOpen(true) }
 
   const st = form?.status
-  const color = st === 'inviato' ? GREEN : st === 'aperto' ? GOLD : MUTED
+  const req = !!form?.change_request
+  const color = req ? CLAY : st === 'inviato' ? GREEN : st === 'aperto' ? GOLD : MUTED
   const text = form === undefined ? 'Caricamento…'
+    : req ? `Richiesta di modifica: “${form.change_request.slice(0, 80)}${form.change_request.length > 80 ? '…' : ''}”`
     : !form ? 'Manda al cliente il link per compilare le taglie'
-    : st === 'inviato' ? `${formPieces(form.lines, form.sizes)} pezzi ricevuti${form.contact_name ? ' da ' + form.contact_name : ''} · da applicare`
+    : st === 'inviato' ? `${formPieces(form.lines, form.sizes)} pezzi ${form.applied_at ? 'modificati' : 'ricevuti'}${form.contact_name ? ' da ' + form.contact_name : ''} · da applicare`
     : st === 'aperto' ? 'Link inviato, il cliente sta compilando'
     : 'Taglie del cliente applicate all\'ordine'
   return (
     <>
       <button onClick={openModal} style={{
         width: '100%', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
-        background: st === 'inviato' ? 'rgba(74,158,110,0.14)' : SURFACE,
-        border: `1px solid ${st === 'inviato' ? 'rgba(74,158,110,0.5)' : BORDER}`,
+        background: req ? 'rgba(196,98,58,0.14)' : st === 'inviato' ? 'rgba(74,158,110,0.14)' : SURFACE,
+        border: `1px solid ${req ? 'rgba(196,98,58,0.5)' : st === 'inviato' ? 'rgba(74,158,110,0.5)' : BORDER}`,
         borderRadius: 10, padding: '14px 16px', cursor: 'pointer', color: CREAM,
         fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
       }}>

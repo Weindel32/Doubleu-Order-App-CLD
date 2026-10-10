@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getPublicForm, savePublicForm, linePieces, formPieces, GRID_LABEL } from '../lib/orderForms.js'
+import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL } from '../lib/orderForms.js'
 
 // Pagina pubblica del modulo taglie (/m/<token>): la vede il cliente, dal
 // telefono, senza login. Mostra solo gli articoli dell'ordine e le
@@ -173,6 +173,47 @@ const inputStyle = {
   background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, outline: 'none',
 }
 
+// Richiesta a testo libero: per l'ordine gia' in produzione, o per cio' che
+// il modulo non copre (un articolo in piu', un colore diverso). Non cambia
+// niente da sola: arriva a DOUBLEU, che risponde.
+function ChangeRequest({ token, form, setForm, locked }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr]   = useState('')
+  const send = async () => {
+    if (!text.trim()) return
+    setBusy(true); setErr('')
+    const r = await requestPublicChange(token, text)
+    setBusy(false)
+    if (r.error) { setErr('Invio non riuscito. Riprova tra qualche istante.'); return }
+    setForm(r.form); setText('')
+  }
+  return (
+    <div style={{ marginTop: 30, borderTop: `1px solid ${C.line}`, paddingTop: 22 }}>
+      <div style={{ fontFamily: serif, fontSize: 20, marginBottom: 6 }}>{locked ? 'Serve una modifica?' : 'Altre richieste'}</div>
+      <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>
+        {locked
+          ? 'Scrivici cosa va cambiato: verifichiamo se è ancora possibile e ti rispondiamo.'
+          : 'Per aggiungere articoli o cambiare qualcosa che qui non trovi, scrivici: ti rispondiamo noi.'}
+      </div>
+      {form.change_request && (
+        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '12px 14px', fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: C.gold, marginBottom: 4 }}>
+            Richiesta inviata{form.change_requested_at ? ` il ${fmtDateTime(form.change_requested_at)}` : ''}
+          </div>
+          <div style={{ whiteSpace: 'pre-wrap', color: C.ink }}>{form.change_request}</div>
+        </div>
+      )}
+      <textarea style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }} value={text} onChange={e => setText(e.target.value)}
+        placeholder={locked ? 'Es. 2 felpe M in più, una L diventa XL' : 'Es. aggiungere 10 cappellini'} maxLength={2000}/>
+      {err && <div style={{ color: C.clay, fontSize: 13, marginTop: 10 }}>{err}</div>}
+      <div style={{ marginTop: 10 }}>
+        <button style={btn(false, busy || !text.trim())} disabled={busy || !text.trim()} onClick={send}>{busy ? 'Invio…' : 'Invia la richiesta'}</button>
+      </div>
+    </div>
+  )
+}
+
 export default function ClientOrderForm({ token }) {
   const [state, setState]     = useState('loading')   // loading | ready | missing | error
   const [form, setForm]       = useState(null)
@@ -183,6 +224,8 @@ export default function ClientOrderForm({ token }) {
   const [save, setSave]       = useState('idle')      // idle | pending | saving | saved | error
   const [submitErr, setSubmitErr] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [reopening, setReopening] = useState(false)
+  const [reopenErr, setReopenErr] = useState('')
   const dirty = useRef(false)
   const latest = useRef({})
   latest.current = { sizes, contact, note }
@@ -196,7 +239,7 @@ export default function ClientOrderForm({ token }) {
       if (error) { setState('error'); return }
       if (!form) { setState('missing'); return }
       setForm(form); setSizes(form.sizes || {}); setContact(form.contact_name || ''); setNote(form.client_note || '')
-      if (form.status !== 'aperto') setStep('done')
+      if (form.status !== 'aperto' || form.locked) setStep('done')
       setState('ready')
     })
   }, [token])
@@ -245,28 +288,60 @@ export default function ClientOrderForm({ token }) {
     const r = await savePublicForm(token, { sizes, contact, note, submit: true })
     setSubmitting(false)
     if (r.error) {
-      setSubmitErr(/gia inviato/.test(r.error) ? 'Il modulo risulta già inviato.' : /scaduto/.test(r.error) ? 'Il modulo è scaduto.' : 'Invio non riuscito. Riprova tra qualche istante.')
+      setSubmitErr(/gia inviato/.test(r.error) ? 'Il modulo risulta già inviato.' : /scaduto/.test(r.error) ? 'Il modulo è scaduto.'
+        : /bloccato/.test(r.error) ? 'L\'ordine è entrato in produzione: le taglie non sono più modificabili. Contatta DOUBLEU.'
+        : 'Invio non riuscito. Riprova tra qualche istante.')
       return
     }
     setForm(r.form); setStep('done'); window.scrollTo(0, 0)
   }
 
   if (step === 'done') {
+    const reopen = async () => {
+      setReopening(true); setReopenErr('')
+      const r = await reopenPublicForm(token)
+      setReopening(false)
+      if (r.error) {
+        setReopenErr(/bloccato/.test(r.error) ? 'L\'ordine è entrato in produzione: non è più possibile modificare le taglie.' : /scaduto/.test(r.error) ? 'Il modulo è scaduto.' : 'Non riusciamo a riaprire il modulo. Riprova.')
+        if (r.form) setForm(r.form)
+        return
+      }
+      setForm(r.form); setSizes(r.form.sizes || {}); setStep('edit'); window.scrollTo(0, 0)
+    }
+    const canEdit = !form.locked && !form.expired
     return (
       <Shell clientName={form.client_name}>
-        <div style={{ background: C.greenSoft, border: `1px solid rgba(47,122,81,0.3)`, borderRadius: 12, padding: '18px 18px', marginBottom: 20 }}>
-          <div style={{ fontFamily: serif, fontSize: 22, color: C.green }}>Taglie inviate</div>
-          <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.6 }}>
-            {form.submitted_at ? `Ricevute il ${fmtDateTime(form.submitted_at)}` : 'Ricevute'}{form.contact_name ? ` da ${form.contact_name}` : ''}.
-            {' '}Le verifichiamo e ti confermiamo l'ordine. Per modifiche contatta DOUBLEU.
+        {form.locked ? (
+          <div style={{ background: C.goldSoft, border: `1px solid rgba(140,109,58,0.35)`, borderRadius: 12, padding: '18px 18px', marginBottom: 20 }}>
+            <div style={{ fontFamily: serif, fontSize: 22, color: C.ink }}>Ordine in produzione</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.6 }}>
+              Le taglie qui sotto sono quelle in lavorazione e non si possono più modificare da qui.
+              Se serve un cambiamento, scrivici con il modulo in fondo alla pagina.
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ background: C.greenSoft, border: `1px solid rgba(47,122,81,0.3)`, borderRadius: 12, padding: '18px 18px', marginBottom: 20 }}>
+            <div style={{ fontFamily: serif, fontSize: 22, color: C.green }}>Taglie inviate</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.6 }}>
+              {form.submitted_at ? `Ricevute il ${fmtDateTime(form.submitted_at)}` : 'Ricevute'}{form.contact_name ? ` da ${form.contact_name}` : ''}.
+              {' '}{canEdit ? 'Finché l\'ordine non entra in produzione puoi ancora correggerle da questo link.' : 'Le verifichiamo e ti confermiamo l\'ordine.'}
+            </div>
+          </div>
+        )}
+        {canEdit && (
+          <div style={{ marginBottom: 20 }}>
+            <button style={btn(true, reopening)} disabled={reopening} onClick={reopen}>{reopening ? 'Apertura…' : 'Modifica le taglie'}</button>
+            {reopenErr && <div style={{ color: C.clay, fontSize: 13, marginTop: 10 }}>{reopenErr}</div>}
+          </div>
+        )}
         <Summary lines={lines} sizes={sizes}/>
         <div style={{ textAlign: 'center', fontSize: 13, color: C.muted, marginTop: 16 }}>Totale {total} pezzi</div>
         {form.client_note && <div style={{ fontSize: 13, color: C.muted, marginTop: 14, whiteSpace: 'pre-wrap' }}>Note: {form.client_note}</div>}
+        <ChangeRequest token={token} form={form} setForm={setForm} locked={form.locked}/>
       </Shell>
     )
   }
+
 
   if (step === 'review') {
     const zero = lines.filter(l => linePieces(l, sizes) === 0).length
@@ -275,7 +350,7 @@ export default function ClientOrderForm({ token }) {
       <Shell clientName={form.client_name}>
         <div style={{ fontFamily: serif, fontSize: 24, marginBottom: 6 }}>Controlla e invia</div>
         <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
-          Dopo l'invio il modulo non è più modificabile.
+          Potrai correggerle dallo stesso link finché l'ordine non entra in produzione.
         </div>
         {(zero > 0 || off > 0) && (
           <div style={{ background: 'rgba(180,83,44,0.08)', border: `1px solid rgba(180,83,44,0.3)`, borderRadius: 10, padding: '12px 14px', fontSize: 13, color: C.clay, marginBottom: 14, lineHeight: 1.5 }}>
@@ -293,7 +368,7 @@ export default function ClientOrderForm({ token }) {
 
         {submitErr && <div style={{ color: C.clay, fontSize: 13, marginTop: 14 }}>{submitErr}</div>}
         <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
-          <button style={btn(true, submitting)} disabled={submitting} onClick={submit}>{submitting ? 'Invio…' : 'Invia le taglie'}</button>
+          <button style={btn(true, submitting)} disabled={submitting} onClick={submit}>{submitting ? 'Invio…' : form.submit_count > 0 ? 'Invia le modifiche' : 'Invia le taglie'}</button>
           <button style={btn(false)} onClick={() => { setStep('edit'); window.scrollTo(0, 0) }}>Torna a modificare</button>
         </div>
       </Shell>

@@ -157,13 +157,15 @@ function PaymentQuick({ order, onPaymentToggle }) {
 // verde quando il cliente ha inviato e le taglie aspettano di essere applicate.
 function FormButton({ form, onClick }) {
   const st = form?.status
-  const look = st === 'inviato'   ? { c: GREEN, bg: 'rgba(74,158,110,0.18)', label: 'Taglie ●' }
+  const look = form?.change_request ? { c: CLAY, bg: 'rgba(196,98,58,0.14)', label: 'Taglie !' }
+             : st === 'inviato'   ? { c: GREEN, bg: 'rgba(74,158,110,0.18)', label: 'Taglie ●' }
              : st === 'aperto'    ? { c: GOLD,  bg: 'rgba(184,150,90,0.08)', label: 'Taglie …' }
              : { c: MUTED, bg: 'rgba(255,255,255,0.04)', label: 'Taglie' }
-  const title = st === 'inviato' ? 'Il cliente ha inviato le taglie: da applicare'
+  const title = form?.change_request ? 'Il cliente ha mandato una richiesta di modifica'
+              : st === 'inviato' ? 'Il cliente ha inviato le taglie: da applicare'
               : st === 'aperto' ? 'Modulo inviato al cliente, in compilazione'
               : st === 'applicato' ? 'Taglie del cliente applicate' : 'Manda al cliente il modulo taglie'
-  return <button title={title} style={{padding:'4px 8px',fontSize:8,border:`1px solid ${look.c}55`,background:look.bg,color:look.c,borderRadius:3,cursor:'pointer',fontWeight:st==='inviato'?700:400}} onClick={onClick}>{look.label}</button>
+  return <button title={title} style={{padding:'4px 8px',fontSize:8,border:`1px solid ${look.c}55`,background:look.bg,color:look.c,borderRadius:3,cursor:'pointer',fontWeight:st==='inviato'||form?.change_request?700:400}} onClick={onClick}>{look.label}</button>
 }
 
 export default function Orders({ orders, setView, setEditOrder, onReorder, onDelete, onOrdersChange, initialFilter = 'Tutti' }) {

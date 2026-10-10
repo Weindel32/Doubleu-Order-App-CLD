@@ -104,6 +104,26 @@ export function linePieces(line, sizes) {
 
 export const formPieces = (lines, sizes) => lines.reduce((t, l) => t + linePieces(l, sizes), 0)
 
+// Differenze di una riga tra due versioni delle taglie: "M +2 · L −1 · 8 anni +3".
+// Vuoto se non cambia nulla.
+export function lineDiff(line, base, cur) {
+  const b = base?.[line.key] || {}, c = cur?.[line.key] || {}
+  const parts = []
+  const push = (label, before, after) => {
+    const d = (parseInt(after) || 0) - (parseInt(before) || 0)
+    if (d) parts.push(`${label} ${d > 0 ? '+' : '−'}${Math.abs(d)}`)
+  }
+  if (line.grids.includes('adult')) for (const sz of ADULT_SIZES) push(sz, b.adult?.[sz], c.adult?.[sz])
+  if (line.grids.includes('kids'))  for (const sz of KIDS_SIZES)  push(`${sz} anni`, b.kids?.[sz], c.kids?.[sz])
+  if (line.grids.includes('uni'))   push('TU', b.uni, c.uni)
+  return parts.join(' · ')
+}
+
+// Stati ordine in cui il modulo e' bloccato (stessa regola del database,
+// order_form_is_locked): da li' in poi il cliente puo' solo chiedere.
+export const LOCKING_STATUSES = ['IN PRODUZIONE', 'CONSEGNA PARZIALE', 'CONSEGNATO', 'ANNULLATO']
+export const formLocked = (form, order) => !!form?.locked || LOCKING_STATUSES.includes(order?.status)
+
 // ── Lato app (sessione autenticata) ─────────────────────────────────
 
 export async function fetchOrderForms() {
@@ -165,13 +185,28 @@ export async function sendFormEmail({ token, to, firstName, copyToMe }) {
   }
 }
 
-export async function setOrderFormStatus(token, status) {
-  const patch = { status, updated_at: new Date().toISOString() }
+export async function setOrderFormStatus(token, status, extra = {}) {
+  const patch = { status, updated_at: new Date().toISOString(), ...extra }
   if (status === 'applicato') patch.applied_at = patch.updated_at
-  if (status === 'aperto') patch.submitted_at = null
-  const { data, error } = await supabase.from('order_forms').update(patch).eq('token', token).select().single()
-  if (error) { console.error('setOrderFormStatus:', error); return null }
+  return patchOrderForm(token, patch)
+}
+
+export async function patchOrderForm(token, patch) {
+  const { data, error } = await supabase.from('order_forms')
+    .update({ updated_at: new Date().toISOString(), ...patch }).eq('token', token).select().single()
+  if (error) { console.error('patchOrderForm:', error); return null }
   return data
+}
+
+// Richiesta di modifica gestita: chiude il suo task Todoist.
+export async function notifyRequestDone(orderId) {
+  try {
+    await fetch('/api/order-form-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify({ action: 'request_done', orderId }),
+    })
+  } catch (e) { console.error('notifyRequestDone:', e) }
 }
 
 // Riporta le taglie del modulo sull'ordine. Ogni riga si ritrova per
@@ -221,6 +256,24 @@ export async function getPublicForm(token) {
   return { form: data }
 }
 
+const notify = (action, token) => fetch('/api/order-form-notify', {
+  method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ action, token }),
+}).catch(() => {})
+
+export async function reopenPublicForm(token) {
+  const { data, error } = await supabase.rpc('order_form_reopen', { p_token: token })
+  if (error) return { error: error.message || 'errore' }
+  return { form: data }
+}
+
+export async function requestPublicChange(token, text) {
+  const { data, error } = await supabase.rpc('order_form_request_change', { p_token: token, p_text: text })
+  if (error) return { error: error.message || 'errore' }
+  notify('change_request', token)
+  return { form: data }
+}
+
 export async function savePublicForm(token, { sizes, contact, note, submit = false }) {
   const { data, error } = await supabase.rpc('order_form_save', {
     p_token: token, p_sizes: sizes, p_contact: contact || '', p_note: note || '', p_submit: submit,
@@ -228,11 +281,6 @@ export async function savePublicForm(token, { sizes, contact, note, submit = fal
   if (error) return { error: error.message || 'errore' }
   // Invio riuscito: avviso su Todoist. keepalive perche' parta anche se il
   // cliente chiude subito la pagina; un errore qui non riguarda il cliente.
-  if (submit) {
-    fetch('/api/order-form-notify', {
-      method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'submitted', token }),
-    }).catch(() => {})
-  }
+  if (submit) notify('submitted', token)
   return { form: data }
 }
