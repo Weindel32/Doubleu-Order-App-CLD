@@ -41,10 +41,12 @@ function sizesSummary(line, s) {
 const PRINT_CSS = `
 .du-print { display: none; }
 @media print {
-  @page { size: A4; margin: 14mm 12mm; }
-  html, body { background: #fff !important; }
+  /* Margine pagina a zero: il browser (Safari su iPhone) non ha spazio per
+     stampare indirizzo, data e numero di pagina. Il margine vero e' nel foglio. */
+  @page { size: A4; margin: 0; }
+  html, body { background: #fff !important; margin: 0 !important; }
   .du-screen { display: none !important; }
-  .du-print { display: block !important; }
+  .du-print { display: block !important; padding: 14mm 12mm; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 }`
 
 function PrintSheet({ form, lines, sizes }) {
@@ -312,6 +314,14 @@ export default function ClientOrderForm({ token }) {
   const latest = useRef({})
   latest.current = { sizes, contact, note }
 
+  // Il titolo della pagina diventa il nome del PDF salvato o condiviso.
+  const printSheet = () => {
+    const prev = document.title
+    document.title = ['Riepilogo taglie', form?.order_id, form?.client_name].filter(Boolean).join(' - ')
+    window.print()
+    setTimeout(() => { document.title = prev }, 1000)
+  }
+
   useEffect(() => {
     document.title = 'DOUBLEU · Modulo taglie'
     // Il body dell'app e' navy: si vedrebbe nel rimbalzo dello scroll.
@@ -422,7 +432,7 @@ export default function ClientOrderForm({ token }) {
         <div style={{ textAlign: 'center', fontSize: 13, color: C.muted, marginTop: 16 }}>Totale {total} pezzi</div>
         {form.client_note && <div style={{ fontSize: 13, color: C.muted, marginTop: 14, whiteSpace: 'pre-wrap' }}>Note: {form.client_note}</div>}
         <div style={{ marginTop: 18 }}>
-          <button style={btn(false)} onClick={() => window.print()}>Stampa / Salva PDF</button>
+          <button style={btn(false)} onClick={printSheet}>Stampa / Salva PDF</button>
           <div style={{ fontSize: 11, color: C.faint, textAlign: 'center', marginTop: 6 }}>Dal telefono: scegli Stampa, poi condividi o salva come PDF.</div>
         </div>
         <ChangeRequest token={token} form={form} setForm={setForm} locked={form.locked}/>
