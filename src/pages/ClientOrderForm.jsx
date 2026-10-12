@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL } from '../lib/orderForms.js'
+import { buildSizesPdf, shareOrDownload, sizesPdfName } from '../lib/sizesPdf.js'
+import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL, orderedGrids } from '../lib/orderForms.js'
 
 // Pagina pubblica del modulo taglie (/taglie/<token>): la vede il cliente, dal
 // telefono, senza login. Mostra solo gli articoli dell'ordine e le
@@ -24,8 +25,8 @@ const SIZE_LIST = { adult: ADULT_SIZES, kids: KIDS_SIZES }
 
 function sizesSummary(line, s) {
   const parts = []
-  for (const g of line.grids) {
-    if (g === 'uni') { if ((s?.uni || 0) > 0) parts.push(`TU: ${s.uni}`); continue }
+  for (const g of orderedGrids(line.grids)) {
+    if (g === 'uni') { if ((s?.uni || 0) > 0) parts.push('taglia unica'); continue }
     for (const sz of SIZE_LIST[g]) {
       const v = s?.[g]?.[sz] || 0
       if (v > 0) parts.push(`${g === 'kids' ? sz + ' anni' : sz}: ${v}`)
@@ -70,7 +71,7 @@ function SizeCell({ label, value, onChange, disabled }) {
         value={value > 0 ? String(value) : ''} placeholder="0"
         onFocus={e => e.target.select()}
         onChange={e => onChange(Math.min(9999, parseInt(e.target.value.replace(/\D/g, ''), 10) || 0))}
-        aria-label={`Taglia ${label}`}
+        aria-label={label === 'Quantità' ? label : `Taglia ${label}`}
         style={{
           width: '100%', height: 46, textAlign: 'center', fontSize: 18, fontFamily: sans,
           color: C.ink, background: on ? C.goldSoft : '#fbf9f5',
@@ -109,16 +110,20 @@ function LineCard({ line, sizes, setLineSizes, readOnly }) {
         </div>
       </div>
 
-      {line.grids.map(grid => (
+      {orderedGrids(line.grids).map(grid => (
         <div key={grid} style={{ marginTop: 10 }}>
-          {line.grids.length > 1 && (
+          {line.grids.length > 1 && grid !== 'uni' && (
             <div style={{ fontSize: 10, letterSpacing: 2, color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>
               {GRID_LABEL[grid]}{grid === 'kids' ? ' · anni' : ''}
             </div>
           )}
           {grid === 'uni' ? (
-            <div style={{ width: 92 }}>
-              <SizeCell label="TU" value={s.uni || 0} onChange={v => set('uni', null, v)} disabled={readOnly}/>
+            // Articolo senza taglia: si chiede solo quanti pezzi servono.
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+              <div style={{ width: 120 }}>
+                <SizeCell label="Quantità" value={s.uni || 0} onChange={v => set('uni', null, v)} disabled={readOnly}/>
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, paddingBottom: 14 }}>taglia unica</div>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${grid === 'adult' ? 6 : 7}, minmax(0, 1fr))`, gap: 6 }}>
@@ -266,6 +271,19 @@ export default function ClientOrderForm({ token }) {
     return () => document.removeEventListener('visibilitychange', onHide)
   }, [flush])
 
+  // PDF del riepilogo preparato appena si arriva alla pagina finale: al tocco
+  // del pulsante deve essere gia' pronto (vedi shareOrDownload).
+  const [pdf, setPdf] = useState({})
+  useEffect(() => {
+    if (step !== 'done' || !form) return
+    let live = true
+    setPdf({})
+    buildSizesPdf({ form, lines: form.lines || [], sizes: form.sizes || {} })
+      .then(blob => { if (live) setPdf({ blob }) })
+      .catch(() => { if (live) setPdf({ error: true }) })
+    return () => { live = false }
+  }, [step, form])
+
   const touch = () => { dirty.current = true; setSave('pending') }
   const setLineSizes = (key, v) => { setSizes(prev => ({ ...prev, [key]: v })); touch() }
 
@@ -337,6 +355,11 @@ export default function ClientOrderForm({ token }) {
         <Summary lines={lines} sizes={sizes}/>
         <div style={{ textAlign: 'center', fontSize: 13, color: C.muted, marginTop: 16 }}>Totale {total} pezzi</div>
         {form.client_note && <div style={{ fontSize: 13, color: C.muted, marginTop: 14, whiteSpace: 'pre-wrap' }}>Note: {form.client_note}</div>}
+        <div style={{ marginTop: 18 }}>
+          <button style={btn(false, !pdf.blob)} disabled={!pdf.blob} onClick={() => shareOrDownload(pdf.blob, sizesPdfName(form))}>
+            {pdf.blob ? 'Scarica il riepilogo PDF' : pdf.error ? 'PDF non disponibile' : 'Preparazione PDF…'}
+          </button>
+        </div>
         <ChangeRequest token={token} form={form} setForm={setForm} locked={form.locked}/>
       </Shell>
     )
