@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
+import { buildSizesPdf, shareOrDownload, sizesPdfName } from '../lib/sizesPdf.js'
 import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL, orderedGrids } from '../lib/orderForms.js'
 
 // Pagina pubblica del modulo taglie (/taglie/<token>): la vede il cliente, dal
@@ -32,86 +33,6 @@ function sizesSummary(line, s) {
     }
   }
   return parts.join(' · ')
-}
-
-// Copia da stampare o salvare in PDF (dal telefono: Condividi → Stampa).
-// Sullo schermo e' nascosta; in stampa sparisce la pagina e resta solo
-// questo foglio A4: intestazione, tabella delle taglie per articolo, totali.
-// Solo le colonne usate davvero nel modulo, niente prezzi.
-const PRINT_CSS = `
-.du-print { display: none; }
-@media print {
-  /* Margine pagina a zero: il browser (Safari su iPhone) non ha spazio per
-     stampare indirizzo, data e numero di pagina. Il margine vero e' nel foglio. */
-  @page { size: A4; margin: 0; }
-  html, body { background: #fff !important; margin: 0 !important; }
-  .du-screen { display: none !important; }
-  .du-print { display: block !important; padding: 14mm 12mm; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-}`
-
-function PrintSheet({ form, lines, sizes }) {
-  const has = (g) => lines.some(l => l.grids.includes(g))
-  // Bambino (in anni) poi adulto. Gli articoli senza taglia non hanno una
-  // colonna: la quantita' sta direttamente nel totale della riga.
-  const cols = [
-    ...(has('kids')  ? KIDS_SIZES.map(sz => ({ g: 'kids', sz, label: sz, sub: 'anni' })) : []),
-    ...(has('adult') ? ADULT_SIZES.map(sz => ({ g: 'adult', sz, label: sz })) : []),
-  ]
-  const cell = (l, c) => {
-    if (!l.grids.includes(c.g)) return ''
-    const v = sizes[l.key]?.[c.g]?.[c.sz] || 0
-    return v > 0 ? v : ''
-  }
-  const total = formPieces(lines, sizes)
-  const th = { border: '1px solid #cfc6b4', padding: '5px 4px', fontSize: 9, letterSpacing: 0.5, background: '#f3eee4', color: '#111d38', fontWeight: 700, textAlign: 'center' }
-  const td = { border: '1px solid #cfc6b4', padding: '6px 4px', fontSize: 10.5, color: '#111d38', textAlign: 'center' }
-  return (
-    <div className="du-print" style={{ fontFamily: sans, color: '#111d38' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #111d38', paddingBottom: 10, marginBottom: 14 }}>
-        <div>
-          <div style={{ fontFamily: serif, fontSize: 26, letterSpacing: 6, fontWeight: 600 }}>DOUBLEU</div>
-          <div style={{ fontSize: 9, letterSpacing: 2.5, color: '#8c6d3a', textTransform: 'uppercase', marginTop: 2 }}>Riepilogo taglie</div>
-        </div>
-        <div style={{ textAlign: 'right', fontSize: 10.5, lineHeight: 1.5 }}>
-          <div style={{ fontFamily: serif, fontSize: 17 }}>{form.client_name}</div>
-          <div>Ordine {form.order_id}</div>
-          {form.submitted_at && <div>Inviato il {fmtDateTime(form.submitted_at)}{form.contact_name ? ` da ${form.contact_name}` : ''}</div>}
-        </div>
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ ...th, textAlign: 'left', width: '30%' }}>Articolo</th>
-            {cols.map(c => <th key={`${c.g}${c.sz}`} style={th}>{c.label}{c.sub && <div style={{ fontSize: 7, fontWeight: 400, letterSpacing: 0 }}>{c.sub}</div>}</th>)}
-            <th style={th}>Tot.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map(l => (
-            <tr key={l.key} style={{ breakInside: 'avoid' }}>
-              <td style={{ ...td, textAlign: 'left' }}>
-                <div style={{ fontWeight: 600 }}>{l.description || l.category}</div>
-                <div style={{ fontSize: 9, color: '#5f6a80' }}>{[l.color, l.sp, l.kit, l.grids.includes('uni') ? 'taglia unica' : null].filter(Boolean).join(' · ')}</div>
-              </td>
-              {cols.map(c => <td key={`${c.g}${c.sz}`} style={{ ...td, background: l.grids.includes(c.g) ? '#fff' : '#f6f4f0' }}>{cell(l, c)}</td>)}
-              <td style={{ ...td, fontWeight: 700 }}>{linePieces(l, sizes)}</td>
-            </tr>
-          ))}
-          <tr>
-            <td style={{ ...td, textAlign: 'right', fontWeight: 700 }} colSpan={cols.length + 1}>Totale pezzi</td>
-            <td style={{ ...td, fontWeight: 700, fontSize: 12 }}>{total}</td>
-          </tr>
-        </tbody>
-      </table>
-      {form.client_note && <div style={{ fontSize: 10.5, marginTop: 12, whiteSpace: 'pre-wrap' }}><b>Note:</b> {form.client_note}</div>}
-      <div style={{ fontSize: 9, color: '#5f6a80', marginTop: 18, borderTop: '1px solid #cfc6b4', paddingTop: 8, lineHeight: 1.5 }}>
-        {form.locked
-          ? 'Ordine in produzione: per qualsiasi modifica contattate DOUBLEU.'
-          : 'Le taglie si possono correggere dallo stesso link fino all\'avvio della produzione.'}
-        {'  ·  '}doubleutennis.com
-      </div>
-    </div>
-  )
 }
 
 function Shell({ children, clientName }) {
@@ -314,14 +235,6 @@ export default function ClientOrderForm({ token }) {
   const latest = useRef({})
   latest.current = { sizes, contact, note }
 
-  // Il titolo della pagina diventa il nome del PDF salvato o condiviso.
-  const printSheet = () => {
-    const prev = document.title
-    document.title = ['Riepilogo taglie', form?.order_id, form?.client_name].filter(Boolean).join(' - ')
-    window.print()
-    setTimeout(() => { document.title = prev }, 1000)
-  }
-
   useEffect(() => {
     document.title = 'DOUBLEU · Modulo taglie'
     // Il body dell'app e' navy: si vedrebbe nel rimbalzo dello scroll.
@@ -357,6 +270,19 @@ export default function ClientOrderForm({ token }) {
     document.addEventListener('visibilitychange', onHide)
     return () => document.removeEventListener('visibilitychange', onHide)
   }, [flush])
+
+  // PDF del riepilogo preparato appena si arriva alla pagina finale: al tocco
+  // del pulsante deve essere gia' pronto (vedi shareOrDownload).
+  const [pdf, setPdf] = useState({})
+  useEffect(() => {
+    if (step !== 'done' || !form) return
+    let live = true
+    setPdf({})
+    buildSizesPdf({ form, lines: form.lines || [], sizes: form.sizes || {} })
+      .then(blob => { if (live) setPdf({ blob }) })
+      .catch(() => { if (live) setPdf({ error: true }) })
+    return () => { live = false }
+  }, [step, form])
 
   const touch = () => { dirty.current = true; setSave('pending') }
   const setLineSizes = (key, v) => { setSizes(prev => ({ ...prev, [key]: v })); touch() }
@@ -401,9 +327,7 @@ export default function ClientOrderForm({ token }) {
       setForm(r.form); setSizes(r.form.sizes || {}); setStep('edit'); window.scrollTo(0, 0)
     }
     const canEdit = !form.locked && !form.expired
-    return (<>
-      <style>{PRINT_CSS}</style>
-      <div className="du-screen">
+    return (
       <Shell clientName={form.client_name}>
         {form.locked ? (
           <div style={{ background: C.goldSoft, border: `1px solid rgba(140,109,58,0.35)`, borderRadius: 12, padding: '18px 18px', marginBottom: 20 }}>
@@ -432,14 +356,13 @@ export default function ClientOrderForm({ token }) {
         <div style={{ textAlign: 'center', fontSize: 13, color: C.muted, marginTop: 16 }}>Totale {total} pezzi</div>
         {form.client_note && <div style={{ fontSize: 13, color: C.muted, marginTop: 14, whiteSpace: 'pre-wrap' }}>Note: {form.client_note}</div>}
         <div style={{ marginTop: 18 }}>
-          <button style={btn(false)} onClick={printSheet}>Stampa / Salva PDF</button>
-          <div style={{ fontSize: 11, color: C.faint, textAlign: 'center', marginTop: 6 }}>Dal telefono: scegli Stampa, poi condividi o salva come PDF.</div>
+          <button style={btn(false, !pdf.blob)} disabled={!pdf.blob} onClick={() => shareOrDownload(pdf.blob, sizesPdfName(form))}>
+            {pdf.blob ? 'Scarica il riepilogo PDF' : pdf.error ? 'PDF non disponibile' : 'Preparazione PDF…'}
+          </button>
         </div>
         <ChangeRequest token={token} form={form} setForm={setForm} locked={form.locked}/>
       </Shell>
-      </div>
-      <PrintSheet form={form} lines={lines} sizes={sizes}/>
-    </>)
+    )
   }
 
 
