@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL } from '../lib/orderForms.js'
+import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL, orderedGrids } from '../lib/orderForms.js'
 
 // Pagina pubblica del modulo taglie (/taglie/<token>): la vede il cliente, dal
 // telefono, senza login. Mostra solo gli articoli dell'ordine e le
@@ -24,8 +24,8 @@ const SIZE_LIST = { adult: ADULT_SIZES, kids: KIDS_SIZES }
 
 function sizesSummary(line, s) {
   const parts = []
-  for (const g of line.grids) {
-    if (g === 'uni') { if ((s?.uni || 0) > 0) parts.push(`TU: ${s.uni}`); continue }
+  for (const g of orderedGrids(line.grids)) {
+    if (g === 'uni') { if ((s?.uni || 0) > 0) parts.push('taglia unica'); continue }
     for (const sz of SIZE_LIST[g]) {
       const v = s?.[g]?.[sz] || 0
       if (v > 0) parts.push(`${g === 'kids' ? sz + ' anni' : sz}: ${v}`)
@@ -49,14 +49,15 @@ const PRINT_CSS = `
 
 function PrintSheet({ form, lines, sizes }) {
   const has = (g) => lines.some(l => l.grids.includes(g))
+  // Bambino (in anni) poi adulto. Gli articoli senza taglia non hanno una
+  // colonna: la quantita' sta direttamente nel totale della riga.
   const cols = [
+    ...(has('kids')  ? KIDS_SIZES.map(sz => ({ g: 'kids', sz, label: sz, sub: 'anni' })) : []),
     ...(has('adult') ? ADULT_SIZES.map(sz => ({ g: 'adult', sz, label: sz })) : []),
-    ...(has('kids')  ? KIDS_SIZES.map(sz => ({ g: 'kids', sz, label: `${sz}a` })) : []),
-    ...(has('uni')   ? [{ g: 'uni', sz: null, label: 'TU' }] : []),
   ]
   const cell = (l, c) => {
     if (!l.grids.includes(c.g)) return ''
-    const v = c.g === 'uni' ? (sizes[l.key]?.uni || 0) : (sizes[l.key]?.[c.g]?.[c.sz] || 0)
+    const v = sizes[l.key]?.[c.g]?.[c.sz] || 0
     return v > 0 ? v : ''
   }
   const total = formPieces(lines, sizes)
@@ -79,7 +80,7 @@ function PrintSheet({ form, lines, sizes }) {
         <thead>
           <tr>
             <th style={{ ...th, textAlign: 'left', width: '30%' }}>Articolo</th>
-            {cols.map(c => <th key={`${c.g}${c.sz}`} style={th}>{c.label}</th>)}
+            {cols.map(c => <th key={`${c.g}${c.sz}`} style={th}>{c.label}{c.sub && <div style={{ fontSize: 7, fontWeight: 400, letterSpacing: 0 }}>{c.sub}</div>}</th>)}
             <th style={th}>Tot.</th>
           </tr>
         </thead>
@@ -88,7 +89,7 @@ function PrintSheet({ form, lines, sizes }) {
             <tr key={l.key} style={{ breakInside: 'avoid' }}>
               <td style={{ ...td, textAlign: 'left' }}>
                 <div style={{ fontWeight: 600 }}>{l.description || l.category}</div>
-                <div style={{ fontSize: 9, color: '#5f6a80' }}>{[l.color, l.sp, l.kit].filter(Boolean).join(' · ')}</div>
+                <div style={{ fontSize: 9, color: '#5f6a80' }}>{[l.color, l.sp, l.kit, l.grids.includes('uni') ? 'taglia unica' : null].filter(Boolean).join(' · ')}</div>
               </td>
               {cols.map(c => <td key={`${c.g}${c.sz}`} style={{ ...td, background: l.grids.includes(c.g) ? '#fff' : '#f6f4f0' }}>{cell(l, c)}</td>)}
               <td style={{ ...td, fontWeight: 700 }}>{linePieces(l, sizes)}</td>
@@ -100,7 +101,6 @@ function PrintSheet({ form, lines, sizes }) {
           </tr>
         </tbody>
       </table>
-      {cols.some(c => c.g === 'kids') && <div style={{ fontSize: 8.5, color: '#5f6a80', marginTop: 4 }}>Taglie bambino in anni (es. 8a = 8 anni).</div>}
       {form.client_note && <div style={{ fontSize: 10.5, marginTop: 12, whiteSpace: 'pre-wrap' }}><b>Note:</b> {form.client_note}</div>}
       <div style={{ fontSize: 9, color: '#5f6a80', marginTop: 18, borderTop: '1px solid #cfc6b4', paddingTop: 8, lineHeight: 1.5 }}>
         {form.locked
@@ -148,7 +148,7 @@ function SizeCell({ label, value, onChange, disabled }) {
         value={value > 0 ? String(value) : ''} placeholder="0"
         onFocus={e => e.target.select()}
         onChange={e => onChange(Math.min(9999, parseInt(e.target.value.replace(/\D/g, ''), 10) || 0))}
-        aria-label={`Taglia ${label}`}
+        aria-label={label === 'Quantità' ? label : `Taglia ${label}`}
         style={{
           width: '100%', height: 46, textAlign: 'center', fontSize: 18, fontFamily: sans,
           color: C.ink, background: on ? C.goldSoft : '#fbf9f5',
@@ -187,16 +187,20 @@ function LineCard({ line, sizes, setLineSizes, readOnly }) {
         </div>
       </div>
 
-      {line.grids.map(grid => (
+      {orderedGrids(line.grids).map(grid => (
         <div key={grid} style={{ marginTop: 10 }}>
-          {line.grids.length > 1 && (
+          {line.grids.length > 1 && grid !== 'uni' && (
             <div style={{ fontSize: 10, letterSpacing: 2, color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>
               {GRID_LABEL[grid]}{grid === 'kids' ? ' · anni' : ''}
             </div>
           )}
           {grid === 'uni' ? (
-            <div style={{ width: 92 }}>
-              <SizeCell label="TU" value={s.uni || 0} onChange={v => set('uni', null, v)} disabled={readOnly}/>
+            // Articolo senza taglia: si chiede solo quanti pezzi servono.
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+              <div style={{ width: 120 }}>
+                <SizeCell label="Quantità" value={s.uni || 0} onChange={v => set('uni', null, v)} disabled={readOnly}/>
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, paddingBottom: 14 }}>taglia unica</div>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${grid === 'adult' ? 6 : 7}, minmax(0, 1fr))`, gap: 6 }}>

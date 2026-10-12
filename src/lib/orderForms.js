@@ -15,8 +15,12 @@ import { artPieceCount } from '../utils/helpers.js'
 // order_form_get / order_form_save (vedi SEED_DATA.sql), che lavorano sul
 // singolo token e scartano righe o taglie non previste.
 
-export const GRID_LABEL = { adult: 'Adulto', kids: 'Bambino', uni: 'Taglia unica' }
-export const GRIDS = ['adult', 'kids', 'uni']
+// Ordine di lettura in tutto il modulo: bambino, adulto, poi la quantita'
+// per gli articoli senza taglia (cappellini, accessori), che al cliente si
+// chiede come "Quantita'" e non con una sigla da taglia.
+export const GRID_LABEL = { kids: 'Bambino', adult: 'Adulto', uni: 'Quantità' }
+export const GRIDS = ['kids', 'adult', 'uni']
+export const orderedGrids = (grids = []) => GRIDS.filter(g => grids.includes(g))
 
 export const FORM_STATUS_LABEL = {
   aperto: 'In compilazione', inviato: 'Taglie ricevute', applicato: 'Applicato', revocato: 'Revocato',
@@ -109,7 +113,7 @@ export function linePieces(line, sizes) {
 
 export const formPieces = (lines, sizes) => lines.reduce((t, l) => t + linePieces(l, sizes), 0)
 
-// Differenze di una riga tra due versioni delle taglie: "M +2 · L −1 · 8 anni +3".
+// Differenze di una riga tra due versioni delle taglie: "8 anni +3 · M +2 · L −1".
 // Vuoto se non cambia nulla.
 export function lineDiff(line, base, cur) {
   const b = base?.[line.key] || {}, c = cur?.[line.key] || {}
@@ -118,9 +122,9 @@ export function lineDiff(line, base, cur) {
     const d = (parseInt(after) || 0) - (parseInt(before) || 0)
     if (d) parts.push(`${label} ${d > 0 ? '+' : '−'}${Math.abs(d)}`)
   }
-  if (line.grids.includes('adult')) for (const sz of ADULT_SIZES) push(sz, b.adult?.[sz], c.adult?.[sz])
   if (line.grids.includes('kids'))  for (const sz of KIDS_SIZES)  push(`${sz} anni`, b.kids?.[sz], c.kids?.[sz])
-  if (line.grids.includes('uni'))   push('TU', b.uni, c.uni)
+  if (line.grids.includes('adult')) for (const sz of ADULT_SIZES) push(sz, b.adult?.[sz], c.adult?.[sz])
+  if (line.grids.includes('uni'))   push('Quantità', b.uni, c.uni)
   return parts.join(' · ')
 }
 

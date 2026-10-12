@@ -30,9 +30,9 @@ const btn = (color, filled) => ({
 function sizesText(grids, s) {
   if (!s) return '—'
   const parts = []
-  if (grids.includes('adult')) for (const sz of ADULT_SIZES) if ((s.adult?.[sz] || 0) > 0) parts.push(`${sz}: ${s.adult[sz]}`)
   if (grids.includes('kids'))  for (const sz of KIDS_SIZES)  if ((s.kids?.[sz]  || 0) > 0) parts.push(`${sz} anni: ${s.kids[sz]}`)
-  if (grids.includes('uni') && (s.uni || 0) > 0) parts.push(`TU: ${s.uni}`)
+  if (grids.includes('adult')) for (const sz of ADULT_SIZES) if ((s.adult?.[sz] || 0) > 0) parts.push(`${sz}: ${s.adult[sz]}`)
+  if (grids.includes('uni') && (s.uni || 0) > 0) parts.push(`Quantità: ${s.uni}`)
   return parts.join(' · ') || '—'
 }
 
@@ -120,7 +120,7 @@ function Setup({ order, onCreated }) {
             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
               {GRIDS.map(g => (
                 <span key={g} role="button" tabIndex={0} style={chip(grids[l.key].includes(g))} onClick={() => toggle(l.key, g)}
-                  onKeyDown={e => e.key === 'Enter' && toggle(l.key, g)}>{g === 'uni' ? 'TU' : GRID_LABEL[g]}</span>
+                  onKeyDown={e => e.key === 'Enter' && toggle(l.key, g)}>{GRID_LABEL[g]}</span>
               ))}
             </div>
           </div>

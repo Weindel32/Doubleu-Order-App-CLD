@@ -39,16 +39,16 @@ const ADULT = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const KIDS  = ['4', '6', '8', '10', '12', '14', '16']
 
 // Variazioni rispetto alla versione precedente (o a quella applicata):
-// "Hoodie Navy: M +2, L −1; Cap: TU +5". Solo le righe che cambiano.
+// "Hoodie Navy: 10 anni +1, M +2, L −1; Cap: Quantità +5". Solo le righe che cambiano.
 function formDiff(lines, base, cur) {
   const out = []
   for (const l of lines) {
     const b = base?.[l.key] || {}, c = cur?.[l.key] || {}
     const parts = []
     const push = (label, x, y) => { const d = (y || 0) - (x || 0); if (d) parts.push(`${label} ${d > 0 ? '+' : '−'}${Math.abs(d)}`) }
-    if ((l.grids || []).includes('adult')) for (const sz of ADULT) push(sz, b.adult?.[sz], c.adult?.[sz])
     if ((l.grids || []).includes('kids'))  for (const sz of KIDS)  push(`${sz} anni`, b.kids?.[sz], c.kids?.[sz])
-    if ((l.grids || []).includes('uni'))   push('TU', b.uni, c.uni)
+    if ((l.grids || []).includes('adult')) for (const sz of ADULT) push(sz, b.adult?.[sz], c.adult?.[sz])
+    if ((l.grids || []).includes('uni'))   push('Quantità', b.uni, c.uni)
     if (parts.length) out.push(`${plain(l.description || l.category)}${l.color ? ' ' + plain(l.color) : ''}: ${parts.join(', ')}`)
   }
   return out.join('; ')
