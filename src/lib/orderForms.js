@@ -1,6 +1,6 @@
 import { supabase, authHeader } from './supabase.js'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
-import { artPieceCount } from '../utils/helpers.js'
+import { artPieceCount, kitProductionQty } from '../utils/helpers.js'
 
 // Modulo taglie per il cliente.
 //
@@ -61,9 +61,10 @@ export function defaultGrids(art) {
 }
 
 // Pezzi attesi per riga, se l'ordine li dice: in un ordine a kit ogni
-// articolo va per il numero di kit; altrimenti la quantita' stimata.
+// articolo va per il numero di kit da produrre (pagati + omaggio);
+// altrimenti la quantita' stimata.
 function expectedPieces(order, kit, art) {
-  if (order.pricingMode === 'kit') return parseInt(kit.quantity) || parseInt(order.kitQuantity) || null
+  if (order.pricingMode === 'kit') return kitProductionQty(order, kit) || null
   return parseInt(art.estimatedQty) || null
 }
 
