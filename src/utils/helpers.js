@@ -19,10 +19,12 @@ export function artPieceCount(art) {
 }
 
 // ── Kit pricing: price × kit.quantity (per-kit), fallback to order.kitQuantity for old records
+//    (kit.omaggio è in più rispetto a kit.quantity, non entra nel fatturato)
 // ── Single pricing: price × pieces per article
-// In entrambe le modalità la quantità fatturabile esclude l'omaggio — la
-// quantità intera ordinata (per produzione/consegna) resta quella delle
-// taglie inserite per ogni articolo, mai toccata qui.
+// Nel pricing singolo la quantità fatturabile esclude i pezzi omaggio
+// (le taglie sono i pezzi reali, «di cui X in omaggio»); nel pricing a kit
+// l'omaggio è in più e non si tocca. La quantità da produrre/consegnare
+// resta quella delle taglie inserite per ogni articolo, mai toccata qui.
 export function orderSubtotal(order) {
   if (!order.kits) return 0
   if (order.pricingMode === 'kit') {
@@ -60,14 +62,19 @@ export function artLineBase(art) {
   return (parseFloat(art.price) || 0) * artBillablePieces(art)
 }
 
-// Quantità di kit fatturabile: la quantità ordinata (persone/kit) meno i
-// kit dati in omaggio, un numero deciso da chi compila l'ordine — non
+// Quantità di kit fatturabile: la quantità ordinata (persone/kit pagati).
+// I kit omaggio sono IN PIÙ rispetto a questa quantità (es. 60 tute pagate
+// + 6 allo staff), quindi non la riducono mai: il totale non cambia se si
+// aggiunge un omaggio. Un numero deciso da chi compila l'ordine — non
 // dedotto dai singoli capi omaggio (un kit può avere pezzi diversi tra loro,
-// es. pantaloncino per un kit uomo e gonnellino per un kit donna, entrambi
-// nello stesso "2 kit omaggio"). Quantità di produzione invariata altrove.
+// es. pantaloncino per un kit uomo e gonnellino per un kit donna).
 export function kitBillableQty(order, kit) {
-  const qty = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
-  return Math.max(0, qty - (parseFloat(kit.omaggio) || 0))
+  return parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
+}
+
+// Kit da produrre: i pagati più quelli in omaggio.
+export function kitProductionQty(order, kit) {
+  return kitBillableQty(order, kit) + (parseFloat(kit.omaggio) || 0)
 }
 
 export function kitLineBase(order, kit) {

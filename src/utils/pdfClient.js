@@ -29,6 +29,7 @@ export function generateClientPDF(order) {
               <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${kit.name}</div>
               <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${kit.articles.map(a=>a.description).join(' + ')}</div>
               ${omaggioInKit?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ${omaggioInKit}</div>`:''}
+              ${(parseFloat(kit.omaggio)||0)>0?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">+ ${parseFloat(kit.omaggio)} kit in omaggio</div>`:''}
             </div>
             <div style="text-align:right;">
               <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° PERSONE</div>

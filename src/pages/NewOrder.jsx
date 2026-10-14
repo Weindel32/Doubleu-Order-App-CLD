@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES, withCurrent } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
-         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitBillableQty, grossUnitPrice } from '../utils/helpers.js'
+         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitProductionQty, grossUnitPrice } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
@@ -334,7 +334,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
           const kitOmaggio = parseFloat(kit.omaggio)||0
           const price = parseFloat(kit.price)||0
           const kitTotal = price*qty
-          const billableQty = kitBillableQty(currentOrder,kit)
+          const productionQty = kitProductionQty(currentOrder,kit)
           const kitDisc = discountMode==='articolo' ? kitLineDiscount(currentOrder,kit) : 0
           return (
             <div key={ki}>
@@ -344,8 +344,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
               </div>
               {kitOmaggio > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:MUTED, paddingLeft:14 }}>
-                  <span>omaggio {kitOmaggio} kit</span>
-                  <span style={{ color:'#ef4444' }}>− € {(price*kitOmaggio).toFixed(2)}</span>
+                  <span>+ {kitOmaggio} kit in omaggio</span>
+                  <span>€ 0,00</span>
                 </div>
               )}
               {kitDisc > 0 && (
@@ -356,8 +356,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
               )}
               {kitOmaggio > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:MUTED, paddingLeft:14, opacity:0.7 }}>
-                  <span>fatturabile</span>
-                  <span>{billableQty} kit</span>
+                  <span>da produrre</span>
+                  <span>{qty} + {kitOmaggio} = {productionQty} kit</span>
                 </div>
               )}
             </div>
@@ -620,12 +620,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
               <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="85"/>
                 {ivaEnabled && parseFloat(kit.price)>0 && <div style={{ fontSize:11, color:GOLD, marginTop:4 }}>= € {grossUnitPrice(currentOrder, kit.price).toFixed(2).replace('.', ',')} IVA incl.</div>}</div>
               <div>
-                <label style={s.label}>Quantità (n° persone) *</label>
+                <label style={s.label}>Quantità pagata (n° persone) *</label>
                 <input type="number" min="1" style={{...inp,borderColor:!kit.quantity?'rgba(184,150,90,0.5)':undefined}} value={kit.quantity} onChange={e=>updateKit(ki,'quantity',e.target.value)} placeholder="Es. 50"/>
               </div>
               <div>
-                <label style={s.label}>Kit omaggio</label>
-                <input type="number" min="0" step="0.5" style={{...inp,borderColor:parseFloat(kit.omaggio)>0?'rgba(196,98,58,0.6)':undefined}} value={kit.omaggio} onChange={e=>updateKit(ki,'omaggio',e.target.value)} placeholder="0"/>
+                <label style={s.label}>Kit omaggio (in più)</label>
+                <input type="number" min="0" step="1" style={{...inp,borderColor:parseFloat(kit.omaggio)>0?'rgba(196,98,58,0.6)':undefined}} value={kit.omaggio} onChange={e=>updateKit(ki,'omaggio',e.target.value)} placeholder="0"/>
+                {parseFloat(kit.omaggio)>0 && <div style={{ fontSize:11, color:CLAY, marginTop:4 }}>Da produrre: {kitProductionQty(currentOrder,kit)} kit</div>}
               </div>
             </div>}
             {pricingMode==='kit' && discountMode==='articolo' && (

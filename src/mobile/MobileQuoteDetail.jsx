@@ -147,6 +147,7 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(kitTotal)}</div>
                       {qty > 0 && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {(parseFloat(kit.price)||0).toFixed(2).replace('.', ',')} × {qty} pers.</div>}
+                      {parseFloat(kit.omaggio) > 0 && <div style={{ fontSize: 11, color: CLAY, marginTop: 2 }}>+ {parseFloat(kit.omaggio)} kit in omaggio</div>}
                       {quote.ivaEnabled && parseFloat(kit.price) > 0 && <div style={{ fontSize: 11, color: CREAM, marginTop: 2 }}>€ {grossUnitPrice(quote, kit.price).toFixed(2).replace('.', ',')} IVA incl. a kit</div>}
                     </div>
                   </div>
