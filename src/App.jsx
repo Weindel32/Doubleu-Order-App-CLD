@@ -21,7 +21,8 @@ import { needsAlert, isConfirmed } from './utils/helpers.js'
 import { buildReorderSeed } from './utils/reorder.js'
 import { needsFollowUp, returnOverdue, recipientLabel } from './utils/samples.js'
 import { syncFollowUpToTodoist } from './lib/todoist.js'
-import { supabase } from './lib/supabase.js'
+import { supabase, openedFromRecoveryLink } from './lib/supabase.js'
+import { openPasswordDialog } from './components/PasswordDialog.jsx'
 
 // Telefono: schermo stretto (portrait) oppure basso e non troppo largo (landscape)
 const isPhoneViewport = () => window.innerWidth <= 480 || (window.innerHeight <= 480 && window.innerWidth <= 960)
@@ -36,7 +37,7 @@ function useIsMobile() {
   return isMobile
 }
 
-function Sidebar({ view, setView, orders, shipments, onLogout }) {
+function Sidebar({ view, setView, orders, shipments, onLogout, onChangePassword }) {
   const alertCount   = orders.filter(o => needsAlert(o)).length
   const pendingCount = orders.filter(o =>
     isConfirmed(o) && (o.payments || []).some(p => !p.paid)
@@ -80,12 +81,24 @@ function Sidebar({ view, setView, orders, shipments, onLogout }) {
       <div style={{ marginTop: 'auto', padding: '0 24px', borderTop: `1px solid ${BORDER}`, paddingTop: 20 }}>
         <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED }}>BUILD</div>
         <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>v{__APP_VERSION__} · Supabase</div>
-        <button onClick={onLogout} style={{ marginTop: 16, width: '100%', padding: '8px', background: 'rgba(196,98,58,0.1)', border: `1px solid rgba(196,98,58,0.3)`, borderRadius: 4, color: CLAY, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif" }}>
+        <button onClick={onChangePassword} style={{ marginTop: 16, width: '100%', padding: '8px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: 4, color: MUTED, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif" }}>
+          Cambia password
+        </button>
+        <button onClick={onLogout} style={{ marginTop: 8, width: '100%', padding: '8px', background: 'rgba(196,98,58,0.1)', border: `1px solid rgba(196,98,58,0.3)`, borderRadius: 4, color: CLAY, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif" }}>
           Esci
         </button>
       </div>
     </div>
   )
+}
+
+// Arrivati dal link di recupero password: una sola finestra anche se
+// sia l'indirizzo sia l'evento di Supabase lo segnalano.
+let recoveryOpen = false
+function askNewPassword() {
+  if (recoveryOpen) return
+  recoveryOpen = true
+  openPasswordDialog({ mode: 'recovery' }).finally(() => { recoveryOpen = false })
 }
 
 export default function App() {
@@ -110,9 +123,11 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session); setAuthLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session); setAuthLoading(false)
+      if (event === 'PASSWORD_RECOVERY') askNewPassword()
     })
+    if (openedFromRecoveryLink) askNewPassword()
     return () => subscription.unsubscribe()
   }, [])
 
@@ -298,6 +313,8 @@ export default function App() {
     navigate('samples')
   }
 
+  const handleChangePassword = () => openPasswordDialog({ mode: 'change', email: session?.user?.email })
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     setOrders([]); setShipments([]); setView('dashboard')
@@ -448,7 +465,7 @@ export default function App() {
     return <MobileApp orders={orders} clients={clients} prospects={prospects}
       onSaveNegotiation={handleSaveNegotiation}
       onOrderUpdated={next => setOrders(prev => prev.map(o => o.id === next.id ? next : o))}
-      onLogout={handleLogout} onUpsertClient={handleUpsertClient}
+      onLogout={handleLogout} onChangePassword={handleChangePassword} onUpsertClient={handleUpsertClient}
       onUpsertProspect={handleUpsertProspect} onAddActivity={handleAddActivity}
       onSaveActivity={handleSaveActivity} onDeleteActivity={handleDeleteActivity}
       onDeleteProspect={handleDeleteProspect}
@@ -460,7 +477,7 @@ export default function App() {
 
   return (
     <div style={s.app}>
-      <Sidebar view={view} setView={navigate} orders={orders} shipments={shipments} onLogout={handleLogout}/>
+      <Sidebar view={view} setView={navigate} orders={orders} shipments={shipments} onLogout={handleLogout} onChangePassword={handleChangePassword}/>
       <main style={s.main}>
         {!['new', 'newQuote'].includes(view) && (
           <GlobalSearch clients={clients} prospects={prospects} orders={orders}

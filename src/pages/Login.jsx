@@ -7,6 +7,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState(null)
+  const [notice, setNotice]     = useState(null)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -20,6 +21,21 @@ export default function Login() {
       setLoading(false)
     }
     // On success, App.jsx will detect the session and show the app
+  }
+
+  // Manda il link per reimpostare la password. Il messaggio è lo stesso
+  // che l'email esista o no, così il modulo non rivela chi è registrato.
+  const handleForgot = async () => {
+    setError(null); setNotice(null)
+    if (!email.trim()) { setError('Scrivi la tua email, poi premi di nuovo «Password dimenticata?»'); return }
+    setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin })
+    setLoading(false)
+    if (error && /rate|seconds|too many/i.test(error.message || '')) {
+      setError('Hai già chiesto un link da poco. Attendi qualche minuto e riprova.')
+      return
+    }
+    setNotice('Se l\'email è registrata, ti abbiamo mandato un link per impostare una nuova password. Controlla la posta (anche lo spam).')
   }
 
   return (
@@ -144,6 +160,22 @@ export default function Login() {
               />
             </div>
 
+            {notice && (
+              <div style={{
+                background: 'rgba(184,150,90,0.12)',
+                border: `1px solid rgba(184,150,90,0.4)`,
+                borderRadius: 6,
+                padding: '10px 14px',
+                color: CREAM,
+                fontSize: 12,
+                lineHeight: 1.5,
+                marginBottom: 20,
+                textAlign: 'center',
+              }}>
+                {notice}
+              </div>
+            )}
+
             {error && (
               <div style={{
                 background: 'rgba(196,98,58,0.15)',
@@ -178,7 +210,27 @@ export default function Login() {
                 transition: 'all 0.2s',
               }}
             >
-              {loading ? 'Accesso in corso...' : 'Accedi'}
+              {loading ? 'Attendere...' : 'Accedi'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleForgot}
+              disabled={loading}
+              style={{
+                display: 'block',
+                margin: '18px auto 0',
+                background: 'none',
+                border: 'none',
+                color: MUTED,
+                fontSize: 11,
+                letterSpacing: 1,
+                textDecoration: 'underline',
+                cursor: loading ? 'wait' : 'pointer',
+                fontFamily: "'Josefin Sans', sans-serif",
+              }}
+            >
+              Password dimenticata?
             </button>
           </form>
         </div>

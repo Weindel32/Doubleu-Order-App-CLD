@@ -569,3 +569,55 @@ INSERT INTO kits (order_id,name,price,position) VALUES ('DU-2026-0066','Kit Comp
 -- Poi aggiungi gli articoli manualmente dalla app usando "+ Nuovo Ordine"
 -- oppure contatta il supporto per lo script completo degli articoli
 
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION: elenco utenti autorizzati (applicata il 14/10/2026)
+-- ═══════════════════════════════════════════════════════════════
+-- Essere autenticati non basta più: le policy delle tabelle dell'app
+-- (e le funzioni in api/ tramite is_app_user) richiedono che l'email
+-- dell'utente sia in app_users. Un account creato da estranei vede
+-- tutto vuoto e non può scrivere. Per autorizzare un collaboratore:
+--   INSERT INTO app_users (email, note) VALUES ('nome@dominio.it', 'Nome');
+-- Il modulo taglie del cliente (funzioni order_form_*) non cambia.
+CREATE TABLE IF NOT EXISTS public.app_users (
+  email      text PRIMARY KEY,
+  note       text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.app_users FROM anon, authenticated;
+INSERT INTO public.app_users (email, note) VALUES ('marco@doubleutennis.com', 'Marco') ON CONFLICT DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.is_app_user()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.app_users WHERE lower(email) = lower(auth.jwt() ->> 'email'))
+$$;
+REVOKE ALL ON FUNCTION public.is_app_user() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.is_app_user() TO authenticated;
+
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT tablename, policyname FROM pg_policies
+           WHERE schemaname = 'public' AND 'authenticated' = ANY(roles)
+             AND tablename IN ('articles','clients','contact_requests','kits','order_forms','orders','payments',
+                               'prospect_activities','prospects','sample_items','sample_shipments')
+  LOOP
+    EXECUTE format('ALTER POLICY %I ON public.%I USING (public.is_app_user())', r.policyname, r.tablename);
+  END LOOP;
+END $$;
+
+ALTER POLICY allow_all_authenticated ON public.articles            WITH CHECK (public.is_app_user());
+ALTER POLICY allow_all_authenticated ON public.clients             WITH CHECK (public.is_app_user());
+ALTER POLICY allow_all_authenticated ON public.kits                WITH CHECK (public.is_app_user());
+ALTER POLICY allow_all_authenticated ON public.orders              WITH CHECK (public.is_app_user());
+ALTER POLICY allow_all_authenticated ON public.payments            WITH CHECK (public.is_app_user());
+ALTER POLICY allow_all_authenticated ON public.prospect_activities WITH CHECK (public.is_app_user());
+ALTER POLICY allow_all_authenticated ON public.prospects           WITH CHECK (public.is_app_user());
+ALTER POLICY order_forms_all         ON public.order_forms         WITH CHECK (public.is_app_user());
+ALTER POLICY sample_items_all        ON public.sample_items        WITH CHECK (public.is_app_user());
+ALTER POLICY sample_shipments_all    ON public.sample_shipments    WITH CHECK (public.is_app_user());
+ALTER POLICY contact_requests_update_authenticated ON public.contact_requests WITH CHECK (public.is_app_user());

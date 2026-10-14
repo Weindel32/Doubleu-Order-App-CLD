@@ -24,7 +24,7 @@ const MORE_TABS = [
   { key: 'samples',   label: 'Campioni',   icon: 'samples' },
 ]
 
-export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, clients, prospects, onLogout, onUpsertClient, onUpsertProspect, onAddActivity, onSaveActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
+export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, clients, prospects, onLogout, onChangePassword, onUpsertClient, onUpsertProspect, onAddActivity, onSaveActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
   const [tab, setTab]                   = useState('home')
   const [ordersFilter, setOrdersFilter] = useState('Attivi')
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -59,12 +59,20 @@ export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, c
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: CREAM, letterSpacing: 4, lineHeight: 1 }}>DOUBLEU</div>
           <div style={{ fontSize: 12, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
         </div>
-        <button onClick={onLogout} style={{
-          background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.3)',
-          borderRadius: 4, color: CLAY, fontSize: 12, letterSpacing: 2,
-          textTransform: 'uppercase', padding: '8px 14px', cursor: 'pointer',
-          fontFamily: "'Josefin Sans', sans-serif",
-        }}>Esci</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onChangePassword} style={{
+            background: 'transparent', border: `1px solid ${BORDER}`,
+            borderRadius: 4, color: MUTED, fontSize: 12, letterSpacing: 2,
+            textTransform: 'uppercase', padding: '8px 12px', cursor: 'pointer',
+            fontFamily: "'Josefin Sans', sans-serif",
+          }}>Password</button>
+          <button onClick={onLogout} style={{
+            background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.3)',
+            borderRadius: 4, color: CLAY, fontSize: 12, letterSpacing: 2,
+            textTransform: 'uppercase', padding: '8px 14px', cursor: 'pointer',
+            fontFamily: "'Josefin Sans', sans-serif",
+          }}>Esci</button>
+        </div>
       </div>
 
       {/* Content */}
