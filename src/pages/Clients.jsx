@@ -93,6 +93,14 @@ function InfoField({ label, value }) {
 
 const inp = { ...s.input }
 
+// Dati della scheda che precompilano un ordine o preventivo nuovo. Tutti:
+// il passo «Cliente» viene saltato, quindi un campo mancante qui finirebbe
+// vuoto nell'ordine.
+const clientPrefill = (c) => ({
+  id: c.id, name: c.name, contact: c.contact || '', email: c.email || '', phone: c.phone || '',
+  address: c.address || '', city: c.city || '', country: c.country || 'Italia',
+})
+
 export default function Clients({ orders, clients, prospects = [], setView, setEditOrder, onOpenOrder, onNewOrderFromClient, onNewQuoteFromClient, onUpdateClient, onCreateClient, onLinkOrder, shipments = [], onNewSample, selectedId, setSelectedId }) {
   const [editForm,   setEditForm]     = useState(null)
   const [editSaving, setEditSaving]   = useState(false)
@@ -452,11 +460,11 @@ export default function Clients({ orders, clients, prospects = [], setView, setE
                 )}
                 <button style={{ ...btnStyle(false), border:`1px solid ${CLAY}`, color:CLAY }} onClick={() => {
                   closeModal()
-                  onNewQuoteFromClient({ name:selected.name, email:selected.email, phone:selected.phone, country:selected.country })
+                  onNewQuoteFromClient(clientPrefill(selected))
                 }}>+ Preventivo</button>
                 <button style={btnStyle(true)} onClick={() => {
                   closeModal()
-                  onNewOrderFromClient({ name:selected.name, email:selected.email, phone:selected.phone, country:selected.country })
+                  onNewOrderFromClient(clientPrefill(selected))
                 }}>+ Ordine</button>
                 <button onClick={closeModal} style={{ background:'none', border:'none', color:MUTED, fontSize:24, cursor:'pointer', lineHeight:1 }}>×</button>
               </div>
