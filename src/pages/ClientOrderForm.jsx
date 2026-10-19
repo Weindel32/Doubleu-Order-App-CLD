@@ -35,6 +35,19 @@ function sizesSummary(line, s) {
   return parts.join(' · ')
 }
 
+function PreviewBanner({ onClose }) {
+  return (
+    <div style={{ position: 'sticky', top: 0, zIndex: 5, padding: '10px 16px', background: C.ink, color: '#fff',
+      display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, lineHeight: 1.4 }}>
+      <div style={{ flex: 1 }}>
+        <b style={{ letterSpacing: 2 }}>ANTEPRIMA</b> · così il cliente vedrà il modulo. I campi sono bloccati: qui non si salva nulla.
+      </div>
+      <button onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', borderRadius: 4,
+        padding: '6px 12px', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', cursor: 'pointer', fontFamily: sans, flexShrink: 0 }}>Chiudi</button>
+    </div>
+  )
+}
+
 function Shell({ children, clientName }) {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.ink, fontFamily: sans }}>
@@ -219,10 +232,13 @@ function ChangeRequest({ token, form, setForm, locked }) {
   )
 }
 
-export default function ClientOrderForm({ token }) {
-  const [state, setState]     = useState('loading')   // loading | ready | missing | error
-  const [form, setForm]       = useState(null)
-  const [sizes, setSizes]     = useState({})
+// preview: modulo da mostrare dentro l'app prima dell'invio (vedi
+// OrderFormModal). Stessa pagina del cliente, ma a campi bloccati: niente
+// salvataggio, niente invio, nessuna chiamata al server.
+export default function ClientOrderForm({ token, preview, onClosePreview }) {
+  const [state, setState]     = useState(preview ? 'ready' : 'loading')   // loading | ready | missing | error
+  const [form, setForm]       = useState(preview || null)
+  const [sizes, setSizes]     = useState(preview?.sizes || {})
   const [contact, setContact] = useState('')
   const [note, setNote]       = useState('')
   const [step, setStep]       = useState('edit')      // edit | review | done
@@ -236,6 +252,7 @@ export default function ClientOrderForm({ token }) {
   latest.current = { sizes, contact, note }
 
   useEffect(() => {
+    if (preview) return
     document.title = 'DOUBLEU · Modulo taglie'
     // Il body dell'app e' navy: si vedrebbe nel rimbalzo dello scroll.
     document.body.style.background = C.bg
@@ -247,15 +264,15 @@ export default function ClientOrderForm({ token }) {
       if (form.status !== 'aperto' || form.locked) setStep('done')
       setState('ready')
     })
-  }, [token])
+  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const flush = useCallback(async () => {
-    if (!dirty.current) return
+    if (preview || !dirty.current) return
     dirty.current = false
     setSave('saving')
     const r = await savePublicForm(token, { ...latest.current })
     if (r.error) { setSave('error'); dirty.current = true } else setSave('saved')
-  }, [token])
+  }, [token, preview])
 
   // Salvataggio automatico: il cliente puo' chiudere e riprendere dallo
   // stesso link, anche giorni dopo, mentre raccoglie le taglie.
@@ -293,7 +310,7 @@ export default function ClientOrderForm({ token }) {
 
   const lines = form.lines || []
   const total = formPieces(lines, sizes)
-  const readOnly = step === 'done' || form.expired
+  const readOnly = step === 'done' || form.expired || !!preview
 
   if (form.expired && form.status === 'aperto') {
     return <Message clientName={form.client_name} title="Modulo scaduto" text="Il tempo per compilare questo modulo è terminato. Contatta DOUBLEU per riaprirlo."/>
@@ -400,7 +417,8 @@ export default function ClientOrderForm({ token }) {
 
   const saveLabel = { pending: 'Modifiche in corso…', saving: 'Salvataggio…', saved: 'Bozza salvata', error: 'Non salvato · riprova', idle: '' }[save]
 
-  return (
+  return (<>
+    {preview && <PreviewBanner onClose={onClosePreview}/>}
     <Shell clientName={form.client_name}>
       <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: 6 }}>
         Inserisci quanti pezzi servono per ogni taglia. Le modifiche si salvano da sole: puoi chiudere e riprendere da questo link.
@@ -419,12 +437,14 @@ export default function ClientOrderForm({ token }) {
         <div style={{ maxWidth: 640, margin: '0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15 }}><b>{total}</b> pezzi</div>
-            <div style={{ fontSize: 11, color: save === 'error' ? C.clay : C.muted, marginTop: 2 }}>{saveLabel}</div>
+            <div style={{ fontSize: 11, color: save === 'error' ? C.clay : C.muted, marginTop: 2 }}>{preview ? 'Anteprima: campi bloccati' : saveLabel}</div>
           </div>
-          <button style={{ ...btn(true, total === 0), width: 'auto', padding: '14px 22px' }} disabled={total === 0}
-            onClick={() => { flush(); setStep('review'); window.scrollTo(0, 0) }}>Rivedi e invia</button>
+          {preview
+            ? <button style={{ ...btn(true, false), width: 'auto', padding: '14px 22px' }} onClick={onClosePreview}>Chiudi anteprima</button>
+            : <button style={{ ...btn(true, total === 0), width: 'auto', padding: '14px 22px' }} disabled={total === 0}
+                onClick={() => { flush(); setStep('review'); window.scrollTo(0, 0) }}>Rivedi e invia</button>}
         </div>
       </div>
     </Shell>
-  )
+  </>)
 }

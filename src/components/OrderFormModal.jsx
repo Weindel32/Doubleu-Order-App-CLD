@@ -1,16 +1,73 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { artPieceCount, orderTotal } from '../utils/helpers.js'
 import { updateOrder } from '../lib/dataService.js'
 import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
-  buildFormLines, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
+  buildFormLines, initialFormSizes, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
   formUrl, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
 } from '../lib/orderForms.js'
 
 // Modulo taglie da mandare al cliente, per un ordine: crea il link,
 // lo condivide, e quando il cliente ha inviato mostra le taglie accanto a
 // quelle dell'ordine per applicarle con un clic.
+
+// La pagina del cliente, caricata solo quando si apre l'anteprima.
+const ClientOrderForm = lazy(() => import('../pages/ClientOrderForm.jsx'))
+
+// Anteprima a tutto schermo: la pagina che vedra' il cliente, a campi
+// bloccati. Non salva e non invia nulla.
+function Preview({ form, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2500, overflowY: 'auto', background: '#f6f2ea', WebkitOverflowScrolling: 'touch' }}>
+      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#5f6a80', fontFamily: "'Josefin Sans', sans-serif" }}>Caricamento anteprima…</div>}>
+        <ClientOrderForm preview={form} onClosePreview={onClose}/>
+      </Suspense>
+    </div>
+  )
+}
+
+const fmtDay = (iso) => iso ? new Date(iso).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: 'numeric', month: 'long', year: 'numeric' }) : ''
+
+// Controllo prima dell'invio: cosa ricevera' il cliente, in una riga per voce.
+function SendCheck({ order, form, phone, email, onPreview }) {
+  const lines = form.lines || []
+  const count = (g) => lines.filter(l => l.grids.includes(g)).length
+  const pre = formPieces(lines, form.sizes)
+  const expected = lines.reduce((t, l) => t + (l.expected || 0), 0)
+  const first = order.clientContact ? order.clientContact.split(' ')[0] : ''
+  const row = (label, value, warn) => (
+    <div style={{ display: 'flex', gap: 10, fontSize: 12, lineHeight: 1.5, padding: '3px 0' }}>
+      <span style={{ width: 92, flexShrink: 0, color: MUTED }}>{label}</span>
+      <span style={{ color: warn ? CLAY : CREAM }}>{value}</span>
+    </div>
+  )
+  const grids = [
+    count('kids') && `${count('kids')} con taglie bambino`,
+    count('adult') && `${count('adult')} con taglie adulto`,
+    count('uni') && `${count('uni')} a quantità`,
+  ].filter(Boolean).join(' · ')
+  return (
+    <div style={{ background: 'rgba(184,150,90,0.08)', border: `1px solid rgba(184,150,90,0.35)`, borderRadius: 6, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div style={{ flex: 1, fontSize: 10, letterSpacing: 1.5, color: GOLD, textTransform: 'uppercase' }}>Controllo prima dell'invio</div>
+        <button style={btn(GOLD, true)} onClick={onPreview}>Anteprima</button>
+      </div>
+      {row('Articoli', `${lines.length}${grids ? ` · ${grids}` : ''}`)}
+      {row('Taglie', pre > 0
+        ? `${pre} pezzi già compilati${expected ? ` su ${expected} previsti` : ''}: il cliente parte da queste`
+        : `vuote: il cliente le compila da zero${expected ? ` (${expected} pezzi previsti)` : ''}`)}
+      {row('Scadenza', form.expires_at ? `compilabile fino al ${fmtDay(form.expires_at)}` : 'nessuna')}
+      {row('Saluto', first ? `«Ciao ${first}, ecco il modulo…»` : '«Ciao, ecco il modulo…» (nessun referente nell\'ordine)', !first)}
+      {row('Contatti', [phone.trim() || 'telefono mancante', email.trim() || 'email mancante'].join(' · '), !phone.trim() && !email.trim())}
+    </div>
+  )
+}
 
 const fmtDateTime = (iso) => iso ? new Date(iso).toLocaleString('it-IT', {
   timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -86,6 +143,16 @@ function Setup({ order, onCreated }) {
   const [expiry, setExpiry] = useState('')
   const [busy, setBusy]     = useState(false)
   const [err, setErr]       = useState('')
+  const [preview, setPreview] = useState(null)
+
+  const openPreview = () => {
+    const lines = buildFormLines(order, grids)
+    setPreview({
+      client_name: order.client || '', order_id: order.id, status: 'aperto', lines,
+      sizes: initialFormSizes(order, lines, prefill),
+      expires_at: expiry ? new Date(`${expiry}T23:59:59`).toISOString() : null,
+    })
+  }
 
   const toggle = (key, g) => setGrids(prev => {
     const cur = prev[key]
@@ -137,9 +204,11 @@ function Setup({ order, onCreated }) {
         <span style={{ fontSize: 10 }}>{expiry ? '' : 'nessuna scadenza'}</span>
       </label>
       {err && <div style={{ color: CLAY, fontSize: 12 }}>{err}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+        <button style={btn(MUTED, false)} onClick={openPreview}>Anteprima</button>
         <button style={btn(GOLD, false)} disabled={busy} onClick={create}>{busy ? 'Creazione…' : 'Crea link per il cliente'}</button>
       </div>
+      {preview && <Preview form={preview} onClose={() => setPreview(null)}/>}
     </>
   )
 }
@@ -169,7 +238,13 @@ function LinkBox({ order, form }) {
     setMail(r.ok ? { state: 'sent', msg: `Email inviata a ${email.trim()}` } : { state: 'error', msg: r.error })
   }
   const share = () => navigator.share({ title: 'Modulo taglie DOUBLEU', text: shareText(order), url }).catch(() => {})
+  const [preview, setPreview] = useState(false)
+  // Il controllo serve finche' il cliente non ha mai inviato.
+  const firstSend = form.status === 'aperto' && !form.submitted_at
   return (
+    <>
+    {firstSend && <SendCheck order={order} form={form} phone={phone} email={email} onPreview={() => setPreview(true)}/>}
+    {preview && <Preview form={form} onClose={() => setPreview(false)}/>}
     <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 12 }}>
       <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 12 }}>{url}</div>
       <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6 }}>Invia al numero</label>
@@ -198,9 +273,10 @@ function LinkBox({ order, form }) {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
         <button style={btn(GOLD, false)} onClick={copy}>{copied ? 'Copiato ✓' : 'Copia link'}</button>
         {canShare && <button style={btn(CREAM, false)} onClick={share}>Condividi…</button>}
-        <a style={{ ...btn(MUTED, false), textDecoration: 'none' }} href={url} target="_blank" rel="noreferrer">Apri come cliente</a>
+        {!firstSend && <button style={btn(MUTED, false)} onClick={() => setPreview(true)}>Anteprima</button>}
       </div>
     </div>
+    </>
   )
 }
 

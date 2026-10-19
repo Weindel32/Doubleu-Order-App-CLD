@@ -143,11 +143,16 @@ export async function fetchOrderForms() {
   return data
 }
 
-export async function createOrderForm(order, lines, { prefill = false, expiresAt = null } = {}) {
+// Taglie di partenza del modulo: vuote, o quelle gia' nell'ordine.
+export function initialFormSizes(order, lines, prefill) {
   const articles = (order.kits || []).map(k => k.articles || [])
-  const sizes = Object.fromEntries(lines.map(l => [
+  return Object.fromEntries(lines.map(l => [
     l.key, sizesForGrids(l.grids, prefill ? articles[l.kitIndex]?.[l.articleIndex]?.sizes : null),
   ]))
+}
+
+export async function createOrderForm(order, lines, { prefill = false, expiresAt = null } = {}) {
+  const sizes = initialFormSizes(order, lines, prefill)
   const row = {
     token: newToken(), order_id: order.id, client_name: order.client || '',
     lines, sizes, expires_at: expiresAt,
