@@ -37,8 +37,14 @@ export async function resolveClientId(name, fields = {}) {
   const { data: candidates, error: searchError } = await supabase.from('clients').select('id, name')
   if (searchError) { console.error('resolveClientId (search):', searchError); return null }
   const match = (candidates || []).find(c => normalizeName(c.name) === target)
+  // Solo i campi compilati: un campo lasciato vuoto nell'ordine non deve
+  // cancellare il dato gia' in anagrafica (referente, email, telefono…).
+  // Per svuotare un campo si passa dalla scheda cliente.
   const safe = {}
-  CLIENT_FIELDS.forEach(k => { if (fields[k] !== undefined) safe[k] = fields[k] })
+  CLIENT_FIELDS.forEach(k => {
+    const v = typeof fields[k] === 'string' ? fields[k].trim() : fields[k]
+    if (v !== undefined && v !== null && v !== '') safe[k] = v
+  })
   if (match) {
     if (Object.keys(safe).length) {
       const { error } = await supabase.from('clients').update(safe).eq('id', match.id)
