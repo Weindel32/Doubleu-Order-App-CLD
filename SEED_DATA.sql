@@ -621,3 +621,11 @@ ALTER POLICY order_forms_all         ON public.order_forms         WITH CHECK (p
 ALTER POLICY sample_items_all        ON public.sample_items        WITH CHECK (public.is_app_user());
 ALTER POLICY sample_shipments_all    ON public.sample_shipments    WITH CHECK (public.is_app_user());
 ALTER POLICY contact_requests_update_authenticated ON public.contact_requests WITH CHECK (public.is_app_user());
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION: registro invii del modulo taglie (applicata il 19/10/2026)
+-- ═══════════════════════════════════════════════════════════════
+-- Ogni volta che dall'app si manda il link al cliente (WhatsApp, SMS,
+-- email, condivisione) si aggiunge una voce { channel, to, at }.
+-- Solo interno: order_form_view non lo espone al cliente.
+ALTER TABLE order_forms ADD COLUMN IF NOT EXISTS sent_log jsonb NOT NULL DEFAULT '[]'::jsonb;

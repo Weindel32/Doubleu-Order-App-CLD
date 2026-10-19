@@ -5,7 +5,7 @@ import { updateOrder } from '../lib/dataService.js'
 import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
   buildFormLines, initialFormSizes, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
-  formUrl, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
+  formUrl, logFormSend, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
 } from '../lib/orderForms.js'
 
 // Modulo taglie da mandare al cliente, per un ordine: crea il link,
@@ -213,8 +213,34 @@ function Setup({ order, onCreated }) {
   )
 }
 
-function LinkBox({ order, form }) {
+// Invii gia' fatti, dal piu' recente. L'app registra il tocco su WhatsApp o
+// SMS: che il messaggio sia partito davvero lo sa solo WhatsApp.
+function SentLog({ log }) {
+  const [all, setAll] = useState(false)
+  if (!log?.length) return <div style={{ fontSize: 11, color: MUTED, marginBottom: 12 }}>Non ancora inviato al cliente.</div>
+  const items = [...log].reverse()
+  const shown = all ? items : items.slice(0, 3)
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {shown.map((e, i) => (
+        <div key={i} style={{ fontSize: 11, color: CREAM, lineHeight: 1.6 }}>
+          <span style={{ color: GREEN }}>✓</span> {SEND_CHANNEL_LABEL[e.channel] || e.channel}{e.to ? ` a ${e.to}` : ''}
+          <span style={{ color: MUTED }}> · {fmtDateTime(e.at)}</span>
+        </div>
+      ))}
+      {items.length > 3 && (
+        <span role="button" tabIndex={0} onClick={() => setAll(!all)} onKeyDown={e => e.key === 'Enter' && setAll(!all)}
+          style={{ fontSize: 10, color: MUTED, cursor: 'pointer', textDecoration: 'underline' }}>
+          {all ? 'mostra meno' : `altri ${items.length - 3} invii`}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function LinkBox({ order, form, onChange }) {
   const url = formUrl(form.token)
+  const log = (channel, to) => logFormSend(form, channel, to).then(f => { if (f) onChange(f) })
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) }
@@ -236,8 +262,9 @@ function LinkBox({ order, form }) {
       firstName: order.clientContact ? order.clientContact.split(' ')[0] : '',
     })
     setMail(r.ok ? { state: 'sent', msg: `Email inviata a ${email.trim()}` } : { state: 'error', msg: r.error })
+    if (r.ok) log('email', email)
   }
-  const share = () => navigator.share({ title: 'Modulo taglie DOUBLEU', text: shareText(order), url }).catch(() => {})
+  const share = () => navigator.share({ title: 'Modulo taglie DOUBLEU', text: shareText(order), url }).then(() => log('condivisione')).catch(() => {})
   const [preview, setPreview] = useState(false)
   // Il controllo serve finche' il cliente non ha mai inviato.
   const firstSend = form.status === 'aperto' && !form.submitted_at
@@ -246,14 +273,15 @@ function LinkBox({ order, form }) {
     {firstSend && <SendCheck order={order} form={form} phone={phone} email={email} onPreview={() => setPreview(true)}/>}
     {preview && <Preview form={form} onClose={() => setPreview(false)}/>}
     <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 12 }}>
-      <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 12 }}>{url}</div>
+      <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 8 }}>{url}</div>
+      <SentLog log={form.sent_log}/>
       <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6 }}>Invia al numero</label>
       <input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)}
         placeholder="es. 333 123 4567 oppure +41 79…"
         style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '10px 12px', color: CREAM, fontSize: 16, marginBottom: 10, outline: 'none' }}/>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <a style={{ ...btn(GREEN, validPhone), textDecoration: 'none' }} href={whatsappHref(order, url, phone)} target="_blank" rel="noreferrer">WhatsApp</a>
-        <a style={{ ...btn(GREEN, false), textDecoration: 'none' }} href={smsHref(order, url, phone)}>SMS</a>
+        <a style={{ ...btn(GREEN, validPhone), textDecoration: 'none' }} href={whatsappHref(order, url, phone)} target="_blank" rel="noreferrer" onClick={() => log('whatsapp', phone)}>WhatsApp</a>
+        <a style={{ ...btn(GREEN, false), textDecoration: 'none' }} href={smsHref(order, url, phone)} onClick={() => log('sms', phone)}>SMS</a>
       </div>
       <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', margin: '14px 0 6px' }}>Invia all'email</label>
       <input type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -267,7 +295,7 @@ function LinkBox({ order, form }) {
           <input type="checkbox" checked={copyToMe} onChange={e => setCopyToMe(e.target.checked)} style={{ accentColor: GOLD }}/>
           copia a me
         </label>
-        <a style={{ fontSize: 11, color: MUTED, alignSelf: 'center', marginLeft: 'auto' }} href={mailHref(order, url, email)}>oppure dalla mia posta</a>
+        <a style={{ fontSize: 11, color: MUTED, alignSelf: 'center', marginLeft: 'auto' }} href={mailHref(order, url, email)} onClick={() => log('posta', email)}>oppure dalla mia posta</a>
       </div>
       {mail.msg && <div style={{ fontSize: 12, color: mail.state === 'sent' ? GREEN : CLAY, marginTop: -6, marginBottom: 12 }}>{mail.state === 'sent' ? '✓ ' : ''}{mail.msg}</div>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
@@ -397,7 +425,7 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
           </>
         ) : (
           <>
-            <LinkBox order={order} form={form}/>
+            <LinkBox order={order} form={form} onChange={changed}/>
             {form.change_request && (
               <div style={{ background: 'rgba(196,98,58,0.12)', border: '1px solid rgba(196,98,58,0.4)', borderRadius: 6, padding: '12px 14px' }}>
                 <div style={{ fontSize: 10, letterSpacing: 1.5, color: CLAY, textTransform: 'uppercase', marginBottom: 6 }}>

@@ -246,6 +246,22 @@ export async function sendFormEmail({ token, to, firstName, copyToMe }) {
   }
 }
 
+// Registro degli invii del link al cliente: chi, come, quando. Non tocca
+// updated_at, che nell'app indica l'ultima modifica del cliente.
+// channel: whatsapp | sms | email | posta | condivisione
+export const SEND_CHANNEL_LABEL = {
+  whatsapp: 'WhatsApp', sms: 'SMS', email: 'Email', posta: 'Email dalla mia posta', condivisione: 'Condivisione',
+}
+
+export async function logFormSend(form, channel, to = '') {
+  const entry = { channel, to: (to || '').trim().slice(0, 120), at: new Date().toISOString() }
+  const sent_log = [...(form.sent_log || []), entry].slice(-50)
+  const { data, error } = await supabase.from('order_forms')
+    .update({ sent_log }).eq('token', form.token).select().single()
+  if (error) { console.error('logFormSend:', error); return null }
+  return data
+}
+
 export async function setOrderFormStatus(token, status, extra = {}) {
   const patch = { status, updated_at: new Date().toISOString(), ...extra }
   if (status === 'applicato') patch.applied_at = patch.updated_at
