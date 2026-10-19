@@ -26,6 +26,49 @@ export const FORM_STATUS_LABEL = {
   aperto: 'In compilazione', inviato: 'Taglie ricevute', applicato: 'Applicato', revocato: 'Revocato',
 }
 
+const fmtShort = (iso) => new Date(iso).toLocaleString('it-IT', {
+  timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+})
+
+// Ultimo invio del link al cliente, per esteso: "WhatsApp il 19/10, 16:38".
+export function lastSendText(form) {
+  const e = form?.sent_log?.[form.sent_log.length - 1]
+  if (!e) return ''
+  const via = { whatsapp: 'WhatsApp', sms: 'SMS', email: 'email', posta: 'email', condivisione: 'condivisione' }[e.channel] || e.channel
+  return `${via} il ${fmtShort(e.at)}`
+}
+
+// A che punto e' il modulo taglie di un ordine, in parole: la stessa
+// lettura per elenco ordini, finestra del modulo e telefono.
+//   tone: muted | gold | green | blue | clay
+export function formStage(form) {
+  if (!form || form.status === 'revocato') {
+    return { key: 'none', tone: 'muted', badge: 'Invia taglie', text: 'Manda al cliente il link per compilare le taglie' }
+  }
+  if (form.change_request) {
+    const r = form.change_request
+    return { key: 'request', tone: 'clay', badge: 'Richiesta cliente', strong: true,
+      text: `Richiesta di modifica: “${r.slice(0, 80)}${r.length > 80 ? '…' : ''}”` }
+  }
+  const pieces = formPieces(form.lines || [], form.sizes || {})
+  if (form.status === 'inviato') {
+    return { key: 'received', tone: 'green', badge: 'Da applicare', strong: true,
+      text: `${pieces} pezzi ${form.applied_at ? 'modificati' : 'ricevuti'}${form.contact_name ? ' da ' + form.contact_name : ''} · da applicare all'ordine` }
+  }
+  if (form.status === 'applicato') {
+    return { key: 'applied', tone: 'blue', badge: 'Applicate ✓', text: `Taglie del cliente applicate all'ordine (${pieces} pezzi)` }
+  }
+  // aperto
+  const sent = lastSendText(form)
+  if (form.submitted_at) {
+    return { key: 'editing', tone: 'gold', badge: 'In correzione', text: 'Il cliente ha riaperto il modulo per correggere le taglie' }
+  }
+  if (!sent) {
+    return { key: 'created', tone: 'gold', badge: 'Link da inviare', text: 'Link creato, non ancora inviato al cliente' }
+  }
+  return { key: 'waiting', tone: 'gold', badge: 'Attesa cliente', text: `Inviato via ${sent} · il cliente non ha ancora inviato le taglie` }
+}
+
 // 24 caratteri base62 da crypto: ~143 bit, non si indovina e non si
 // ricava dal codice ordine.
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'

@@ -5,7 +5,7 @@ import { updateOrder } from '../lib/dataService.js'
 import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
   buildFormLines, initialFormSizes, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
-  formUrl, logFormSend, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, FORM_STATUS_LABEL,
+  formUrl, logFormSend, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, formStage,
 } from '../lib/orderForms.js'
 
 // Modulo taglie da mandare al cliente, per un ordine: crea il link,
@@ -416,7 +416,11 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
             <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, color: CREAM }}>{order.client}</div>
             <div style={{ fontSize: 11, color: MUTED }}>{order.id}</div>
           </div>
-          {form && !fresh && <span style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', padding: '4px 10px', borderRadius: 2, color: '#fff', background: status === 'inviato' ? GREEN : status === 'applicato' ? '#53769e' : '#8c7244' }}>{FORM_STATUS_LABEL[status]}</span>}
+          {form && !fresh && (() => {
+            const stage = formStage(form)
+            const bg = { muted: MUTED, gold: '#8c7244', green: GREEN, blue: '#53769e', clay: CLAY }[stage.tone]
+            return <span title={stage.text} style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', padding: '4px 10px', borderRadius: 2, color: '#fff', background: bg, whiteSpace: 'nowrap' }}>{stage.badge}</span>
+          })()}
         </div>
 
         {fresh || !form ? (

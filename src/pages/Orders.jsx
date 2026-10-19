@@ -7,7 +7,7 @@ import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import BollaModal                from '../components/BollaModal.jsx'
 import OrderFormModal            from '../components/OrderFormModal.jsx'
-import { fetchOrderForms, pendingFormWarning } from '../lib/orderForms.js'
+import { fetchOrderForms, pendingFormWarning, formStage } from '../lib/orderForms.js'
 import { askConfirm, askText }   from '../components/ConfirmDialog.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
 import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
@@ -157,19 +157,20 @@ function PaymentQuick({ order, onPaymentToggle }) {
   )
 }
 
-// Taglie dal cliente: lo stato del modulo si legge dal bottone stesso,
-// verde quando il cliente ha inviato e le taglie aspettano di essere applicate.
+// Taglie dal cliente: lo stato del modulo si legge dal bottone stesso
+// (vedi formStage); pieno quando tocca a noi: taglie da applicare o
+// richiesta del cliente.
+const STAGE_COLOR = { muted: MUTED, gold: GOLD, green: GREEN, blue: '#7fa3cc', clay: CLAY }
 function FormButton({ form, onClick }) {
-  const st = form?.status
-  const look = form?.change_request ? { c: CLAY, bg: 'rgba(196,98,58,0.14)', label: 'Taglie !' }
-             : st === 'inviato'   ? { c: GREEN, bg: 'rgba(74,158,110,0.18)', label: 'Taglie ●' }
-             : st === 'aperto'    ? { c: GOLD,  bg: 'rgba(184,150,90,0.08)', label: 'Taglie …' }
-             : { c: MUTED, bg: 'rgba(255,255,255,0.04)', label: 'Taglie' }
-  const title = form?.change_request ? 'Il cliente ha mandato una richiesta di modifica'
-              : st === 'inviato' ? 'Il cliente ha inviato le taglie: da applicare'
-              : st === 'aperto' ? 'Modulo inviato al cliente, in compilazione'
-              : st === 'applicato' ? 'Taglie del cliente applicate' : 'Manda al cliente il modulo taglie'
-  return <button title={title} style={{padding:'4px 8px',fontSize:8,border:`1px solid ${look.c}55`,background:look.bg,color:look.c,borderRadius:3,cursor:'pointer',fontWeight:st==='inviato'||form?.change_request?700:400}} onClick={onClick}>{look.label}</button>
+  const stage = formStage(form)
+  const c = STAGE_COLOR[stage.tone]
+  return (
+    <button title={stage.text} onClick={onClick} style={{
+      padding: '4px 8px', fontSize: 9, letterSpacing: 0.5, whiteSpace: 'nowrap', borderRadius: 3, cursor: 'pointer',
+      border: `1px solid ${stage.strong ? c : c + '66'}`, background: stage.strong ? c : 'transparent',
+      color: stage.strong ? '#fff' : c, fontWeight: stage.strong ? 700 : 500,
+    }}>{stage.badge}</button>
+  )
 }
 
 export default function Orders({ orders, setView, setEditOrder, onReorder, onDelete, onOrdersChange, initialFilter = 'Tutti' }) {
