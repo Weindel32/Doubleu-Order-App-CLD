@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../utils/helpers.js'
@@ -7,7 +7,7 @@ import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import BollaModal                from '../components/BollaModal.jsx'
 import OrderFormModal            from '../components/OrderFormModal.jsx'
-import { fetchOrderForms, pendingFormWarning } from '../lib/orderForms.js'
+import { fetchOrderForms, pendingFormWarning, formStage } from '../lib/orderForms.js'
 import { askConfirm, askText }   from '../components/ConfirmDialog.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
 import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
@@ -157,19 +157,64 @@ function PaymentQuick({ order, onPaymentToggle }) {
   )
 }
 
-// Taglie dal cliente: lo stato del modulo si legge dal bottone stesso,
-// verde quando il cliente ha inviato e le taglie aspettano di essere applicate.
+// Taglie dal cliente: lo stato del modulo si legge dal bottone stesso
+// (vedi formStage); pieno quando tocca a noi: taglie da applicare o
+// richiesta del cliente.
+const STAGE_COLOR = { muted: MUTED, gold: GOLD, green: GREEN, blue: '#7fa3cc', clay: CLAY }
+// Nell'elenco compare solo quando dice qualcosa: modulo in corso o da
+// gestire. Senza modulo o con taglie gia' applicate si passa dal menu «⋯».
+const FORM_BADGE_HIDDEN = ['none', 'applied']
 function FormButton({ form, onClick }) {
-  const st = form?.status
-  const look = form?.change_request ? { c: CLAY, bg: 'rgba(196,98,58,0.14)', label: 'Taglie !' }
-             : st === 'inviato'   ? { c: GREEN, bg: 'rgba(74,158,110,0.18)', label: 'Taglie ●' }
-             : st === 'aperto'    ? { c: GOLD,  bg: 'rgba(184,150,90,0.08)', label: 'Taglie …' }
-             : { c: MUTED, bg: 'rgba(255,255,255,0.04)', label: 'Taglie' }
-  const title = form?.change_request ? 'Il cliente ha mandato una richiesta di modifica'
-              : st === 'inviato' ? 'Il cliente ha inviato le taglie: da applicare'
-              : st === 'aperto' ? 'Modulo inviato al cliente, in compilazione'
-              : st === 'applicato' ? 'Taglie del cliente applicate' : 'Manda al cliente il modulo taglie'
-  return <button title={title} style={{padding:'4px 8px',fontSize:8,border:`1px solid ${look.c}55`,background:look.bg,color:look.c,borderRadius:3,cursor:'pointer',fontWeight:st==='inviato'||form?.change_request?700:400}} onClick={onClick}>{look.label}</button>
+  const stage = formStage(form)
+  if (FORM_BADGE_HIDDEN.includes(stage.key)) return null
+  const c = STAGE_COLOR[stage.tone]
+  return (
+    <button title={stage.text} onClick={onClick} style={{
+      padding: '4px 8px', fontSize: 9, letterSpacing: 0.5, whiteSpace: 'nowrap', borderRadius: 3, cursor: 'pointer',
+      border: `1px solid ${stage.strong ? c : c + '66'}`, background: stage.strong ? c : 'transparent',
+      color: stage.strong ? '#fff' : c, fontWeight: stage.strong ? 700 : 500,
+    }}>{stage.badge}</button>
+  )
+}
+
+// Menu «⋯» della riga: documenti e azioni meno frequenti, elimina in fondo
+// e separato (prima era una ✕ sempre a vista accanto agli altri bottoni).
+function RowMenu({ items }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc) }
+  }, [open])
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button title="Altre azioni" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} style={{
+        padding: '2px 10px', fontSize: 16, lineHeight: 1.2, borderRadius: 3, cursor: 'pointer', letterSpacing: 1,
+        border: `1px solid ${open ? GOLD : 'rgba(255,255,255,0.15)'}`, background: open ? 'rgba(184,150,90,0.12)' : 'transparent', color: open ? GOLD : MUTED,
+      }}>⋯</button>
+      {open && (
+        <div role="menu" style={{
+          position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 50, minWidth: 200, padding: '6px 0',
+          background: '#1e2d50', border: `1px solid ${BORDER}`, borderRadius: 6, boxShadow: '0 12px 30px rgba(0,0,0,0.45)',
+        }}>
+          {items.map((it, i) => it.section ? (
+            <div key={i} style={{ fontSize: 8, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', padding: i ? '10px 14px 4px' : '4px 14px', borderTop: i ? '1px solid rgba(255,255,255,0.06)' : 'none', marginTop: i ? 4 : 0 }}>{it.section}</div>
+          ) : (
+            <button key={i} role="menuitem" onClick={() => { setOpen(false); it.onClick() }} style={{
+              display: 'block', width: '100%', textAlign: 'left', padding: '8px 14px', fontSize: 12, cursor: 'pointer',
+              background: 'transparent', border: 'none', color: it.danger ? '#ef4444' : CREAM, fontFamily: 'inherit',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>{it.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Orders({ orders, setView, setEditOrder, onReorder, onDelete, onOrdersChange, initialFilter = 'Tutti' }) {
@@ -285,7 +330,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
               <th style={s.th}>Stato</th>
               <th style={thStyle('total')} onClick={()=>handleSort('total')}>Totale € {sortIcon('total')}</th>
               <th style={s.th}>Pagamenti</th>
-              <th style={s.th}>PDF</th>
+              <th style={s.th}>Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -294,10 +339,12 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
               const days  = daysUntilDelivery(o)
               const alert = needsAlert(o)
               return (
-                <tr key={o.id} style={{background:alert?'rgba(196,98,58,0.04)':'transparent'}}>
+                <tr key={o.id} onClick={()=>{setEditOrder(o);setView('new')}} style={{background:alert?'rgba(196,98,58,0.04)':'transparent',cursor:'pointer'}}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.025)'}
+                  onMouseLeave={e=>e.currentTarget.style.background=alert?'rgba(196,98,58,0.04)':'transparent'}>
                   <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>
                     {alert&&<span style={{color:CLAY,marginRight:6}}>⚠</span>}
-                    <span style={{cursor:'pointer'}} onClick={()=>{setEditOrder(o);setView('new')}}>{o.client}</span>
+                    <span>{o.client}</span>
                   </td>
                   <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.date||'—'}</td>
                   <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>
@@ -310,20 +357,25 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                     {o.shippedDate&&<div style={{fontSize:9,marginTop:3,color:MUTED}}>Sped. {o.shippedDate}</div>}
                     {o.actualDeliveryDate&&<div style={{fontSize:9,marginTop:3,color:GREEN}}>✓ {o.actualDeliveryDate}</div>}
                   </td>
-                  <td style={s.td}><StatusSelector order={o} onStatusChange={handleStatusChange}/></td>
+                  <td style={s.td} onClick={e=>e.stopPropagation()}><StatusSelector order={o} onStatusChange={handleStatusChange}/></td>
                   <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:GOLD}}>
                     {tot.toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})} €
                   </td>
-                  <td style={s.td}><PaymentQuick order={o} onPaymentToggle={handlePaymentToggle}/></td>
-                  <td style={s.td}>
-                    <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                      <button style={{...btnGoldStyle,padding:'4px 8px',fontSize:8}} onClick={()=>{setEditOrder(o);setView('new')}}>Apri</button>
+                  <td style={s.td} onClick={e=>e.stopPropagation()}><PaymentQuick order={o} onPaymentToggle={handlePaymentToggle}/></td>
+                  <td style={s.td} onClick={e=>e.stopPropagation()}>
+                    <div style={{display:'flex',gap:6,alignItems:'center',justifyContent:'flex-end'}}>
                       <FormButton form={formsByOrder[o.id]} onClick={()=>openForm(o.id)}/>
-                      <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(74,158,110,0.35)',background:'rgba(74,158,110,0.08)',color:GREEN,borderRadius:3,cursor:'pointer'}} onClick={()=>onReorder(o)} title="Nuovo ordine con gli stessi articoli, colori e prezzi">↻ Riordina</button>
-                      <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(196,98,58,0.4)',background:'rgba(196,98,58,0.08)',color:CLAY,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateProductionPDF,o)}>Prod.</button>
-                      <button style={{padding:'4px 8px',fontSize:8,border:`1px solid rgba(184,150,90,0.3)`,background:'rgba(184,150,90,0.06)',color:GOLD,borderRadius:3,cursor:'pointer'}} onClick={()=>openPDF(generateClientPDF,o)}>Cliente</button>
-                      <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)',color:'#7aaee8',borderRadius:3,cursor:'pointer'}} onClick={()=>o.status==='CONSEGNA PARZIALE'?setBollaOrder(o):openPDF(generateDeliveryPDF,o)}>Bolla</button>
-                      <button style={{padding:'4px 8px',fontSize:8,border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.06)',color:'#ef4444',borderRadius:3,cursor:'pointer'}} onClick={()=>onDelete(o.id)}>✕</button>
+                      <RowMenu items={[
+                        { section: 'Documenti' },
+                        { label: 'Scheda produzione', onClick: () => openPDF(generateProductionPDF, o) },
+                        { label: 'PDF cliente', onClick: () => openPDF(generateClientPDF, o) },
+                        { label: 'Bolla di consegna', onClick: () => o.status === 'CONSEGNA PARZIALE' ? setBollaOrder(o) : openPDF(generateDeliveryPDF, o) },
+                        { section: 'Azioni' },
+                        { label: formsByOrder[o.id] ? 'Modulo taglie' : 'Invia modulo taglie', onClick: () => openForm(o.id) },
+                        { label: '↻ Riordina', onClick: () => onReorder(o) },
+                        { section: ' ' },
+                        { label: 'Elimina ordine', danger: true, onClick: () => onDelete(o.id) },
+                      ]}/>
                     </div>
                   </td>
                 </tr>

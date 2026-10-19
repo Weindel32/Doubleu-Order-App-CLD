@@ -4,7 +4,7 @@ import { badgeStyle } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery, artDiscountApplied } from '../utils/helpers.js'
 import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
 import OrderFormModal from '../components/OrderFormModal.jsx'
-import { fetchOrderFormFor, formPieces, FORM_STATUS_LABEL } from '../lib/orderForms.js'
+import { fetchOrderFormFor, formStage } from '../lib/orderForms.js'
 
 // Modulo taglie dal telefono: e' qui che parte il link su WhatsApp.
 function OrderFormCard({ order, onOrderUpdated }) {
@@ -13,27 +13,23 @@ function OrderFormCard({ order, onOrderUpdated }) {
   useEffect(() => { fetchOrderFormFor(order.id).then(setForm) }, [order.id])
   const openModal = async () => { setForm(await fetchOrderFormFor(order.id)); setOpen(true) }
 
-  const st = form?.status
-  const req = !!form?.change_request
-  const color = req ? CLAY : st === 'inviato' ? GREEN : st === 'aperto' ? GOLD : MUTED
-  const text = form === undefined ? 'Caricamento…'
-    : req ? `Richiesta di modifica: “${form.change_request.slice(0, 80)}${form.change_request.length > 80 ? '…' : ''}”`
-    : !form ? 'Manda al cliente il link per compilare le taglie'
-    : st === 'inviato' ? `${formPieces(form.lines, form.sizes)} pezzi ${form.applied_at ? 'modificati' : 'ricevuti'}${form.contact_name ? ' da ' + form.contact_name : ''} · da applicare`
-    : st === 'aperto' ? 'Link inviato, il cliente sta compilando'
-    : 'Taglie del cliente applicate all\'ordine'
+  const stage = formStage(form)
+  const req = stage.key === 'request'
+  const got = stage.key === 'received'
+  const color = { muted: MUTED, gold: GOLD, green: GREEN, blue: '#7fa3cc', clay: CLAY }[stage.tone]
+  const text = form === undefined ? 'Caricamento…' : stage.text
   return (
     <>
       <button onClick={openModal} style={{
         width: '100%', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
-        background: req ? 'rgba(196,98,58,0.14)' : st === 'inviato' ? 'rgba(74,158,110,0.14)' : SURFACE,
-        border: `1px solid ${req ? 'rgba(196,98,58,0.5)' : st === 'inviato' ? 'rgba(74,158,110,0.5)' : BORDER}`,
+        background: req ? 'rgba(196,98,58,0.14)' : got ? 'rgba(74,158,110,0.14)' : SURFACE,
+        border: `1px solid ${req ? 'rgba(196,98,58,0.5)' : got ? 'rgba(74,158,110,0.5)' : BORDER}`,
         borderRadius: 10, padding: '14px 16px', cursor: 'pointer', color: CREAM,
         fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12, letterSpacing: 2, color, textTransform: 'uppercase' }}>
-            Taglie cliente{form ? ` · ${FORM_STATUS_LABEL[st]}` : ''}
+            Taglie cliente{form ? ` · ${stage.badge}` : ''}
           </div>
           <div style={{ fontSize: 13, color: CREAM, marginTop: 4 }}>{text}</div>
         </div>
