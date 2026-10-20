@@ -1,6 +1,6 @@
 import { askConfirm } from '../components/ConfirmDialog.jsx'
 import { useState, useEffect } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleModal, { emptyShipment, shipmentToForm } from '../components/SampleModal.jsx'
@@ -8,10 +8,10 @@ import { exportSamplesCSV } from '../utils/exportCSV.js'
 import { generateSamplePDF, documentLanguage } from '../utils/pdfSample.js'
 import {
   fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
-  sampleStats, recipientLabel, needsFollowUp, returnPending, returnOverdue,
-  shipmentNeedsRevision, shipmentOutcomeSummary, OUTCOMES, isGift, foreignCountryLabel,
+  sampleStats, recipientLabel, needsFollowUp, returnPending,
+  shipmentNeedsRevision, shipmentOutcomeSummary, OUTCOMES, isGift, foreignCountryLabel, todayISO,
 } from '../utils/samples.js'
-import { PurposeBadge, OutcomeBadge, FollowUpBadge, GiftBadge } from '../components/SampleTimeline.jsx'
+import { PurposeBadge, OutcomeBadge, FollowUpBadge, GiftBadge, ReturnBadge } from '../components/SampleTimeline.jsx'
 
 const inp = { ...s.input, fontSize: 13 }
 
@@ -26,7 +26,7 @@ const VIEW_FILTERS = [
 
 export default function Samples({
   shipments, clients, prospects, orders,
-  onUpsert, onDelete,
+  onUpsert, onDelete, onMarkReturned,
   initialDraft, onDraftConsumed,
 }) {
   const [form,     setForm]     = useState(null)
@@ -171,7 +171,6 @@ export default function Samples({
           {filtered.map(sh => {
             const summary = shipmentOutcomeSummary(sh)
             const outcomeEntries = OUTCOMES.filter(o => summary.counts[o]).map(o => [o, summary.counts[o]])
-            const overdue  = returnOverdue(sh)
             const followUp = needsFollowUp(sh)
             return (
             <div key={sh.id} className="du-card"
@@ -200,8 +199,8 @@ export default function Samples({
                   {outcomeEntries.map(([outcome, count]) => (
                     <OutcomeBadge key={outcome} outcome={outcome} count={count}/>
                   ))}
-                  {overdue && <FollowUpBadge overdue/>}
-                  {!overdue && followUp && <FollowUpBadge/>}
+                  <ReturnBadge sh={sh}/>
+                  {followUp && <FollowUpBadge/>}
                 </div>
 
                 <div style={{ fontSize: 13, color: MUTED, marginTop: 9 }}>
@@ -247,6 +246,24 @@ export default function Samples({
                     {docLang(sh) === 'it' ? 'EN' : 'IT'}
                   </button>
                 </div>
+                {/* Rientro completo in un clic; i rientri parziali si segnano
+                    articolo per articolo dentro l'invio. */}
+                {onMarkReturned && returnPending(sh) && (
+                  <button style={{ padding: '7px 14px', fontSize: 11, letterSpacing: 1.5, cursor: 'pointer', borderRadius: 3, textTransform: 'uppercase',
+                    background: 'transparent', border: `1px solid ${GREEN}`, color: GREEN }}
+                    onClick={async () => {
+                      const n = (sh.items || []).length
+                      const ok = await askConfirm({
+                        title: 'Campioni rientrati?',
+                        body: [`${recipientLabel(sh, clients, prospects)}: segno come rientrat${n === 1 ? 'o l\'articolo' : `i tutti gli ${n} articoli`}, con data di oggi.`,
+                          'Se è rientrata solo una parte, apri l\'invio e spunta i singoli articoli.'],
+                        confirmLabel: 'Segna rientrato', tone: 'green',
+                      })
+                      if (ok) onMarkReturned(sh.id, todayISO())
+                    }}>
+                    Segna rientrato
+                  </button>
+                )}
                 <button style={{ ...btnGoldStyle, padding: '7px 18px', fontSize: 11 }}
                   onClick={() => setForm(shipmentToForm(sh))}>
                   Apri
