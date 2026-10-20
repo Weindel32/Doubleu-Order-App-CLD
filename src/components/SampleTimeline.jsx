@@ -3,7 +3,7 @@ import { s, btnGoldStyle } from '../tokens.js'
 import {
   PURPOSE_LABELS, PURPOSE_CFG, GIFT_CFG, isGift, OUTCOME_LABELS, OUTCOME_CFG, fmtDate, euro,
   samplePieces, sampleCostValue, sampleInvested, sampleOutstanding,
-  needsFollowUp, returnOverdue, returnPending, daysSince, itemOutcome, followUpBaseDate,
+  needsFollowUp, returnOverdue, returnPending, daysSince, itemOutcome, followUpBaseDate, todayISO,
 } from '../utils/samples.js'
 
 export function OutcomeBadge({ outcome, count }) {
@@ -40,6 +40,30 @@ export function GiftBadge() {
 }
 
 // Follow-up da sollecitare o reso scaduto: stesso allarme, due testi.
+// Stato del reso, sempre visibile sulla card: da rientrare (con la data
+// prevista), scaduto, parziale o rientrato. Niente per i campioni a fondo
+// perduto: non devono tornare.
+export function ReturnBadge({ sh }) {
+  if (!sh.return_required) return null
+  const items = sh.items || []
+  const back = items.filter(it => it.returned).length
+  const done = !!sh.returned_date || (items.length > 0 && back === items.length)
+  const look = done
+    ? { c: GREEN, bg: 'rgba(74,158,110,0.15)', bd: 'rgba(74,158,110,0.35)',
+        t: `✓ RIENTRATO${sh.returned_date ? ` IL ${fmtDate(sh.returned_date)}` : ''}` }
+    : sh.return_due_date && sh.return_due_date < todayISO()
+      ? { c: CLAY, bg: 'rgba(196,98,58,0.15)', bd: 'rgba(196,98,58,0.35)', t: `⚠ RESO SCADUTO IL ${fmtDate(sh.return_due_date)}` }
+      : { c: GOLD, bg: 'rgba(184,150,90,0.12)', bd: 'rgba(184,150,90,0.35)',
+          t: `↩ DA RIENTRARE${sh.return_due_date ? ` ENTRO IL ${fmtDate(sh.return_due_date)}` : ''}` }
+  const partial = !done && back > 0 ? ` · ${back}/${items.length} RIENTRATI` : ''
+  return (
+    <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 2, fontSize: 11,
+      letterSpacing: 1, fontWeight: 600, color: look.c, background: look.bg, border: `1px solid ${look.bd}` }}>
+      {look.t}{partial}
+    </span>
+  )
+}
+
 export function FollowUpBadge({ overdue }) {
   return (
     <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 2, fontSize: 11,
