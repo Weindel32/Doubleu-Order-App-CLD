@@ -211,6 +211,8 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
                         {o.lostReason || 'Non specificato'}
                       </span>
                       {o.lostDate && <div style={{ fontSize: 10, color: MUTED, marginTop: 4 }}>{o.lostDate}</div>}
+                      {/* Perso dopo uno standby: il motivo dello standby resta come storico */}
+                      {o.standby && <div style={{ fontSize: 10, color: MUTED, marginTop: 4, maxWidth: 260 }}>Era in standby{o.standbyReason ? `: ${o.standbyReason}` : ''}</div>}
                     </td>
                   ) : isStandbyTab ? (
                     <td style={{ ...s.td, fontSize: 11, color: MUTED, maxWidth: 260 }}>
@@ -242,6 +244,8 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
                             onClick={() => { setEditOrder(o); setView('newQuote') }}>Modifica</button>
                           <button style={{ padding: '7px 13px', fontSize: 10, border: `1px solid rgba(196,98,58,0.4)`, background: 'rgba(196,98,58,0.08)', color: CLAY, borderRadius: 3, cursor: 'pointer' }}
                             onClick={() => openPDF(o)}>PDF</button>
+                          <button style={{ padding: '7px 13px', fontSize: 10, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: RED, borderRadius: 3, cursor: 'pointer' }}
+                            onClick={() => setLostModal(o)} title="Il preventivo non è diventato ordine">Perso</button>
                           <button style={{ padding: '6px 9px', fontSize: 13, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: MUTED, borderRadius: 3, cursor: 'pointer', opacity: 0.75 }}
                             onClick={() => onDelete(o.id)} title="Elimina definitivamente">🗑</button>
                         </>
