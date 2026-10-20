@@ -32,6 +32,8 @@ export default function CommercialHistory({ orders = [], emptyText = 'Nessun ord
       {sorted.map(o => {
         const st = orderStatusInfo(o)
         const note = o.lost ? o.lostReason : o.standby ? o.standbyReason : null
+        // Perso dopo uno standby: il motivo dello standby resta come storico
+        const standbyNote = o.lost && o.standby ? `Era in standby${o.standbyReason ? `: ${o.standbyReason}` : ''}` : null
         return (
           <div key={o.id} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${BORDER}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -55,6 +57,11 @@ export default function CommercialHistory({ orders = [], emptyText = 'Nessun ord
             {note && (
               <div style={{ fontSize: 11, color: MUTED, marginTop: 6, lineHeight: 1.5, overflowWrap: 'break-word' }}>
                 {note}
+              </div>
+            )}
+            {standbyNote && (
+              <div style={{ fontSize: 11, color: MUTED, marginTop: note ? 2 : 6, lineHeight: 1.5, overflowWrap: 'break-word', fontStyle: 'italic' }}>
+                {standbyNote}
               </div>
             )}
           </div>
