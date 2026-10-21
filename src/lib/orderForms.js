@@ -306,14 +306,18 @@ export async function logFormSend(form, channel, to = '') {
 }
 
 export async function setOrderFormStatus(token, status, extra = {}) {
-  const patch = { status, updated_at: new Date().toISOString(), ...extra }
-  if (status === 'applicato') patch.applied_at = patch.updated_at
+  const patch = { status, ...extra }
+  if (status === 'applicato') patch.applied_at = new Date().toISOString()
   return patchOrderForm(token, patch)
 }
 
+// Le modifiche fatte dall'app non toccano updated_at: lo aggiornano solo le
+// funzioni usate dal cliente (salvataggio, riapertura, richiesta), cosi'
+// «Ultima modifica del cliente» resta vera anche dopo un riallineamento
+// delle descrizioni o un blocco.
 export async function patchOrderForm(token, patch) {
   const { data, error } = await supabase.from('order_forms')
-    .update({ updated_at: new Date().toISOString(), ...patch }).eq('token', token).select().single()
+    .update(patch).eq('token', token).select().single()
   if (error) { console.error('patchOrderForm:', error); return null }
   return data
 }
