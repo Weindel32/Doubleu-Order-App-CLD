@@ -4,6 +4,7 @@ import { s } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderTotal, isConfirmed, isCancelled } from '../utils/helpers.js'
 import { clientPaymentDelays, MIN_INCASSI_PER_GIUDIZIO } from '../utils/payments.js'
 import { sampleStats, euro, itemOutcome } from '../utils/samples.js'
+import { YearlyRevenueCard, TopClubsCard } from '../components/RevenueCards.jsx'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
 const LINE_COLORS = { 'Premium':CLAY,'Basic':GOLD,'LS24':'#7aaee8','WFox':GREEN,'Surfaces':'#b48ee8' }
@@ -413,6 +414,12 @@ export default function Analytics({ orders, shipments = [] }) {
             {item.sub&&<div style={s.statSub}>{item.sub}</div>}
           </div>
         ))}
+      </div>
+
+      {/* Spostati dalla Dashboard: andamento per anno e migliori club */}
+      <div style={{ marginTop: 16 }}>
+        <YearlyRevenueCard orders={orders}/>
+        <TopClubsCard orders={orders}/>
       </div>
 
       {deliveryPerf && (() => {
