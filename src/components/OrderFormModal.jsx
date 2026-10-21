@@ -5,7 +5,7 @@ import { updateOrder } from '../lib/dataService.js'
 import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
   buildFormLines, initialFormSizes, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
-  formUrl, logFormSend, lastSendText, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, formStage,
+  formUrl, logFormSend, lastSendText, formActivity, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, formStage,
 } from '../lib/orderForms.js'
 
 // Modulo taglie da mandare al cliente, per un ordine: crea il link,
@@ -470,10 +470,15 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
                     {' · '}{form.applied_at ? 'il cliente sta correggendo le taglie già applicate' : 'il cliente non ha ancora inviato'}
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
-                  {[form.updated_at && form.updated_at !== form.created_at ? `Ultima modifica del cliente ${fmtDateTime(form.updated_at)}` : null,
-                    form.expires_at ? `Scade il ${new Date(form.expires_at).toLocaleDateString('it-IT')}` : null].filter(Boolean).join(' · ')}
-                </div>
+                {(() => {
+                  const act = formActivity(form)
+                  return act && (
+                    <div style={{ fontSize: 12, color: { stale: CLAY, unopened: '#e8c96e', opened: GOLD, filling: GREEN }[act.kind] || MUTED, marginTop: 6 }}>
+                      {act.text}<span style={{ color: MUTED }}> · {act.when}</span>
+                    </div>
+                  )
+                })()}
+                {form.expires_at && <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>Scade il {new Date(form.expires_at).toLocaleDateString('it-IT')}</div>}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                   <button style={btn(GOLD, false)} onClick={() => setSendOpen(true)}>Invia di nuovo</button>
                   <button style={btn(MUTED, false)} onClick={() => setPreview(true)}>Anteprima</button>

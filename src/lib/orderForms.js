@@ -38,6 +38,42 @@ export function lastSendText(form) {
   return `${via} il ${fmtShort(e.at)}`
 }
 
+// Le aperture del link si registrano dal 21/10/2026: prima di allora
+// «mai aperto» non si puo' sapere.
+const OPEN_TRACKING_SINCE = '2026-10-21T00:00:00Z'
+const FORM_STALE_DAYS = 3
+
+const daysAgo = (iso) => Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+const whenText = (iso) => {
+  const d = daysAgo(iso)
+  const hm = new Date(iso).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })
+  return d === 0 ? `oggi alle ${hm}` : d === 1 ? `ieri alle ${hm}` : `il ${fmtShort(iso).split(',')[0]}`
+}
+
+// Cosa sta facendo il cliente con un modulo mandato e non ancora inviato:
+// mai aperto, aperto senza scrivere, in compilazione, fermo.
+//   kind: unknown | unopened | opened | filling | stale
+export function formActivity(form) {
+  if (!form || form.status !== 'aperto') return null
+  const pieces = formPieces(form.lines || [], form.sizes || {})
+  const expected = (form.lines || []).reduce((t, l) => t + (l.expected || 0), 0)
+  const of = expected ? ` su ${expected} previsti` : ''
+  const edited = form.updated_at && new Date(form.updated_at) - new Date(form.created_at) > 2000
+  if (edited) {
+    const d = daysAgo(form.updated_at)
+    return d >= FORM_STALE_DAYS
+      ? { kind: 'stale', pieces, expected, text: `Fermo da ${d} giorni · ${pieces} pezzi inseriti${of}`, when: `ultima modifica ${whenText(form.updated_at)}` }
+      : { kind: 'filling', pieces, expected, text: `In compilazione · ${pieces} pezzi inseriti${of}`, when: `ultima modifica ${whenText(form.updated_at)}` }
+  }
+  if (form.last_opened_at) {
+    return { kind: 'opened', pieces, expected, text: 'Aperto, nessuna modifica ancora',
+      when: `${form.open_count > 1 ? `${form.open_count} aperture · ultima` : 'aperto'} ${whenText(form.last_opened_at)}` }
+  }
+  const sent = form.sent_log?.[form.sent_log.length - 1]?.at || form.created_at
+  if (sent < OPEN_TRACKING_SINCE) return { kind: 'unknown', pieces, expected, text: 'Nessuna modifica del cliente', when: 'aperture registrate dal 21/10' }
+  return { kind: 'unopened', pieces, expected, text: 'Non ancora aperto', when: `inviato ${whenText(sent)}` }
+}
+
 // A che punto e' il modulo taglie di un ordine, in parole: la stessa
 // lettura per elenco ordini, finestra del modulo e telefono.
 //   tone: muted | gold | green | blue | clay

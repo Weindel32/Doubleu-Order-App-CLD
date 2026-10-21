@@ -629,3 +629,27 @@ ALTER POLICY contact_requests_update_authenticated ON public.contact_requests WI
 -- email, condivisione) si aggiunge una voce { channel, to, at }.
 -- Solo interno: order_form_view non lo espone al cliente.
 ALTER TABLE order_forms ADD COLUMN IF NOT EXISTS sent_log jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION: aperture del modulo taglie (applicata il 21/10/2026)
+-- ═══════════════════════════════════════════════════════════════
+-- order_form_get annota prima e ultima apertura del link (e quante volte),
+-- senza toccare updated_at, che resta l'ultima modifica del cliente.
+-- Solo interno: order_form_view non lo espone al cliente.
+ALTER TABLE order_forms ADD COLUMN IF NOT EXISTS first_opened_at timestamptz;
+ALTER TABLE order_forms ADD COLUMN IF NOT EXISTS last_opened_at  timestamptz;
+ALTER TABLE order_forms ADD COLUMN IF NOT EXISTS open_count      integer NOT NULL DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION order_form_get(p_token text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE f order_forms;
+BEGIN
+  UPDATE order_forms SET
+    first_opened_at = COALESCE(first_opened_at, now()),
+    last_opened_at  = now(),
+    open_count      = open_count + 1
+  WHERE token = p_token AND status <> 'revocato'
+  RETURNING * INTO f;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN order_form_view(f);
+END $$;
