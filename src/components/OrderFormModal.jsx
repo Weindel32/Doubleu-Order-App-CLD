@@ -5,7 +5,7 @@ import { updateOrder } from '../lib/dataService.js'
 import { askConfirm, askText } from './ConfirmDialog.jsx'
 import {
   buildFormLines, initialFormSizes, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
-  formUrl, logFormSend, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, formStage,
+  formUrl, logFormSend, lastSendText, formActivity, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, formStage,
 } from '../lib/orderForms.js'
 
 // Modulo taglie da mandare al cliente, per un ordine: crea il link,
@@ -78,6 +78,10 @@ const chip = (on, color = GOLD) => ({
   border: `1px solid ${on ? color : BORDER}`, background: on ? 'rgba(184,150,90,0.14)' : 'transparent',
   color: on ? CREAM : MUTED,
 })
+const linkBtn = {
+  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11, letterSpacing: 0.5,
+  color: GOLD, textDecoration: 'underline', fontFamily: 'inherit',
+}
 const btn = (color, filled) => ({
   padding: '9px 16px', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600,
   borderRadius: 4, cursor: 'pointer', border: `1px solid ${color}`,
@@ -238,14 +242,9 @@ function SentLog({ log }) {
   )
 }
 
-function LinkBox({ order, form, onChange }) {
+function LinkBox({ order, form, onChange, onPreview }) {
   const url = formUrl(form.token)
   const log = (channel, to) => logFormSend(form, channel, to).then(f => { if (f) onChange(f) })
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-    catch { askText({ title: 'Copia il link', body: ['Il browser non permette la copia automatica: seleziona il link e copialo.'], value: url, confirmLabel: 'Fatto' }) }
-  }
   // Sul telefono il foglio di condivisione di sistema arriva a WhatsApp,
   // Messaggi, Mail: stesso testo del bottone WhatsApp.
   const canShare = typeof navigator !== 'undefined' && !!navigator.share
@@ -265,13 +264,11 @@ function LinkBox({ order, form, onChange }) {
     if (r.ok) log('email', email)
   }
   const share = () => navigator.share({ title: 'Modulo taglie DOUBLEU', text: shareText(order), url }).then(() => log('condivisione')).catch(() => {})
-  const [preview, setPreview] = useState(false)
   // Il controllo serve finche' il cliente non ha mai inviato.
   const firstSend = form.status === 'aperto' && !form.submitted_at
   return (
     <>
-    {firstSend && <SendCheck order={order} form={form} phone={phone} email={email} onPreview={() => setPreview(true)}/>}
-    {preview && <Preview form={form} onClose={() => setPreview(false)}/>}
+    {firstSend && <SendCheck order={order} form={form} phone={phone} email={email} onPreview={onPreview}/>}
     <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 12 }}>
       <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 8 }}>{url}</div>
       <SentLog log={form.sent_log}/>
@@ -298,11 +295,11 @@ function LinkBox({ order, form, onChange }) {
         <a style={{ fontSize: 11, color: MUTED, alignSelf: 'center', marginLeft: 'auto' }} href={mailHref(order, url, email)} onClick={() => log('posta', email)}>oppure dalla mia posta</a>
       </div>
       {mail.msg && <div style={{ fontSize: 12, color: mail.state === 'sent' ? GREEN : CLAY, marginTop: -6, marginBottom: 12 }}>{mail.state === 'sent' ? '✓ ' : ''}{mail.msg}</div>}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
-        <button style={btn(GOLD, false)} onClick={copy}>{copied ? 'Copiato ✓' : 'Copia link'}</button>
-        {canShare && <button style={btn(CREAM, false)} onClick={share}>Condividi…</button>}
-        {!firstSend && <button style={btn(MUTED, false)} onClick={() => setPreview(true)}>Anteprima</button>}
-      </div>
+      {canShare && (
+        <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
+          <button style={btn(CREAM, false)} onClick={share}>Condividi…</button>
+        </div>
+      )}
     </div>
     </>
   )
@@ -347,6 +344,9 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
   const [fresh, setFresh] = useState(!initialForm)
   const [busy, setBusy]   = useState(false)
   const [msg, setMsg]     = useState('')
+  const [sendOpen, setSendOpen] = useState(null)   // null = secondo la fase
+  const [preview, setPreview]   = useState(false)
+  const [copied, setCopied]     = useState(false)
 
   const changed = (f) => { setForm(f); onFormChange(f) }
 
@@ -407,6 +407,17 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
   }
 
   const status = form?.status
+  const stageKey = form ? formStage(form).key : null
+  const locking = LOCKING_STATUSES.includes(order.status)
+  const canReopen = status === 'inviato' && !locking && !form?.locked
+  // Canali di invio aperti solo finche' il link non e' mai partito; dopo,
+  // a richiesta («Invia di nuovo»).
+  const sendShown = sendOpen ?? (stageKey === 'created')
+  const copyLink = async () => {
+    const url = formUrl(form.token)
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) }
+    catch { askText({ title: 'Copia il link', body: ['Il browser non permette la copia automatica: seleziona il link e copialo.'], value: url, confirmLabel: 'Fatto' }) }
+  }
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#1e2d50', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 'clamp(16px, 4vw, 28px)', width: 620, maxWidth: '96vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -425,11 +436,13 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
 
         {fresh || !form ? (
           <>
-            <Setup order={order} onCreated={(f) => { changed(f); setFresh(false) }}/>
+            <Setup order={order} onCreated={(f) => { changed(f); setFresh(false); setSendOpen(null) }}/>
           </>
         ) : (
           <>
-            <LinkBox order={order} form={form} onChange={changed}/>
+            {/* Il contenuto segue la fase del modulo: prima l'invio, poi
+                l'attesa in una riga, poi le taglie da applicare. I comandi
+                rari stanno nella riga in fondo. */}
             {form.change_request && (
               <div style={{ background: 'rgba(196,98,58,0.12)', border: '1px solid rgba(196,98,58,0.4)', borderRadius: 6, padding: '12px 14px' }}>
                 <div style={{ fontSize: 10, letterSpacing: 1.5, color: CLAY, textTransform: 'uppercase', marginBottom: 6 }}>
@@ -441,39 +454,70 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
                 </div>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: MUTED }}>
-              <span style={{ flex: 1 }}>
-                {LOCKING_STATUSES.includes(order.status)
-                  ? <>Modifiche del cliente <b style={{ color: CLAY }}>bloccate</b>: ordine {order.status.toLowerCase()}. Può solo mandarti richieste.</>
-                  : form.locked
-                    ? <>Modifiche del cliente <b style={{ color: CLAY }}>bloccate a mano</b>. Può solo mandarti richieste.</>
-                    : <>Il cliente può correggere le taglie dallo stesso link fino a IN PRODUZIONE.</>}
-              </span>
-              {!LOCKING_STATUSES.includes(order.status) && (
-                <button style={btn(MUTED, false)} disabled={busy} onClick={toggleLock}>{form.locked ? 'Sblocca' : 'Blocca ora'}</button>
-              )}
-            </div>
-            {status === 'aperto' && (
-              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
-                {form.applied_at ? 'Il cliente ha riaperto il modulo per correggere le taglie già applicate: non ha ancora reinviato.' : 'Il cliente non ha ancora inviato.'}{form.updated_at && form.updated_at !== form.created_at ? ` Ultima modifica ${fmtDateTime(form.updated_at)}.` : ''}
-                {form.expires_at ? ` Scade il ${new Date(form.expires_at).toLocaleDateString('it-IT')}.` : ''}
+
+            {status === 'aperto' && (sendShown ? (
+              <>
+                <LinkBox order={order} form={form} onChange={changed} onPreview={() => setPreview(true)}/>
+                {stageKey !== 'created' && (
+                  <button onClick={() => setSendOpen(false)} style={{ ...linkBtn, alignSelf: 'flex-start' }}>Nascondi l'invio</button>
+                )}
+              </>
+            ) : (
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: '12px 14px' }}>
+                <div style={{ fontSize: 13, color: CREAM, lineHeight: 1.6 }}>
+                  {lastSendText(form) ? <>Inviato via {lastSendText(form)}</> : 'Link creato'}
+                  <span style={{ color: MUTED }}>
+                    {' · '}{form.applied_at ? 'il cliente sta correggendo le taglie già applicate' : 'il cliente non ha ancora inviato'}
+                  </span>
+                </div>
+                {(() => {
+                  const act = formActivity(form)
+                  return act && (
+                    <div style={{ fontSize: 12, color: { stale: CLAY, unopened: '#e8c96e', opened: GOLD, filling: GREEN }[act.kind] || MUTED, marginTop: 6 }}>
+                      {act.text}<span style={{ color: MUTED }}> · {act.when}</span>
+                    </div>
+                  )
+                })()}
+                {form.expires_at && <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>Scade il {new Date(form.expires_at).toLocaleDateString('it-IT')}</div>}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  <button style={btn(GOLD, false)} onClick={() => setSendOpen(true)}>Invia di nuovo</button>
+                  <button style={btn(MUTED, false)} onClick={() => setPreview(true)}>Anteprima</button>
+                </div>
               </div>
-            )}
+            ))}
+
             {(status === 'inviato' || status === 'applicato') && (
               <>
                 <div style={{ fontSize: 12, color: CREAM, lineHeight: 1.6 }}>
-                  Inviato {fmtDateTime(form.submitted_at)}{form.contact_name ? ` da ${form.contact_name}` : ''} · <b>{formPieces(form.lines, form.sizes)} pezzi</b>
+                  {status === 'applicato' ? 'Applicate all\'ordine. ' : ''}Inviate {fmtDateTime(form.submitted_at)}{form.contact_name ? ` da ${form.contact_name}` : ''} · <b>{formPieces(form.lines, form.sizes)} pezzi</b>
                   {form.client_note && <div style={{ color: MUTED, marginTop: 6, whiteSpace: 'pre-wrap' }}>Nota: {form.client_note}</div>}
                 </div>
                 <Comparison order={order} form={form}/>
+                {(status === 'inviato' || canReopen) && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {canReopen && <button style={btn(MUTED, false)} disabled={busy} onClick={() => setStatus('aperto', { title: 'Riaprire il modulo al cliente?', body: ['Potrà modificare le taglie e inviarle di nuovo dallo stesso link.'], confirmLabel: 'Riapri', tone: 'gold' })}>Riapri al cliente</button>}
+                    {status === 'inviato' && <button style={btn(GREEN, true)} disabled={busy} onClick={apply}>{busy ? 'Applico…' : 'Applica all\'ordine'}</button>}
+                  </div>
+                )}
               </>
             )}
             {msg && <div style={{ fontSize: 12, color: msg.startsWith('Taglie applicate') ? GREEN : CLAY }}>{msg}</div>}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button style={btn('#ef4444', false)} disabled={busy} onClick={() => setStatus('revocato', { title: 'Revocare il link?', body: ['Il cliente non potrà più aprire il modulo. Le taglie già inviate restano visibili qui.'], confirmLabel: 'Revoca', tone: 'danger' })}>Revoca link</button>
-              {status === 'inviato' && !LOCKING_STATUSES.includes(order.status) && !form.locked && <button style={btn(MUTED, false)} disabled={busy} onClick={() => setStatus('aperto', { title: 'Riaprire il modulo al cliente?', body: ['Potrà modificare le taglie e inviarle di nuovo dallo stesso link.'], confirmLabel: 'Riapri', tone: 'gold' })}>Riapri al cliente</button>}
-              {status === 'inviato' && <button style={btn(GREEN, true)} disabled={busy} onClick={apply}>{busy ? 'Applico…' : 'Applica all\'ordine'}</button>}
+
+            {/* Comandi rari */}
+            <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 11, color: MUTED }}>
+              <span style={{ flex: '1 1 220px' }}>
+                {locking
+                  ? <>Modifiche del cliente <b style={{ color: CLAY }}>bloccate</b>: ordine {order.status.toLowerCase()}.</>
+                  : form.locked
+                    ? <>Modifiche del cliente <b style={{ color: CLAY }}>bloccate a mano</b>.</>
+                    : <>Il cliente può correggere fino a IN PRODUZIONE.</>}
+              </span>
+              {!locking && <button style={linkBtn} disabled={busy} onClick={toggleLock}>{form.locked ? 'Sblocca' : 'Blocca ora'}</button>}
+              <button style={linkBtn} onClick={copyLink}>{copied ? 'Copiato ✓' : 'Copia link'}</button>
+              {status !== 'aperto' && <button style={linkBtn} onClick={() => setPreview(true)}>Anteprima</button>}
+              <button style={{ ...linkBtn, color: '#ef4444' }} disabled={busy} onClick={() => setStatus('revocato', { title: 'Revocare il link?', body: ['Il cliente non potrà più aprire il modulo. Le taglie già inviate restano visibili qui.'], confirmLabel: 'Revoca', tone: 'danger' })}>Revoca link</button>
             </div>
+            {preview && <Preview form={form} onClose={() => setPreview(false)}/>}
           </>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

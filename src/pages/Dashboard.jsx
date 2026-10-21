@@ -5,7 +5,7 @@ import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert, isConfirmed,
   hasMissingSizes, missingSizeArticles, hasOverduePayment, parseDate } from '../utils/helpers.js'
 import { overdueSummary } from '../utils/payments.js'
 import { needsFollowUp, returnOverdue, fmtDate, daysSince, recipientLabel, followUpBaseDate } from '../utils/samples.js'
-import { fetchOrderForms, formStage } from '../lib/orderForms.js'
+import { fetchOrderForms, formStage, formActivity, lastSendText } from '../lib/orderForms.js'
 import StatCard from '../components/StatCard.jsx'
 import OrderFormModal from '../components/OrderFormModal.jsx'
 import { revenueByYear } from '../components/RevenueCards.jsx'
@@ -128,6 +128,16 @@ export default function Dashboard({ orders, setView, setEditOrder, onOrdersChang
     })
 
   todo.sort((a, b) => a.prio - b.prio || a.seq - b.seq)
+
+  // Moduli mandati e non ancora inviati dal cliente: non sono cose da
+  // fare, ma si vede a che punto e' ciascun club (e quando sollecitare).
+  const ACT_ORDER = { stale: 0, unopened: 1, opened: 2, unknown: 3, filling: 4 }
+  const ACT_COLOR = { stale: CLAY, unopened: YELLOW, opened: GOLD, unknown: MUTED, filling: GREEN }
+  const inProgress = orders
+    .map(o => ({ o, f: forms[o.id] }))
+    .filter(({ f }) => f && f.status === 'aperto' && formStage(f).key !== 'created' && !f.change_request)
+    .map(x => ({ ...x, act: formActivity(x.f) }))
+    .sort((a, b) => ACT_ORDER[a.act.kind] - ACT_ORDER[b.act.kind])
   const visible = showAll ? todo : todo.slice(0, TODO_VISIBLE)
   const formOrder = formOrderId ? orders.find(o => o.id === formOrderId) : null
 
@@ -207,6 +217,46 @@ export default function Dashboard({ orders, setView, setEditOrder, onOrdersChang
           </div>
         )}
       </div>
+
+      {inProgress.length > 0 && (
+        <div style={{ ...s.card, marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+            <div style={s.cardTitle}>Moduli taglie in corso</div>
+            <div style={{ fontSize: 11, color: MUTED, letterSpacing: 1 }}>{inProgress.length}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {inProgress.map(({ o, f, act }) => {
+              const c = ACT_COLOR[act.kind]
+              const pct = act.expected ? Math.min(100, Math.round(act.pieces / act.expected * 100)) : null
+              return (
+                <div key={o.id} onClick={() => setFormOrderId(o.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 14px', cursor: 'pointer',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
+                  <div style={{ width: 3, alignSelf: 'stretch', minHeight: 34, borderRadius: 2, background: c, flexShrink: 0 }}/>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: CREAM }}>{o.client}</div>
+                    <div style={{ fontSize: 10, color: MUTED, marginTop: 1 }}>{o.id}{lastSendText(f) ? ` · inviato via ${lastSendText(f)}` : ''}</div>
+                  </div>
+                  {pct !== null && act.pieces > 0 && (
+                    <div style={{ width: 90, flexShrink: 0 }}>
+                      <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: c }}/>
+                      </div>
+                      <div style={{ fontSize: 9, color: MUTED, marginTop: 3, textAlign: 'right' }}>{pct}%</div>
+                    </div>
+                  )}
+                  <div style={{ textAlign: 'right', flexShrink: 0, maxWidth: 320 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: c }}>{act.text}</div>
+                    <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{act.when}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
     {formOrder && <OrderFormModal order={formOrder} form={forms[formOrder.id]} onClose={() => setFormOrderId(null)}
       onFormChange={f => setForms(m => ({ ...m, [f.order_id]: f.status === 'revocato' ? undefined : f }))}
