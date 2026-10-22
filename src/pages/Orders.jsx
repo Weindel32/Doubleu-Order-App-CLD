@@ -8,6 +8,7 @@ import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import BollaModal                from '../components/BollaModal.jsx'
 import OrderFormModal            from '../components/OrderFormModal.jsx'
 import { fetchOrderForms, pendingFormWarning, formStage } from '../lib/orderForms.js'
+import { productionPlan, shortDay } from '../lib/production.js'
 import { askConfirm, askText }   from '../components/ConfirmDialog.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
 import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
@@ -354,6 +355,12 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                   <td style={{...s.td,fontSize:11,color:days!==null&&days<=7&&o.status!=='CONSEGNATO'?CLAY:MUTED}}>
                     {o.deliveryDate||'—'}
                     {days!==null&&o.status!=='CONSEGNATO'&&<div style={{fontSize:9,marginTop:2}}>{days<0?`scad.${Math.abs(days)}gg`:days===0?'oggi':`${days}gg`}</div>}
+                    {(() => {
+                      // Pronto stimato dalla ricezione delle taglie (+ giorni lavorativi), finché l'ordine è in lavorazione.
+                      if (o.status==='CONSEGNATO'||o.status==='ANNULLATO'||o.shippedDate) return null
+                      const plan = productionPlan(o, formsByOrder[o.id]?.submitted_at)
+                      return plan.ready && <div style={{fontSize:9,marginTop:3,color:plan.delay>0?CLAY:GOLD}} title={plan.receipt?`Taglie ricevute ${shortDay(plan.receipt)}`:'Inizio a mano'}>Pronto {shortDay(plan.ready)}</div>
+                    })()}
                     {o.shippedDate&&<div style={{fontSize:9,marginTop:3,color:MUTED}}>Sped. {o.shippedDate}</div>}
                     {o.actualDeliveryDate&&<div style={{fontSize:9,marginTop:3,color:GREEN}}>✓ {o.actualDeliveryDate}</div>}
                   </td>
