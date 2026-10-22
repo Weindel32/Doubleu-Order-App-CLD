@@ -359,7 +359,8 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                       // Pronto stimato dalla ricezione delle taglie (+ giorni lavorativi), finché l'ordine è in lavorazione.
                       if (o.status==='CONSEGNATO'||o.status==='ANNULLATO'||o.shippedDate) return null
                       const plan = productionPlan(o, formsByOrder[o.id]?.submitted_at)
-                      return plan.ready && <div style={{fontSize:9,marginTop:3,color:plan.delay>0?CLAY:GOLD}} title={plan.receipt?`Taglie ricevute ${shortDay(plan.receipt)}`:'Inizio a mano'}>Pronto {shortDay(plan.ready)}</div>
+                      // Uguale alla consegna prevista non aggiunge nulla: si mostra solo quando ne differisce.
+                      return plan.ready && plan.delay !== 0 && <div style={{fontSize:9,marginTop:3,color:plan.delay>0?CLAY:GOLD}} title={plan.receipt?`Taglie ricevute ${shortDay(plan.receipt)}`:'Inizio a mano'}>Pronto {shortDay(plan.ready)}</div>
                     })()}
                     {o.shippedDate&&<div style={{fontSize:9,marginTop:3,color:MUTED}}>Sped. {o.shippedDate}</div>}
                     {o.actualDeliveryDate&&<div style={{fontSize:9,marginTop:3,color:GREEN}}>✓ {o.actualDeliveryDate}</div>}

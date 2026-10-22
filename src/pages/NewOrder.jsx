@@ -539,7 +539,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
                       <span>Inizio <span style={{color:CREAM}}>{shortDay(plan.start)}</span>{plan.manualStart?' (a mano)':''} · {plan.days} gg lavorativi → pronto <span style={{color:GOLD}}>{shortDay(plan.ready)}</span></span>
                       {plan.delay !== null && (
                         <span style={{color:plan.delay>0?CLAY:GREEN}}>
-                          {plan.delay>0 ? `${plan.delay} gg dopo la consegna prevista` : `${-plan.delay} gg prima della consegna prevista`}
+                          {plan.delay>0 ? `${plan.delay} gg dopo la consegna prevista` : plan.delay===0 ? 'in linea con la consegna prevista' : `${-plan.delay} gg prima della consegna prevista`}
                         </span>
                       )}
                       {plan.ready !== deliveryDate && (
