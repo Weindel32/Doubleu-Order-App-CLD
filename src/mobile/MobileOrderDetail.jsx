@@ -5,8 +5,26 @@ import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, 
 import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
 import OrderFormModal from '../components/OrderFormModal.jsx'
 import { fetchOrderFormFor, formStage } from '../lib/orderForms.js'
+import { productionPlan, shortDay } from '../lib/production.js'
 
 // Modulo taglie dal telefono: e' qui che parte il link su WhatsApp.
+// Ricezione taglie e pronto stimato (giorni lavorativi dall'invio del modulo, o dall'inizio a mano).
+function ProductionRows({ order }) {
+  const [submittedAt, setSubmittedAt] = useState(null)
+  useEffect(() => { fetchOrderFormFor(order.id).then(f => setSubmittedAt(f?.submitted_at || null)) }, [order.id])
+  const plan = productionPlan(order, submittedAt)
+  return (
+    <>
+      <InfoRow label="Taglie ricevute" value={plan.receipt ? shortDay(plan.receipt) : null} />
+      <InfoRow
+        label="Pronto stimato"
+        value={plan.ready ? `${shortDay(plan.ready)} · ${plan.days} gg lav.${plan.delay > 0 ? ` · +${plan.delay}g sulla consegna` : ''}` : null}
+        valueColor={plan.delay > 0 ? CLAY : undefined}
+      />
+    </>
+  )
+}
+
 function OrderFormCard({ order, onOrderUpdated }) {
   const [form, setForm] = useState(undefined)   // undefined = in caricamento
   const [open, setOpen] = useState(false)
@@ -165,6 +183,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
               : null}
             valueColor={isOverdue ? CLAY : isUrgent ? CLAY : undefined}
           />
+          <ProductionRows order={order} />
           <InfoRow label="Tipo" value={order.orderType === 'istituzionale' ? 'Istituzionale' : 'Soci'} />
           <InfoRow label="Pezzi totali" value={order.pieces ? String(order.pieces) : null} />
           <InfoRow

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES, withCurrent } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
@@ -7,8 +7,9 @@ import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import { exportSizesCSV }        from '../utils/exportCSV.js'
-import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
-import { pendingFormWarning, syncFormLabels } from '../lib/orderForms.js'
+import { createOrder, updateOrder, generateOrderId, saveProductionPlan } from '../lib/dataService.js'
+import { pendingFormWarning, syncFormLabels, fetchOrderFormFor } from '../lib/orderForms.js'
+import { productionPlan, shortDay, DEFAULT_PRODUCTION_DAYS } from '../lib/production.js'
 import { askConfirm, showAlert } from '../components/ConfirmDialog.jsx'
 import PaymentsPanel             from '../components/PaymentsPanel.jsx'
 import BollaModal                from '../components/BollaModal.jsx'
@@ -85,6 +86,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const [shippedDate,setShippedDate] = useState(editOrder ? fromItalianDate(editOrder.shippedDate)||'' : '')
   const [actualDeliveryDate,setActualDelivery] = useState(editOrder ? fromItalianDate(editOrder.actualDeliveryDate)||'' : '')
   const [alertDays,setAlertDays]   = useState(src?.alertDays ?? 7)
+  const [productionDays,setProductionDays]   = useState(editOrder?.productionDays ? String(editOrder.productionDays) : '')
+  const [productionStart,setProductionStart] = useState(editOrder?.productionStart || '')
+  // Ricezione delle taglie: l'invio del modulo da parte del club, da cui parte la produzione.
+  const [sizesSubmittedAt,setSizesSubmittedAt] = useState(null)
+  useEffect(() => {
+    if (editOrder?.id) fetchOrderFormFor(editOrder.id).then(f => setSizesSubmittedAt(f?.submitted_at || null))
+  }, [editOrder?.id])
   const [status,setStatus]         = useState(editOrder?.status || 'PREVENTIVO')
   const [cancelReason,setCancelReason] = useState(editOrder?.cancelReason || '')
   const [cancelDate,setCancelDate] = useState(editOrder?.cancelDate || null)
@@ -112,7 +120,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const draftKey = `duOrderDraft:${editOrder?.id || (reorderFrom ? `reorder-${reorderFrom.sourceId}` : 'new')}`
   const draftSnapshot = {
     club, clientId, clientEmail, clientPhone, clientAddress, clientCity, clientCountry, clientContact,
-    orderDate, deliveryDate, shippedDate, actualDeliveryDate, alertDays, status, cancelReason, cancelDate,
+    orderDate, deliveryDate, shippedDate, actualDeliveryDate, alertDays, productionDays, productionStart, status, cancelReason, cancelDate,
     clientNotes, productionNotes, showTotal, pricingMode, ivaEnabled, shipping,
     discountMode, discountType, discountValue, orderNote, invoiceNumber, kits, orderType, payments, step,
   }
@@ -131,6 +139,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     setShippedDate(data.shippedDate ?? '')
     setActualDelivery(data.actualDeliveryDate ?? '')
     setAlertDays(data.alertDays ?? 7)
+    setProductionDays(data.productionDays ?? '')
+    setProductionStart(data.productionStart ?? '')
     setStatus(data.status ?? 'PREVENTIVO')
     setCancelReason(data.cancelReason ?? '')
     setCancelDate(data.cancelDate ?? null)
@@ -300,7 +310,9 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
         })
       }
       const order = { ...orderObj(), id, status: finalStatus, pieces: totalPieces, clientId: resolvedClientId }
-      const ok = editOrder ? await updateOrder(order) : await createOrder(order)
+      let ok = editOrder ? await updateOrder(order) : await createOrder(order)
+      // Tempi di produzione: a parte, save_order_atomic non li tocca.
+      if (ok) ok = await saveProductionPlan(id, productionDays, productionStart)
       // Il modulo taglie del cliente segue descrizioni e colori aggiornati.
       if (ok && editOrder) syncFormLabels(order).catch(() => {})
       if (ok) {
@@ -504,6 +516,43 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
             <DatePicker label="Data Spedizione Reale" value={shippedDate} onChange={setShippedDate}/>
             <DatePicker label="Data Consegna Reale" value={actualDeliveryDate} onChange={setActualDelivery}/>
           </div>
+          {(() => {
+            const plan = productionPlan({ productionDays: parseInt(productionDays) || null, productionStart, deliveryDate: toItalianDate(deliveryDate) }, sizesSubmittedAt)
+            return (
+              <div style={{marginTop:18,paddingTop:16,borderTop:`1px solid ${BORDER}`}}>
+                <div style={{...s.label,marginBottom:10}}>Tempi di produzione</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,alignItems:'end'}}>
+                  <div>
+                    <label style={s.label}>Taglie ricevute</label>
+                    <div style={{...inp,display:'flex',alignItems:'center',color:plan.receipt?CREAM:MUTED}}>
+                      {plan.receipt ? shortDay(plan.receipt) : 'Non ancora dal modulo'}
+                    </div>
+                  </div>
+                  <div><label style={s.label}>Giorni lavorativi</label>
+                    <input style={inp} type="number" min={1} max={365} value={productionDays} onChange={e=>setProductionDays(e.target.value)} placeholder={String(DEFAULT_PRODUCTION_DAYS)}/>
+                  </div>
+                  <DatePicker label="Inizio a mano (vuoto = da ricezione)" value={productionStart} onChange={setProductionStart}/>
+                </div>
+                <div style={{marginTop:12,fontSize:12,color:MUTED,display:'flex',flexWrap:'wrap',gap:10,alignItems:'center'}}>
+                  {plan.ready ? (
+                    <>
+                      <span>Inizio <span style={{color:CREAM}}>{shortDay(plan.start)}</span>{plan.manualStart?' (a mano)':''} · {plan.days} gg lavorativi → pronto <span style={{color:GOLD}}>{shortDay(plan.ready)}</span></span>
+                      {plan.delay !== null && (
+                        <span style={{color:plan.delay>0?CLAY:GREEN}}>
+                          {plan.delay>0 ? `${plan.delay} gg dopo la consegna prevista` : `${-plan.delay} gg prima della consegna prevista`}
+                        </span>
+                      )}
+                      {plan.ready !== deliveryDate && (
+                        <button type="button" onClick={()=>setDelivery(plan.ready)} style={{...btnStyle(false),padding:'6px 12px',fontSize:9}}>Usa come consegna prevista</button>
+                      )}
+                    </>
+                  ) : (
+                    <span>La produzione parte dalla ricezione delle taglie: da lunedì a mercoledì il giorno lavorativo dopo, da giovedì il lunedì successivo.</span>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
           {shippedDate && actualDeliveryDate && shippedDate > actualDeliveryDate && (
             <div style={{fontSize:9,color:CLAY,letterSpacing:1,marginTop:10}}>La spedizione risulta successiva alla consegna. Controlla le date.</div>
           )}

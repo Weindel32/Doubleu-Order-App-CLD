@@ -157,6 +157,7 @@ export async function fetchOrders() {
       standby: order.standby || false, standbyReason: order.standby_reason || '',
       installmentsGranted: order.installments_granted || false,
       negotiation: order.negotiation || null,
+      productionDays: order.production_days || null, productionStart: order.production_start || null,
       cancelReason: order.cancel_reason || '', cancelDate: order.cancel_date || null,
       convertedFromQuote: order.converted_from_quote || false,
       kitQuantity: order.kit_quantity || null,
@@ -300,6 +301,16 @@ export async function restoreQuote(orderId) {
 export async function saveNegotiation(orderId, negotiation) {
   const { error } = await supabase.from('orders').update({ negotiation }).eq('id', orderId)
   if (error) { console.error('saveNegotiation:', error); return false }
+  return true
+}
+
+// Tempi di produzione (giorni lavorativi, inizio a mano). Come la trattativa si scrivono a parte:
+// save_order_atomic non tocca queste colonne, quindi salvare l'ordine non le cancella.
+export async function saveProductionPlan(orderId, days, start) {
+  const { error } = await supabase.from('orders')
+    .update({ production_days: parseInt(days) > 0 ? parseInt(days) : null, production_start: start || null })
+    .eq('id', orderId)
+  if (error) { console.error('saveProductionPlan:', error); return false }
   return true
 }
 
