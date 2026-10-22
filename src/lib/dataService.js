@@ -211,12 +211,16 @@ function buildOrderPayload(order) {
   }
 }
 
+// L'id di kit e articoli torna al database: save_order_atomic lo riusa, cosi' resta stabile
+// tra un salvataggio e l'altro (la Production Sheet collega le schede all'id dell'articolo).
 function buildKitsPayload(order) {
   return (order.kits || []).map(kit => ({
+    id: kit.id || null,
     name: kit.name || null, price: kit.price || null, quantity: parseInt(kit.quantity) || null,
     discount_type: kit.discountType || 'percentuale', discount_value: parseFloat(kit.discountValue) || 0,
     omaggio: parseFloat(kit.omaggio) || 0,
     articles: (kit.articles || []).map(art => ({
+      id: art.id || null,
       sp: art.sp, category: art.category, line: art.line,
       description: art.description, color: art.color, price: art.price || null,
       notes: art.notes || null, delivered: art.delivered || false,
