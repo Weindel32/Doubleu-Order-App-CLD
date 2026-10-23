@@ -1,332 +1,320 @@
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, kitBillableQty, grossUnitPrice } from '../utils/helpers.js'
 import { paymentTermsLines } from './negotiation.js'
+import { newPdf, C, eur, pdfName } from '../lib/pdfKit.js'
 
-// Riga sconto sotto il prezzo di listino della singola voce
-function lineDisc(disc, entity) {
-  if (disc <= 0) return ''
-  var label = entity.discountType !== 'importo' ? ' ' + (parseFloat(entity.discountValue) || 0) + '%' : ''
-  return '<div style="font-size:11px;color:#c4623a;margin-top:2px;">sconto' + label + ' &minus; &euro; ' + disc.toFixed(2) + '</div>'
-}
+// Preventivo per il club, come PDF vero (jsPDF): niente link e data aggiunti dalla stampa del browser.
+//
+//   const blob = await buildQuotePdf(order)
+//   await shareOrDownload(blob, quotePdfName(order))
 
-// Prezzi in formato italiano (81,53) per il preventivo a kit
-function eurIt(n) {
-  return '&euro; ' + (Number(n) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function escHtml(v) {
-  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
+export const quotePdfName = (order) => pdfName('Preventivo', order?.id, order?.client)
 
 // Articoli del kit su una riga: capi uguali raggruppati (Short ×2), colore
 // tra parentesi quando c'è, così due capi uguali di colore diverso restano distinti.
 function kitArticlesLine(kit) {
-  var groups = []
-  ;(kit.articles || []).forEach(function(a) {
-    var desc = String(a.description || '').trim()
-    if (!desc) return
-    var label = desc + (a.color ? ' (' + String(a.color).trim() + ')' : '')
-    var g = groups.find(function(x) { return x.label === label })
+  const groups = []
+  for (const a of kit.articles || []) {
+    const desc = String(a.description || '').trim()
+    if (!desc) continue
+    const label = desc + (a.color ? ' (' + String(a.color).trim() + ')' : '')
+    const g = groups.find(x => x.label === label)
     if (g) g.n++
-    else groups.push({ label: label, n: 1 })
-  })
-  return groups.map(function(g) { return escHtml(g.label) + (g.n > 1 ? ' &times;' + g.n : '') }).join(' + ')
+    else groups.push({ label, n: 1 })
+  }
+  return groups.map(g => g.label + (g.n > 1 ? ' ×' + g.n : '')).join(' + ')
 }
 
 // Un blocco "kit" con un solo articolo è un articolo venduto da solo (es.
 // la felpa per tutti): nel PDF va chiamato articolo, non kit.
-function isSingleArticle(kit) {
-  return (kit.articles || []).filter(function(a) { return String(a.description || '').trim() }).length <= 1
-}
-function normTxt(v) { return String(v || '').trim().toLowerCase().replace(/\s+/g, ' ') }
+const isSingleArticle = (kit) => (kit.articles || []).filter(a => String(a.description || '').trim()).length <= 1
+const normTxt = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ')
 
 const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const KIDS_SIZES  = ['4', '6', '8', '10', '12', '14', '16']
+const sumOf = (sizes, vals) => sizes.reduce((s, sz) => s + (parseInt(vals?.[sz]) || 0), 0)
+const artSizeTotal = (art) => sumOf(ADULT_SIZES, art.sizes?.adult) + sumOf(KIDS_SIZES, art.sizes?.kids) + (art.sizes?.uni || 0)
 
-function artSizeTotal(art) {
-  const ad = ADULT_SIZES.reduce((s, sz) => s + (art.sizes && art.sizes.adult ? (art.sizes.adult[sz] || 0) : 0), 0)
-  const ki = KIDS_SIZES.reduce((s, sz) => s + (art.sizes && art.sizes.kids ? (art.sizes.kids[sz] || 0) : 0), 0)
-  const un = art.sizes && art.sizes.uni ? art.sizes.uni : 0
-  return ad + ki + un
-}
+export async function buildQuotePdf(order) {
+  const k = await newPdf(quotePdfName(order).replace(/\.pdf$/, ''))
+  const { doc, M, R } = k
+  const kits = order.kits || []
+  const articles = kits.flatMap(kt => kt.articles || [])
+  const subtotal = orderSubtotal(order)
+  const discAmt  = orderDiscount(order)
+  const ivaAmt   = orderIVA(order)
+  const total    = orderTotal(order)
+  const anyHasSizes = articles.some(a => artSizeTotal(a) > 0)
+  const isKit = order.pricingMode === 'kit'
 
-function sizeTableHtml(art) {
-  const cell = 'padding:5px 8px;text-align:center;border:1px solid #e0d8cc;font-size:11px;'
-  const head = cell + 'background:#f0ece4;font-size:9px;letter-spacing:1px;color:#8a9ab5;font-weight:600;'
-  const val  = cell + 'font-family:"Cormorant Garamond",serif;font-size:15px;color:#1a2744;'
-  const tot  = cell + 'background:#fff7f0;font-family:"Cormorant Garamond",serif;font-size:15px;color:#c4623a;font-weight:700;'
-  const dim  = cell + 'color:#ccc;'
+  // A kit: quanti kit propone il preventivo (non il totale persone, che sarebbe una stima non confermata).
+  const nSingle = isKit ? kits.filter(isSingleArticle).length : 0
+  const allSingle = isKit && nSingle === kits.length
+  const noSingle  = isKit && nSingle === 0
 
-  const adult = art.sizes && art.sizes.adult ? art.sizes.adult : {}
-  const kids  = art.sizes && art.sizes.kids  ? art.sizes.kids  : {}
-  const uni   = art.sizes && art.sizes.uni   ? art.sizes.uni   : 0
-  const adTotal = ADULT_SIZES.reduce((s, sz) => s + (adult[sz] || 0), 0)
-  const kiTotal = KIDS_SIZES.reduce((s, sz) => s + (kids[sz] || 0), 0)
-  if (adTotal + kiTotal + uni === 0) return ''
+  k.header('PREVENTIVO', order.id)
 
-  let rows = ''
-
-  if (adTotal > 0) {
-    let headCells = '<td style="' + head + 'color:#1a2744;">ADULTO</td>'
-    ADULT_SIZES.forEach(function(sz) { headCells += '<td style="' + head + '">' + sz + '</td>' })
-    headCells += '<td style="' + tot + '">TOT</td>'
-    let valCells = '<td style="' + cell + '"></td>'
-    ADULT_SIZES.forEach(function(sz) {
-      var n = adult[sz] || 0
-      valCells += '<td style="' + (n > 0 ? val : dim) + '">' + n + '</td>'
-    })
-    valCells += '<td style="' + tot + '">' + adTotal + '</td>'
-    rows += '<tr>' + headCells + '</tr><tr>' + valCells + '</tr>'
-  }
-
-  if (kiTotal > 0) {
-    let headCells = '<td style="' + head + 'color:#1a2744;">BAMBINO</td>'
-    KIDS_SIZES.forEach(function(sz) { headCells += '<td style="' + head + '">' + sz + '</td>' })
-    headCells += '<td style="' + tot + '">TOT</td>'
-    let valCells = '<td style="' + cell + '"></td>'
-    KIDS_SIZES.forEach(function(sz) {
-      var n = kids[sz] || 0
-      valCells += '<td style="' + (n > 0 ? val : dim) + '">' + n + '</td>'
-    })
-    valCells += '<td style="' + tot + '">' + kiTotal + '</td>'
-    rows += '<tr>' + headCells + '</tr><tr>' + valCells + '</tr>'
-  }
-
-  const uniBlock = uni > 0
-    ? '<div style="margin-top:6px;display:inline-block;background:#f0f8f4;border:1px solid #cfe3d6;border-radius:4px;padding:5px 12px;">'
-      + '<span style="font-size:9px;letter-spacing:2px;color:#4a9e6e;">TAGLIA UNICA</span>'
-      + '<strong style="font-size:14px;color:#1a2744;margin-left:8px;">' + uni + '</strong></div>'
-    : ''
-
-  return '<div style="margin-top:10px;overflow-x:auto;"><table style="border-collapse:collapse;">' + rows + '</table>' + uniBlock
-    + '<div style="margin-top:4px;font-size:9px;letter-spacing:2px;color:#c4623a;">TOTALE PEZZI: ' + (adTotal + kiTotal + uni) + '</div></div>'
-}
-
-export function generateQuotePDF(order) {
-  var articles = (order.kits || []).flatMap(function(k) { return k.articles || [] })
-  var subtotal  = orderSubtotal(order)
-  var discAmt   = orderDiscount(order)
-  var ivaAmt    = orderIVA(order)
-  var total     = orderTotal(order)
-  var anyHasSizes = articles.some(function(a) { return artSizeTotal(a) > 0 })
-
-  var isKit = order.pricingMode === 'kit'
-
-  /* Preventivo a kit: una riga per kit con i suoi articoli e il prezzo del
-     kit. Niente totali (né dell'ordine né per kit): le quantità sono stime
-     date dal club, quindi un totale sarebbe un numero che nessuno ha
-     confermato. La quantità si mostra come indicata dal club. */
-  var kitPricingBlock = function() {
-    // Con IVA il prezzo al club è quello IVA inclusa (46,00), non il netto
-    // salvato (37,7049): è il numero deciso nel Kit Builder.
-    var ivaTxt = order.ivaEnabled ? 'IVA inclusa' : 'IVA esclusa'
-    return order.kits.map(function(kit) {
-      var list     = parseFloat(kit.price) || 0
-      var billable = kitBillableQty(order, kit)
-      var staff    = parseFloat(kit.omaggio) || 0
-      var single   = isSingleArticle(kit)
-      // Articolo singolo: la sottoriga ripeterebbe il nome, si mostra solo se dice altro
-      var subLine  = kitArticlesLine(kit)
-      if (single && normTxt((kit.articles || [])[0] && kit.articles[0].description) === normTxt(kit.name)) subLine = ''
-      // Sconto sul singolo kit (modalità "per riga"): prezzo unitario già scontato
-      var kDisc    = kitDiscountApplied(order, kit)
-      var net      = grossUnitPrice(order, kDisc > 0 && billable > 0 ? list - kDisc / billable : list)
-      var discTxt  = kDisc > 0
-        ? '<div style="font-size:11px;color:#8a9ab5;margin-top:2px;"><span style="text-decoration:line-through;">' + eurIt(grossUnitPrice(order, list)) + '</span>'
-          + (kit.discountType !== 'importo' ? ' &middot; sconto ' + (parseFloat(kit.discountValue) || 0) + '%' : ' &middot; scontato') + '</div>'
-        : ''
-      var omaggioInKit = (kit.articles || []).filter(function(a) { return (a.omaggio || 0) > 0 })
-        .map(function(a) { return escHtml(a.description) }).join(', ')
-      var qtyTxt = billable > 0
-        ? 'Quantit&agrave; stimata indicata dal club: <strong style="color:#1a2744;">' + billable + '</strong>'
-          + (staff > 0 ? ' &middot; + ' + staff + (single ? ' in omaggio allo staff' : ' kit staff in omaggio') : '')
-        : ''
-      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding:14px 0;border-bottom:1px solid #e8e0d0;page-break-inside:avoid;">'
-        + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#1a2744;">' + escHtml(kit.name || 'Kit') + '</div>'
-        + (subLine ? '<div style="font-size:11px;color:#5a6a85;margin-top:4px;line-height:1.5;">' + subLine + '</div>' : '')
-        + (omaggioInKit ? '<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ' + omaggioInKit + '</div>' : '')
-        + (qtyTxt ? '<div style="font-size:10px;color:#8a9ab5;margin-top:6px;letter-spacing:.5px;">' + qtyTxt + '</div>' : '')
-        + '</div>'
-        + '<div style="text-align:right;white-space:nowrap;">'
-        + '<div style="font-size:9px;color:#8a9ab5;letter-spacing:2px;">' + (single ? 'PREZZO' : 'PREZZO KIT') + '</div>'
-        + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:24px;color:#c4623a;line-height:1.2;">' + eurIt(net) + '</div>'
-        + '<div style="font-size:10px;color:#8a9ab5;">' + ivaTxt + '</div>'
-        + discTxt
-        + '</div></div>'
-    }).join('')
-  }
-
-  // Condizioni valide per tutti i kit: sconto sull'intero ordine e spedizione
-  var kitExtras = (function() {
-    if (!isKit) return ''
-    var rows = []
-    if (order.discountMode !== 'nessuno' && order.discountMode !== 'articolo' && (parseFloat(order.discountValue) || 0) > 0) {
-      rows.push(order.discountType === 'importo'
-        ? 'Sconto sull\'ordine: ' + eurIt(parseFloat(order.discountValue) || 0)
-        : 'Sconto del ' + (parseFloat(order.discountValue) || 0) + '% sui prezzi indicati')
+  // ── Fascia club ──
+  const details = [
+    ['REFERENTE', order.clientContact], ['EMAIL', order.clientEmail], ['TELEFONO', order.clientPhone],
+    ['CITTÀ', order.clientCity ? order.clientCity + (order.clientCountry ? ', ' + order.clientCountry : '') : ''],
+  ].filter(([, v]) => v)
+  k.sans().size(9)
+  const noteLines = order.orderNote ? k.wrap(order.orderNote, R - M - 10) : []
+  const notesLines = order.notes ? k.wrap(order.notes, R - M - 10) : []
+  const bandH = 22 + (details.length ? 13 : 0) + (noteLines.length ? 10 + noteLines.length * 4.3 : 0) + (notesLines.length ? 8 + notesLines.length * 4.3 : 0)
+  doc.setFillColor(C.WARM); doc.rect(0, 30, k.W, bandH, 'F')
+  k.rule(30 + bandH, C.BORDER, 0.5, 0, k.W)
+  k.fields([
+    { label: 'CLUB', value: order.client || '', style: 'serif', min: 60 },
+    { label: 'DATA PREVENTIVO', value: order.date || '' },
+    { label: isKit ? (allSingle ? 'ARTICOLI PROPOSTI' : noSingle ? 'KIT PROPOSTI' : 'PROPOSTE') : 'N° ARTICOLI', value: String(isKit ? kits.length : articles.length), style: 'big', min: 36 },
+    { label: 'STATO', value: 'PREVENTIVO', style: 'clay' },
+  ], 38)
+  let y = 52
+  if (details.length) {
+    let x = M
+    for (const [lab, val] of details) {
+      k.label(lab, x, y); k.sans().size(9).color(C.NAVY).text(val, x, y + 5)
+      x += Math.max(32, doc.getTextWidth(val) + 10)
     }
-    var ship = parseFloat(order.shipping) || 0
-    if (ship > 0) rows.push('Spedizione: ' + eurIt(ship))
-    if (!rows.length) return ''
-    return '<div style="margin-top:14px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#1a2744;">'
-      + rows.map(function(r) { return '<div>' + r + '</div>' }).join('') + '</div>'
-  })()
-
-  var pricingBlock = (function() {
-    if (isKit) return kitPricingBlock()
-    return articles.map(function(a) {
-        var sizesQty = artSizeTotal(a)
-        var qty = sizesQty > 0 ? sizesQty : (parseInt(a.estimatedQty) || 0)
-        var artTotal = (parseFloat(a.price) || 0) * qty
-        var qtyLabel = sizesQty > 0 ? 'PEZZI DA TAGLIE' : 'QUANTIT&Agrave; STIMATA'
-        var priceRight = qty
-          ? '<div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO &times; ' + qtyLabel + '</div>'
-            + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#c4623a;">&euro; ' + (parseFloat(a.price) || 0).toFixed(2) + ' &times; ' + qty + ' pz</div>'
-            + lineDisc(artDiscountApplied(order, a), a)
-            + '<div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= &euro; ' + (artTotal - artDiscountApplied(order, a)).toFixed(2) + '</div>'
-          : '<div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO UNITARIO</div>'
-            + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#c4623a;">&euro; ' + (parseFloat(a.price) || 0).toFixed(2) + '</div>'
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">'
-          + '<div>'
-          + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;color:#1a2744;">' + a.description + '</div>'
-          + '<div style="font-size:10px;color:#8a9ab5;margin-top:2px;">' + [a.category, a.color].filter(Boolean).join(' &middot; ') + '</div>'
-          + '</div>'
-          + '<div style="text-align:right;">' + priceRight + '</div>'
-          + '</div>'
-      }).join('')
-  })()
-
-  var articleRows = articles.map(function(art) {
-    var omRow = (art.omaggio || 0) > 0
-      ? '<div style="display:inline-block;margin-top:6px;padding:2px 8px;background:#fff3ee;border:1px solid #c4623a;border-radius:3px;font-size:9px;letter-spacing:2px;color:#c4623a;font-weight:700;">OMAGGIO: ' + art.omaggio + ' PZ</div>'
-      : ''
-    return '<div style="display:flex;align-items:flex-start;gap:20px;padding:14px 0;border-bottom:1px solid #f0ece4;">'
-      + '<div style="background:#f0ece4;padding:5px 12px;border-radius:2px;font-size:10px;letter-spacing:2px;color:#1a2744;font-weight:700;white-space:nowrap;flex-shrink:0;">' + (art.sp || '&mdash;') + '</div>'
-      + '<div style="flex:1;">'
-      + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;color:#1a2744;">' + (art.description || '&mdash;') + '</div>'
-      + '<div style="font-size:10px;color:#8a9ab5;margin-top:3px;letter-spacing:1px;">' + [art.category].filter(Boolean).join(' &middot; ') + '</div>'
-      + (art.color ? '<div style="font-size:11px;color:#c4623a;margin-top:3px;font-weight:600;">' + art.color + '</div>' : '')
-      + (art.notes ? '<div style="font-size:10px;color:#8a9ab5;margin-top:4px;font-style:italic;">' + art.notes + '</div>' : '')
-      + omRow
-      + sizeTableHtml(art)
-      + '</div></div>'
-  }).join('')
-
-  var clientDetailsBlock = ''
-  if (order.clientContact || order.clientEmail || order.clientPhone || order.clientCity) {
-    clientDetailsBlock = '<div style="margin-top:12px;display:flex;gap:28px;flex-wrap:wrap;">'
-      + (order.clientContact ? '<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">REFERENTE</div><div style="font-size:13px;color:#1a2744;">' + order.clientContact + '</div></div>' : '')
-      + (order.clientEmail   ? '<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">EMAIL</div><div style="font-size:13px;color:#1a2744;">' + order.clientEmail + '</div></div>' : '')
-      + (order.clientPhone   ? '<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">TELEFONO</div><div style="font-size:13px;color:#1a2744;">' + order.clientPhone + '</div></div>' : '')
-      + (order.clientCity    ? '<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">CITT&Agrave;</div><div style="font-size:13px;color:#1a2744;">' + order.clientCity + (order.clientCountry ? ', ' + order.clientCountry : '') + '</div></div>' : '')
-      + '</div>'
+    y += 13
   }
-  if (order.orderNote) {
-    clientDetailsBlock += '<div style="margin-top:12px;padding:10px 16px;background:#fff7f0;border-left:3px solid #c4623a;border-radius:4px;">'
-      + '<div style="font-size:9px;letter-spacing:2px;color:#c4623a;margin-bottom:3px;">NOTA PREVENTIVO</div>'
-      + '<div style="font-size:13px;color:#1a2744;">' + order.orderNote + '</div></div>'
+  if (noteLines.length) {
+    const h = 8 + noteLines.length * 4.3
+    doc.setFillColor('#ffffff'); doc.rect(M, y, R - M, h, 'F')
+    doc.setFillColor(C.CLAY); doc.rect(M, y, 1, h, 'F')
+    k.sans().size(6.2).color(C.CLAY).spaced('NOTA PREVENTIVO', M + 5, y + 4.5, {}, 0.7)
+    k.sans().size(9).color(C.NAVY); doc.text(noteLines, M + 5, y + 9, { lineHeightFactor: 1.4 })
+    y += h + 2
+  }
+  if (notesLines.length) {
+    const h = 5 + notesLines.length * 4.3
+    doc.setFillColor('#ffffff'); doc.setDrawColor(C.BORDER); doc.setLineWidth(0.2); doc.roundedRect(M, y, R - M, h, 1.5, 1.5, 'FD')
+    k.sans().size(9).color(C.NAVY); doc.text(notesLines, M + 5, y + 5.5, { lineHeightFactor: 1.4 })
+  }
+  k.y = 30 + bandH + 8
+
+  // ── Articoli (solo a prezzo singolo: a kit sono già elencati sotto ogni kit) ──
+  if (!isKit) {
+    k.sans().size(6.5).color(C.MUTED).spaced('ARTICOLI DEL PREVENTIVO', M, k.y, {}, 1.2)
+    k.rule(k.y + 3, C.RULE, 0.5); k.y += 8
+    if (!anyHasSizes) {
+      k.sans().size(7.5)
+      const banner = 'Le taglie specifiche verranno definite in fase di conferma ordine.'
+      doc.setFillColor(C.WARM); doc.rect(M, k.y, R - M, 8, 'F'); doc.setFillColor(C.CLAY); doc.rect(M, k.y, 0.8, 8, 'F')
+      k.color(C.GOLD).text(banner, M + 4, k.y + 5.2); k.y += 12
+    }
+    for (const art of articles) drawArticle(k, art)
   }
 
-  var kitPersone = order.kits.reduce(function(s, k) { return s + (parseInt(k.quantity) || parseInt(order.kitQuantity) || 0) }, 0)
-  var totLabel = discAmt > 0
-    ? 'SUBTOTALE' + (order.pricingMode === 'kit' ? ' (' + kitPersone + ' PERSONE)' : '')
-    : order.pricingMode === 'kit'
-      ? 'TOTALE STIMATO (' + kitPersone + ' PERSONE)'
-      : 'IMPONIBILE STIMATO'
+  // ── Prezzi ──
+  drawPricing(k, order, { isKit, allSingle, noSingle, articles, subtotal, discAmt, ivaAmt, total })
 
-  var discRow = discAmt > 0
-    ? '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">' + (order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ' ' + (parseFloat(order.discountValue) || 0) + '%' : '')) + '</span><span style="font-size:15px;color:#c4623a;">&minus; &euro; ' + discAmt.toFixed(2) + '</span></div>'
-      + '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IMPONIBILE</span><span style="font-size:15px;color:#1a2744;">&euro; ' + (subtotal - discAmt).toFixed(2) + '</span></div>'
-    : ''
+  // ── Note e validità ──
+  const paras = [
+    ['Validità del preventivo', 'Il presente preventivo ha validità 30 giorni dalla data di emissione.'],
+    ...(paymentTermsLines(order.negotiation).length ? [['Condizioni di pagamento', paymentTermsLines(order.negotiation).join(' · ') + '.']] : []),
+    ['Conferma dell\'ordine', 'L\'ordine si considera confermato solo al ricevimento della conferma scritta, approvazione grafica definitiva e versamento dell\'acconto o saldo concordato.'],
+    ...(anyHasSizes ? [] : [['Prodotti personalizzati', 'I prodotti sono realizzati su misura. Le taglie definitive saranno indicate in fase di conferma ordine.']]),
+  ]
+  k.sans().size(8)
+  const paraLines = paras.map(([b, t]) => k.wrap(`${b} — ${t}`, R - M - 12))
+  const boxH = 12 + paraLines.reduce((s, l) => s + l.length * 4.2 + 2, 0)
+  k.ensure(boxH + 4); k.y += 4
+  doc.setDrawColor(C.BORDER); doc.setLineWidth(0.3); doc.roundedRect(M, k.y, R - M, boxH, 2, 2)
+  k.sans().size(6.5).color(C.MUTED).spaced('NOTE E VALIDITÀ', M + 6, k.y + 7, {}, 1.2)
+  let py = k.y + 13
+  paras.forEach(([bold], i) => {
+    paraLines[i].forEach((line, j) => {
+      if (j === 0) {
+        // Prima riga: titolo in grassetto, poi il testo
+        const head = bold + ' — '
+        k.sans('bold').size(8).color(C.TEXT).text(head, M + 6, py)
+        const w = doc.getTextWidth(head)
+        k.sans().text(line.slice(head.length), M + 6 + w, py)
+      } else k.sans().size(8).color(C.TEXT).text(line, M + 6, py)
+      py += 4.2
+    })
+    py += 2
+  })
+  k.y += boxH + 4
 
-  var ivaRow = order.ivaEnabled
-    ? '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IVA ' + (order.ivaRate || 22) + '%</span><span style="font-size:15px;color:#1a2744;">&euro; ' + ivaAmt.toFixed(2) + '</span></div>'
-    : ''
+  k.footer('DOUBLEU · MADE IN ITALY · DOUBLEUTENNIS.COM', `${order.id || ''} · ${new Date().toLocaleDateString('it-IT')}`)
+  return k.blob()
+}
 
-  var totalBlock = '<div style="margin-top:20px;padding-top:16px;border-top:2px solid #e0d8cc;">'
-    + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">'
-    + '<div style="display:flex;justify-content:space-between;width:300px;"><span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">' + totLabel + '</span><span style="font-size:15px;color:#1a2744;">&euro; ' + subtotal.toFixed(2) + '</span></div>'
-    + discRow
-    + ivaRow
-    + '<div style="display:flex;justify-content:space-between;width:300px;padding-top:8px;border-top:1px solid #e0d8cc;"><span style="font-size:11px;color:#1a2744;font-weight:700;letter-spacing:2px;">TOTALE PREVENTIVO' + (order.ivaEnabled ? ' IVA INCL.' : '') + '</span><span style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;font-weight:600;">&euro; ' + total.toFixed(2) + '</span></div>'
-    + '</div></div>'
+// Articolo con codice, colore, note, omaggio e griglia taglie completa (zeri in grigio).
+function drawArticle(k, art) {
+  const { doc, M, R } = k
+  const adult = art.sizes?.adult || {}, kids = art.sizes?.kids || {}, uni = art.sizes?.uni || 0
+  const grids = [
+    sumOf(ADULT_SIZES, adult) > 0 && ['ADULTO', ADULT_SIZES, adult],
+    sumOf(KIDS_SIZES, kids) > 0 && ['BAMBINO', KIDS_SIZES, kids],
+  ].filter(Boolean)
+  const x = M + 26, w = R - x
+  k.sans().size(7.5)
+  const notes = art.notes ? k.wrap(art.notes, w) : []
+  const tot = artSizeTotal(art)
+  const h = 14 + (art.color ? 4.5 : 0) + notes.length * 3.8 + ((art.omaggio || 0) > 0 ? 7 : 0)
+    + grids.length * 13 + (uni > 0 ? 7 : 0) + (tot > 0 ? 6 : 0) + 4
+  k.ensure(h)
+  let y = k.y + 5
+  doc.setFillColor('#f0ece4'); doc.rect(M, y - 4, 22, 6.5, 'F')
+  k.sans('bold').size(7).color(C.NAVY).spaced(art.sp || '—', M + 11, y, { align: 'center' }, 0.5)
+  k.serif().size(13).color(C.NAVY).text(art.description || '—', x, y)
+  y += 4.5; k.sans().size(7).color(C.MUTED).spaced(art.category || '', x, y, {}, 0.3)
+  if (art.color) { y += 4.5; k.sans('bold').size(8).color(C.CLAY).text(art.color, x, y) }
+  if (notes.length) { y += 4; k.sans().size(7.5).color(C.MUTED); doc.text(notes, x, y, { lineHeightFactor: 1.3 }); y += (notes.length - 1) * 3.8 }
+  if ((art.omaggio || 0) > 0) {
+    y += 3; doc.setDrawColor(C.CLAY); doc.setFillColor(C.WARM); doc.setLineWidth(0.2); doc.rect(x, y, 34, 5.5, 'FD')
+    k.sans('bold').size(6.5).color(C.CLAY).spaced(`OMAGGIO: ${art.omaggio} PZ`, x + 2, y + 3.8, {}, 0.6); y += 5.5
+  }
+  y += 3
+  const cw = 11, lw = 18
+  for (const [name, sizes, vals] of grids) {
+    const cells = [name, ...sizes, 'TOT']
+    doc.setDrawColor(C.BORDER); doc.setLineWidth(0.2)
+    cells.forEach((c, i) => {
+      const cx = i === 0 ? x : x + lw + (i - 1) * cw, ww = i === 0 ? lw : cw, last = i === cells.length - 1
+      doc.setFillColor(last ? C.WARM : '#f0ece4'); doc.rect(cx, y, ww, 6, 'FD')
+      doc.setFillColor(last ? C.WARM : '#ffffff'); doc.rect(cx, y + 6, ww, 6.5, 'FD')
+      k.sans(i === 0 ? 'bold' : 'normal').size(6).color(i === 0 ? C.NAVY : C.MUTED).text(c, cx + ww / 2, y + 4.1, { align: 'center' })
+      if (i > 0) {
+        const v = last ? sumOf(sizes, vals) : (parseInt(vals[c]) || 0)
+        k.serif().size(11).color(last ? C.CLAY : v > 0 ? C.NAVY : C.DIM).text(String(v), cx + ww / 2, y + 11, { align: 'center' })
+      }
+    })
+    y += 13
+  }
+  if (uni > 0) { y += 1; k.sans().size(6.5).color('#4a9e6e').spaced('TAGLIA UNICA', x, y + 3.5, {}, 0.6); k.sans('bold').size(9).color(C.NAVY).text(String(uni), x + 22, y + 3.6); y += 6 }
+  if (tot > 0) { y += 2; k.sans().size(6.5).color(C.CLAY).spaced(`TOTALE PEZZI: ${tot}`, x, y + 2, {}, 0.6); y += 4 }
+  k.y = y + 4
+  k.rule(k.y - 2, '#f0ece4')
+}
 
-  // A kit: quanti kit propone il preventivo. Il totale persone era la somma
-  // delle stime del club, cioè un totale che il preventivo non deve dare.
-  // Solo kit veri → "KIT PROPOSTI"; solo articoli singoli → "ARTICOLI
-  // PROPOSTI"; misti → "PROPOSTE".
-  var nSingle = isKit ? order.kits.filter(isSingleArticle).length : 0
-  var allSingle = isKit && nSingle === order.kits.length
-  var noSingle  = isKit && nSingle === 0
-  var kitCountLabel = allSingle ? 'ARTICOLI PROPOSTI' : noSingle ? 'KIT PROPOSTI' : 'PROPOSTE'
-  var countBlock = isKit
-    ? '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">' + kitCountLabel + '</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + order.kits.length + '</div></div>'
-    : '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">N&deg; ARTICOLI</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;color:#c4623a;">' + articles.length + '</div></div>'
+function drawPricing(k, order, { isKit, allSingle, noSingle, articles, subtotal, discAmt, ivaAmt, total }) {
+  const { doc, M, R } = k
+  const inX = M + 7, inR = R - 7, rightW = 48, leftW = inR - inX - rightW - 6
+  const title = isKit ? (allSingle ? 'ARTICOLI E PREZZI' : noSingle ? 'COMPOSIZIONE KIT E PREZZI' : 'KIT, ARTICOLI E PREZZI') : 'PREZZI PER ARTICOLO'
 
-  var sizeBanner = anyHasSizes ? '' : '<div style="font-size:10px;color:#b8965a;letter-spacing:1px;margin-bottom:16px;padding:8px 12px;background:#fff7f0;border-radius:4px;border-left:3px solid #c4623a;">Le taglie specifiche verranno definite in fase di conferma ordine.</div>'
+  // Righe da disegnare: [altezza, funzione che disegna a partire da y]
+  const rows = []
+  if (isKit) {
+    // Con IVA il prezzo al club è quello IVA inclusa: è il numero deciso nel Kit Builder.
+    const ivaTxt = order.ivaEnabled ? 'IVA inclusa' : 'IVA esclusa'
+    for (const kit of order.kits) {
+      const list = parseFloat(kit.price) || 0
+      const billable = kitBillableQty(order, kit)
+      const staff = parseFloat(kit.omaggio) || 0
+      const single = isSingleArticle(kit)
+      let sub = kitArticlesLine(kit)
+      // Articolo singolo: la sottoriga ripeterebbe il nome, si mostra solo se dice altro
+      if (single && normTxt(kit.articles?.[0]?.description) === normTxt(kit.name)) sub = ''
+      const kDisc = kitDiscountApplied(order, kit)
+      const net = grossUnitPrice(order, kDisc > 0 && billable > 0 ? list - kDisc / billable : list)
+      const omaggio = (kit.articles || []).filter(a => (a.omaggio || 0) > 0).map(a => a.description).join(', ')
+      const qty = billable > 0 ? `Quantità stimata indicata dal club: ${billable}` + (staff > 0 ? ` · + ${staff}${single ? ' in omaggio allo staff' : ' kit staff in omaggio'}` : '') : ''
+      k.sans().size(8)
+      const subL = k.wrap(sub, leftW)
+      const omL = omaggio ? k.wrap('In omaggio: ' + omaggio, leftW) : []
+      const h = Math.max(8 + subL.length * 3.9 + omL.length * 3.6 + (qty ? 5 : 0), kDisc > 0 ? 20 : 16) + 6
+      rows.push([h, (y) => {
+        k.serif().size(15).color(C.NAVY).text(kit.name || 'Kit', inX, y + 5)
+        let ly = y + 5
+        if (subL.length) { ly += 4.6; k.sans().size(8).color(C.SOFT); doc.text(subL, inX, ly, { lineHeightFactor: 1.35 }); ly += (subL.length - 1) * 3.9 }
+        if (omL.length) { ly += 4; k.sans().size(7.5).color(C.CLAY); doc.text(omL, inX, ly); ly += (omL.length - 1) * 3.6 }
+        if (qty) { ly += 5; k.sans().size(7.2).color(C.MUTED).text(qty, inX, ly) }
+        k.sans().size(6.2).color(C.MUTED).spaced(single ? 'PREZZO' : 'PREZZO KIT', inR, y + 2.5, { align: 'right' }, 0.7)
+        k.serif().size(18).color(C.CLAY).text(eur(net), inR, y + 9, { align: 'right' })
+        k.sans().size(7).color(C.MUTED).text(ivaTxt, inR, y + 13, { align: 'right' })
+        if (kDisc > 0) {
+          const old = eur(grossUnitPrice(order, list))
+          const tail = kit.discountType !== 'importo' ? ` · sconto ${parseFloat(kit.discountValue) || 0}%` : ' · scontato'
+          k.sans().size(7).color(C.MUTED).text(old + tail, inR, y + 17, { align: 'right' })
+          const tw = doc.getTextWidth(tail), ow = doc.getTextWidth(old)
+          doc.setDrawColor(C.MUTED); doc.setLineWidth(0.2); doc.line(inR - tw - ow, y + 16, inR - tw, y + 16)
+        }
+      }])
+    }
+  } else {
+    for (const a of articles) {
+      const sizesQty = artSizeTotal(a)
+      const qty = sizesQty > 0 ? sizesQty : (parseInt(a.estimatedQty) || 0)
+      const price = parseFloat(a.price) || 0
+      const disc = artDiscountApplied(order, a)
+      rows.push([qty ? (disc > 0 ? 22 : 18) : 14, (y) => {
+        k.serif().size(13).color(C.NAVY).text(a.description || '', inX, y + 5)
+        k.sans().size(7).color(C.MUTED).text([a.category, a.color].filter(Boolean).join(' · '), inX, y + 9.5)
+        k.sans().size(6.2).color(C.MUTED).spaced(qty ? `PREZZO × ${sizesQty > 0 ? 'PEZZI DA TAGLIE' : 'QUANTITÀ STIMATA'}` : 'PREZZO UNITARIO', inR, y + 2.5, { align: 'right' }, 0.6)
+        k.serif().size(14).color(C.CLAY).text(qty ? `${eur(price)} × ${qty} pz` : eur(price), inR, y + 8, { align: 'right' })
+        let ry = y + 8
+        if (qty && disc > 0) {
+          ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${a.discountType !== 'importo' ? ` ${parseFloat(a.discountValue) || 0}%` : ''} − ${eur(disc)}`, inR, ry, { align: 'right' })
+        }
+        if (qty) { ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(price * qty - disc)}`, inR, ry, { align: 'right' }) }
+      }])
+    }
+  }
 
-  var sizesNote = anyHasSizes ? '' : '<p style="margin-bottom:0;"><strong>Prodotti personalizzati</strong> &mdash; I prodotti sono realizzati su misura. Le taglie definitive saranno indicate in fase di conferma ordine.</p>'
+  // Coda: condizioni d'ordine (a kit) o totali (a prezzo singolo) e nota in corsivo
+  const tail = []
+  if (isKit) {
+    if (order.discountMode !== 'nessuno' && order.discountMode !== 'articolo' && (parseFloat(order.discountValue) || 0) > 0) {
+      tail.push(order.discountType === 'importo'
+        ? `Sconto sull'ordine: ${eur(parseFloat(order.discountValue) || 0)}`
+        : `Sconto del ${parseFloat(order.discountValue) || 0}% sui prezzi indicati`)
+    }
+    if ((parseFloat(order.shipping) || 0) > 0) tail.push(`Spedizione: ${eur(parseFloat(order.shipping))}`)
+  }
+  const totRows = isKit ? [] : [
+    [discAmt > 0 ? 'SUBTOTALE' : 'IMPONIBILE STIMATO', eur(subtotal)],
+    ...(discAmt > 0 ? [
+      [order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''), '− ' + eur(discAmt), C.CLAY],
+      ['IMPONIBILE', eur(subtotal - discAmt)],
+    ] : []),
+    ...(order.ivaEnabled ? [[`IVA ${order.ivaRate || 22}%`, eur(ivaAmt)]] : []),
+  ]
+  const foot = isKit
+    ? `* ${allSingle ? 'Prezzi unitari' : noSingle ? 'Prezzi per singolo kit' : 'Prezzi per singolo kit o articolo'}, soggetti a conferma. Le quantità sono stime indicate dal club e verranno definite in fase di conferma ordine.`
+    : '* I prezzi sono indicativi e soggetti a conferma. Le quantità finali potrebbero variare.'
+  k.sans().size(7)
+  const footL = k.wrap(foot, inR - inX)
+  const tailH = (tail.length ? 4 + tail.length * 5 : 0) + (totRows.length ? 6 + totRows.length * 6 + 12 : 0) + 4 + footL.length * 3.5 + 4
 
-  var notesBlock = order.notes ? '<div style="margin-top:14px;padding:10px 16px;background:white;border-radius:6px;border:1px solid #e0d8cc;font-size:13px;color:#1a2744;">' + order.notes + '</div>' : ''
+  // Riquadro beige che continua sulle pagine successive: si chiude e si riapre a ogni salto.
+  let boxTop = null
+  const openBox = () => { boxTop = k.y }
+  const closeBox = () => {
+    doc.setDrawColor(C.BORDER); doc.setLineWidth(0.3)
+    doc.roundedRect(M, boxTop, R - M, k.y - boxTop, 2, 2)
+  }
+  const fill = (h) => { doc.setFillColor(C.BEIGE); doc.rect(M + 0.15, k.y, R - M - 0.3, h, 'F') }
+  const need = (h) => {
+    if (k.y + h > k.BOTTOM) { closeBox(); doc.addPage(); k.y = k.M; openBox() }
+  }
 
-  return '<!DOCTYPE html>\n<html lang="it">\n<head>\n'
-    + '<meta charset="utf-8">\n'
-    + '<title>Preventivo &mdash; ' + order.id + '</title>\n'
-    + '<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">\n'
-    + '<style>* { box-sizing: border-box; } body { font-family: \'Josefin Sans\', sans-serif; color: #1a2744; margin: 0; background: #fff; } .print-btn { position:fixed;top:20px;right:20px;z-index:999;background:#1a2744;color:white;border:none;padding:12px 28px;font-family:\'Josefin Sans\',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; } @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm; } @page :first { margin-top:0; } }</style>\n'
-    + '</head>\n<body>\n'
-    + '<button class="print-btn" onclick="window.print()">&darr; Salva / Stampa</button>\n'
-
-    + '<div style="background:#1a2744;padding:28px 40px;display:flex;justify-content:space-between;align-items:center;">'
-    + '<div><div style="font-family:\'Cormorant Garamond\',serif;font-size:30px;font-weight:600;color:#f5f0e8;letter-spacing:6px;">DOUBLEU</div>'
-    + '<div style="font-size:9px;letter-spacing:3px;color:#b8965a;margin-top:4px;">MADE IN ITALY &middot; PREMIUM CLUBWEAR</div></div>'
-    + '<div style="text-align:right;"><div style="font-size:9px;letter-spacing:3px;color:rgba(255,255,255,0.4);margin-bottom:4px;">PREVENTIVO</div>'
-    + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:26px;color:#f5f0e8;letter-spacing:3px;">' + order.id + '</div></div>'
-    + '</div>'
-
-    + '<div style="background:#fff7f0;padding:20px 40px;border-bottom:2px solid #e0d8cc;">'
-    + '<div style="display:flex;gap:40px;flex-wrap:wrap;">'
-    + '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:22px;color:#1a2744;">' + order.client + '</div></div>'
-    + '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA PREVENTIVO</div><div style="font-size:14px;font-weight:600;">' + order.date + '</div></div>'
-    + countBlock
-    + '<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#c4623a;">PREVENTIVO</div></div>'
-    + '</div>'
-    + clientDetailsBlock
-    + notesBlock
-    + '</div>'
-
-    // A kit gli articoli sono già elencati sotto ogni kit: l'elenco completo
-    // (una riga per capo) allungava il preventivo senza aggiungere nulla.
-    + (isKit ? '' : '<div style="padding:28px 40px;">'
-      + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e8e0d0;">Articoli del Preventivo</div>'
-      + sizeBanner
-      + articleRows
-      + '</div>')
-
-    + '<div style="margin:28px 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;' + (isKit ? '' : 'page-break-inside:avoid;') + '">'
-    + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">' + (order.pricingMode === 'kit' ? (allSingle ? 'ARTICOLI E PREZZI' : noSingle ? 'COMPOSIZIONE KIT E PREZZI' : 'KIT, ARTICOLI E PREZZI') : 'PREZZI PER ARTICOLO') + '</div>'
-    + pricingBlock
-    + (isKit ? kitExtras : totalBlock)
-    + '<div style="margin-top:12px;font-size:9px;color:#8a9ab5;font-style:italic;">' + (isKit
-      ? '* ' + (allSingle ? 'Prezzi unitari' : noSingle ? 'Prezzi per singolo kit' : 'Prezzi per singolo kit o articolo') + ', soggetti a conferma. Le quantit&agrave; sono stime indicate dal club e verranno definite in fase di conferma ordine.'
-      : '* I prezzi sono indicativi e soggetti a conferma. Le quantit&agrave; finali potrebbero variare.') + '</div>'
-    + '</div>'
-
-    + '<div style="margin:0 40px 40px;padding:22px 28px;border:1px solid #e0d8cc;border-radius:10px;">'
-    + '<div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">NOTE E VALIDIT&Agrave;</div>'
-    + '<div style="font-size:11px;color:#555;line-height:1.8;">'
-    + '<p style="margin-bottom:8px;"><strong>Validit&agrave; del preventivo</strong> &mdash; Il presente preventivo ha validit&agrave; 30 giorni dalla data di emissione.</p>'
-    + (paymentTermsLines(order.negotiation).length
-      ? '<p style="margin-bottom:8px;"><strong>Condizioni di pagamento</strong> &mdash; ' + paymentTermsLines(order.negotiation).join(' &middot; ') + '.</p>'
-      : '')
-    + '<p style="margin-bottom:8px;"><strong>Conferma dell\'ordine</strong> &mdash; L\'ordine si considera confermato solo al ricevimento della conferma scritta, approvazione grafica definitiva e versamento dell\'acconto o saldo concordato.</p>'
-    + sizesNote
-    + '</div></div>'
-
-    + '<div style="background:#1a2744;padding:16px 40px;display:flex;justify-content:space-between;align-items:center;">'
-    + '<div style="font-size:9px;letter-spacing:3px;color:#b8965a;">DOUBLEU &middot; MADE IN ITALY &middot; www.doubleutennis.com</div>'
-    + '<div style="font-size:9px;color:rgba(255,255,255,0.3);">Generato il ' + new Date().toLocaleDateString('it-IT') + '</div>'
-    + '</div>'
-
-    + '</body>\n</html>'
+  k.ensure(16 + (rows[0]?.[0] || 0)); k.y += 2; openBox()
+  fill(12); k.sans().size(6.5).color(C.MUTED).spaced(title, inX, k.y + 8, {}, 1.2); k.y += 12
+  rows.forEach(([h, draw], i) => {
+    need(h); fill(h); draw(k.y); k.y += h
+    if (i < rows.length - 1 || tail.length || totRows.length) k.rule(k.y - 2, '#e8e0d0', 0.2, inX, inR)
+  })
+  need(tailH); fill(tailH)
+  let ty = k.y
+  if (tail.length) { ty += 4; tail.forEach(t => { k.sans().size(8.5).color(C.NAVY).text(t, inX, ty + 2); ty += 5 }) }
+  if (totRows.length) {
+    ty += 4; k.rule(ty, C.BORDER, 0.5, inX, inR); ty += 4
+    const lx = inR - 100
+    totRows.forEach(([l, v, col]) => {
+      k.sans().size(7).color(C.MUTED).spaced(l, lx, ty + 2, {}, 0.6)
+      k.sans().size(10).color(col || C.NAVY).text(v, inR, ty + 2, { align: 'right' }); ty += 6
+    })
+    k.rule(ty - 1, C.BORDER, 0.2, lx, inR); ty += 4
+    k.sans('bold').size(7.5).color(C.NAVY).spaced('TOTALE PREVENTIVO' + (order.ivaEnabled ? ' IVA INCL.' : ''), lx, ty + 2, {}, 0.6)
+    k.serif().size(18).color(C.CLAY).text(eur(total), inR, ty + 3, { align: 'right' }); ty += 8
+  }
+  ty += 3; k.sans().size(7).color(C.MUTED); doc.text(footL, inX, ty, { lineHeightFactor: 1.3 })
+  k.y += tailH
+  closeBox()
+  k.y += 4
 }

@@ -2,7 +2,8 @@ import { showAlert } from '../components/ConfirmDialog.jsx'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
 import { useState } from 'react'
-import { generateQuotePDF } from '../utils/pdfQuote.js'
+import { buildQuotePdf, quotePdfName } from '../utils/pdfQuote.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 import NegotiationModal from '../components/NegotiationModal.jsx'
 import { stageOf, normalizeNegotiation } from '../utils/negotiation.js'
 
@@ -44,13 +45,9 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
   const total       = orderTotal(quote)
   const allArticles = (quote.kits || []).flatMap(k => k.articles || [])
 
-  const openPDF = () => {
-    const h = generateQuotePDF(quote)
-    const w = window.open('', '_blank')
-    if (!w) { showAlert({ title: 'Popup bloccato', body: ['Abilita i popup per visualizzare il PDF.'] }); return }
-    w.document.write(h)
-    w.document.close()
-  }
+  // PDF vero (niente link del browser): foglio di condivisione su telefono, download sul computer
+  const openPDF = () => buildQuotePdf(quote).then(b => shareOrDownload(b, quotePdfName(quote)))
+    .catch(e => { console.error('Preventivo PDF:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
 
   return (
     <div style={{ minHeight: '100vh', background: '#1a2744', color: CREAM, paddingTop: 'env(safe-area-inset-top)' }}>
