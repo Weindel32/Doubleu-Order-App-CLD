@@ -32,7 +32,7 @@ function articleBlock(art) {
   const grids = grid('ADULTO', ADULT_SIZES, art.sizes?.adult, sz => sz)
     + grid('BAMBINO', KIDS_SIZES, art.sizes?.kids, sz => `${sz} ANNI`)
   return `
-    <div style="padding:14px 0;border-bottom:1px solid #eee6da;page-break-inside:avoid;">
+    <div class="blocco" style="padding:14px 0;border-bottom:1px solid #eee6da;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:8px;">
         <div>
           <div style="font-family:'Cormorant Garamond',serif;font-size:19px;color:#1a2744;">${esc(art.description)}</div>
@@ -58,12 +58,16 @@ export function generateRecapPDF(order) {
     const kitPieces = kit.articles.reduce((s, a) => s + artPieceCount(a), 0)
     return `
       <div style="margin-bottom:22px;">
-        ${showKits ? `
-        <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #1a2744;padding-bottom:6px;">
-          <div style="font-size:12px;letter-spacing:3px;color:#1a2744;font-weight:700;text-transform:uppercase;">${esc(kit.name || 'Articoli')}</div>
-          <div style="font-size:11px;color:#8a9ab5;">${kitPieces} pz</div>
-        </div>` : ''}
-        ${kit.articles.map(articleBlock).join('')}
+        ${kit.articles.map((art, i) => i === 0 && showKits
+          // Il nome del kit resta sulla stessa pagina del suo primo articolo.
+          ? `<div class="blocco">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #1a2744;padding-bottom:6px;">
+                <div style="font-size:12px;letter-spacing:3px;color:#1a2744;font-weight:700;text-transform:uppercase;">${esc(kit.name || 'Articoli')}</div>
+                <div style="font-size:11px;color:#8a9ab5;">${kitPieces} pz</div>
+              </div>
+              ${articleBlock(art)}
+            </div>`
+          : articleBlock(art)).join('')}
       </div>`
   }).join('')
 
@@ -76,6 +80,8 @@ export function generateRecapPDF(order) {
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Josefin Sans', sans-serif; color: #1a2744; margin: 0; background: #fff; }
+    /* Un articolo (nome + prospetto taglie) non si spezza tra due pagine: inline-block regge anche in Safari/Anteprima. */
+    .blocco { display: inline-block; width: 100%; break-inside: avoid; page-break-inside: avoid; }
     .print-btn { position:fixed;bottom:20px;right:20px;z-index:999;background:#c4623a;box-shadow:0 6px 18px rgba(0,0,0,.25);color:white;border:none;padding:12px 28px;font-family:'Josefin Sans',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; }
     @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:14mm; } }
   </style>
@@ -115,7 +121,8 @@ export function generateRecapPDF(order) {
 
   <div style="padding:24px 40px 8px;">${body}</div>
 
-  <div style="margin:8px 40px 32px;border:1px solid #1a2744;border-radius:8px;padding:20px 24px;page-break-inside:avoid;">
+  <div class="blocco" style="padding:8px 40px 32px;">
+  <div style="border:1px solid #1a2744;border-radius:8px;padding:20px 24px;">
     <div style="font-size:10px;letter-spacing:3px;color:#1a2744;font-weight:700;margin-bottom:14px;">CONFERMA DEL CLUB</div>
     <div style="font-size:13px;margin-bottom:22px;">Confermo articoli, colori, taglie e quantità per un totale di <strong>${totalPieces} capi</strong>.</div>
     <div style="display:flex;gap:40px;flex-wrap:wrap;font-size:11px;color:#8a9ab5;letter-spacing:1px;">
@@ -123,6 +130,7 @@ export function generateRecapPDF(order) {
       <div style="width:140px;">DATA<div style="border-bottom:1px solid #8a9ab5;height:26px;"></div></div>
       <div style="flex:1;min-width:160px;">FIRMA<div style="border-bottom:1px solid #8a9ab5;height:26px;"></div></div>
     </div>
+  </div>
   </div>
 
   <div style="background:#1a2744;padding:14px 40px;display:flex;justify-content:space-between;align-items:center;">
