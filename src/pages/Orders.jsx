@@ -378,7 +378,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                         { section: 'Documenti' },
                         { label: 'Scheda produzione', onClick: () => openPDF(generateProductionPDF, o) },
                         { label: 'PDF cliente', onClick: () => openPDF(generateClientPDF, o) },
-                        { label: 'Riepilogo taglie (senza prezzi)', onClick: () => openPDF(generateRecapPDF, o) },
+                        { label: 'Riepilogo taglie (senza prezzi)', onClick: () => openPDF(ord => generateRecapPDF(ord, formsByOrder[o.id]?.submitted_at), o) },
                         { label: 'Bolla di consegna', onClick: () => o.status === 'CONSEGNA PARZIALE' ? setBollaOrder(o) : openPDF(generateDeliveryPDF, o) },
                         { section: 'Azioni' },
                         { label: formsByOrder[o.id] ? 'Modulo taglie' : 'Invia modulo taglie', onClick: () => openForm(o.id) },

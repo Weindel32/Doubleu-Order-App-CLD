@@ -166,7 +166,12 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
         <OrderFormCard order={order} onOrderUpdated={onOrderUpdated}/>
 
         {/* Riepilogo senza prezzi da mandare al club per la conferma (Condividi → PDF dal telefono) */}
-        <button onClick={() => { const w = window.open('', '_blank'); w.document.write(generateRecapPDF(order)); w.document.close() }} style={{
+        <button onClick={async () => {
+          // La finestra si apre subito (Safari blocca i popup aperti dopo un'attesa), poi si riempie.
+          const w = window.open('', '_blank')
+          const form = await fetchOrderFormFor(order.id)
+          w.document.write(generateRecapPDF(order, form?.submitted_at)); w.document.close()
+        }} style={{
           width: '100%', marginTop: 10, background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10,
           padding: '14px 16px', color: CREAM, fontSize: 14, textAlign: 'left', cursor: 'pointer',
         }}>

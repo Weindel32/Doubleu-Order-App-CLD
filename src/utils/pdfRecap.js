@@ -1,5 +1,6 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
+import { italianDay } from '../lib/production.js'
 
 // Riepilogo per il cliente: articoli, colori, taglie e quantita' da verificare e confermare
 // prima della produzione. Niente prezzi, niente codici interni.
@@ -48,7 +49,10 @@ function articleBlock(art) {
     </div>`
 }
 
-export function generateRecapPDF(order) {
+// La data dell'ordine per il club e' quella in cui ci ha mandato le taglie (submitted_at del modulo);
+// senza modulo resta la data dell'ordine.
+export function generateRecapPDF(order, sizesSubmittedAt = null) {
+  const orderDate = sizesSubmittedAt ? italianDay(sizesSubmittedAt).split('-').reverse().join('/') : order.date
   const articles = getAllArticles(order)
   const totalPieces = articles.reduce((s, a) => s + artPieceCount(a), 0)
   const kits = (order.kits || []).filter(k => (k.articles || []).length)
@@ -105,9 +109,7 @@ export function generateRecapPDF(order) {
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:22px;">${esc(order.client)}</div></div>
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA ORDINE</div>
-        <div style="font-size:14px;font-weight:600;">${esc(order.date)}</div></div>
-      ${order.deliveryDate ? `<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CONSEGNA PREVISTA</div>
-        <div style="font-size:14px;font-weight:600;">${esc(order.deliveryDate)}</div></div>` : ''}
+        <div style="font-size:14px;font-weight:600;">${esc(orderDate)}</div></div>
       <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE CAPI</div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:30px;color:#c4623a;line-height:1;">${totalPieces}</div></div>
     </div>
