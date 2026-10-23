@@ -1,6 +1,6 @@
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, kitBillableQty, grossUnitPrice } from '../utils/helpers.js'
 import { paymentTermsLines } from './negotiation.js'
-import { newPdf, C, eur, pdfName } from '../lib/pdfKit.js'
+import { newPdf, C, eur, pdfName, clientBand, sizeGrids, sizeGridsCount, paragraphBox, priceBox, totals, totalsHeight, artPieces as artSizeTotal } from '../lib/pdfKit.js'
 
 // Preventivo per il club, come PDF vero (jsPDF): niente link e data aggiunti dalla stampa del browser.
 //
@@ -29,10 +29,6 @@ function kitArticlesLine(kit) {
 const isSingleArticle = (kit) => (kit.articles || []).filter(a => String(a.description || '').trim()).length <= 1
 const normTxt = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ')
 
-const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-const KIDS_SIZES  = ['4', '6', '8', '10', '12', '14', '16']
-const sumOf = (sizes, vals) => sizes.reduce((s, sz) => s + (parseInt(vals?.[sz]) || 0), 0)
-const artSizeTotal = (art) => sumOf(ADULT_SIZES, art.sizes?.adult) + sumOf(KIDS_SIZES, art.sizes?.kids) + (art.sizes?.uni || 0)
 
 export async function buildQuotePdf(order) {
   const k = await newPdf(quotePdfName(order).replace(/\.pdf$/, ''))
@@ -53,46 +49,12 @@ export async function buildQuotePdf(order) {
 
   k.header('PREVENTIVO', order.id)
 
-  // ── Fascia club ──
-  const details = [
-    ['REFERENTE', order.clientContact], ['EMAIL', order.clientEmail], ['TELEFONO', order.clientPhone],
-    ['CITTÀ', order.clientCity ? order.clientCity + (order.clientCountry ? ', ' + order.clientCountry : '') : ''],
-  ].filter(([, v]) => v)
-  k.sans().size(9)
-  const noteLines = order.orderNote ? k.wrap(order.orderNote, R - M - 10) : []
-  const notesLines = order.notes ? k.wrap(order.notes, R - M - 10) : []
-  const bandH = 22 + (details.length ? 13 : 0) + (noteLines.length ? 10 + noteLines.length * 4.3 : 0) + (notesLines.length ? 8 + notesLines.length * 4.3 : 0)
-  doc.setFillColor(C.WARM); doc.rect(0, 30, k.W, bandH, 'F')
-  k.rule(30 + bandH, C.BORDER, 0.5, 0, k.W)
-  k.fields([
+  clientBand(k, order, [
     { label: 'CLUB', value: order.client || '', style: 'serif', min: 60 },
     { label: 'DATA PREVENTIVO', value: order.date || '' },
     { label: isKit ? (allSingle ? 'ARTICOLI PROPOSTI' : noSingle ? 'KIT PROPOSTI' : 'PROPOSTE') : 'N° ARTICOLI', value: String(isKit ? kits.length : articles.length), style: 'big', min: 36 },
     { label: 'STATO', value: 'PREVENTIVO', style: 'clay' },
-  ], 38)
-  let y = 52
-  if (details.length) {
-    let x = M
-    for (const [lab, val] of details) {
-      k.label(lab, x, y); k.sans().size(9).color(C.NAVY).text(val, x, y + 5)
-      x += Math.max(32, doc.getTextWidth(val) + 10)
-    }
-    y += 13
-  }
-  if (noteLines.length) {
-    const h = 8 + noteLines.length * 4.3
-    doc.setFillColor('#ffffff'); doc.rect(M, y, R - M, h, 'F')
-    doc.setFillColor(C.CLAY); doc.rect(M, y, 1, h, 'F')
-    k.sans().size(6.2).color(C.CLAY).spaced('NOTA PREVENTIVO', M + 5, y + 4.5, {}, 0.7)
-    k.sans().size(9).color(C.NAVY); doc.text(noteLines, M + 5, y + 9, { lineHeightFactor: 1.4 })
-    y += h + 2
-  }
-  if (notesLines.length) {
-    const h = 5 + notesLines.length * 4.3
-    doc.setFillColor('#ffffff'); doc.setDrawColor(C.BORDER); doc.setLineWidth(0.2); doc.roundedRect(M, y, R - M, h, 1.5, 1.5, 'FD')
-    k.sans().size(9).color(C.NAVY); doc.text(notesLines, M + 5, y + 5.5, { lineHeightFactor: 1.4 })
-  }
-  k.y = 30 + bandH + 8
+  ], { noteTitle: 'NOTA PREVENTIVO', bg: C.WARM })
 
   // ── Articoli (solo a prezzo singolo: a kit sono già elencati sotto ogni kit) ──
   if (!isKit) {
@@ -117,27 +79,7 @@ export async function buildQuotePdf(order) {
     ['Conferma dell\'ordine', 'L\'ordine si considera confermato solo al ricevimento della conferma scritta, approvazione grafica definitiva e versamento dell\'acconto o saldo concordato.'],
     ...(anyHasSizes ? [] : [['Prodotti personalizzati', 'I prodotti sono realizzati su misura. Le taglie definitive saranno indicate in fase di conferma ordine.']]),
   ]
-  k.sans().size(8)
-  const paraLines = paras.map(([b, t]) => k.wrap(`${b} — ${t}`, R - M - 12))
-  const boxH = 12 + paraLines.reduce((s, l) => s + l.length * 4.2 + 2, 0)
-  k.ensure(boxH + 4); k.y += 4
-  doc.setDrawColor(C.BORDER); doc.setLineWidth(0.3); doc.roundedRect(M, k.y, R - M, boxH, 2, 2)
-  k.sans().size(6.5).color(C.MUTED).spaced('NOTE E VALIDITÀ', M + 6, k.y + 7, {}, 1.2)
-  let py = k.y + 13
-  paras.forEach(([bold], i) => {
-    paraLines[i].forEach((line, j) => {
-      if (j === 0) {
-        // Prima riga: titolo in grassetto, poi il testo
-        const head = bold + ' — '
-        k.sans('bold').size(8).color(C.TEXT).text(head, M + 6, py)
-        const w = doc.getTextWidth(head)
-        k.sans().text(line.slice(head.length), M + 6 + w, py)
-      } else k.sans().size(8).color(C.TEXT).text(line, M + 6, py)
-      py += 4.2
-    })
-    py += 2
-  })
-  k.y += boxH + 4
+  paragraphBox(k, 'NOTE E VALIDITÀ', paras)
 
   k.footer('DOUBLEU · MADE IN ITALY · DOUBLEUTENNIS.COM', `${order.id || ''} · ${new Date().toLocaleDateString('it-IT')}`)
   return k.blob()
@@ -146,17 +88,13 @@ export async function buildQuotePdf(order) {
 // Articolo con codice, colore, note, omaggio e griglia taglie completa (zeri in grigio).
 function drawArticle(k, art) {
   const { doc, M, R } = k
-  const adult = art.sizes?.adult || {}, kids = art.sizes?.kids || {}, uni = art.sizes?.uni || 0
-  const grids = [
-    sumOf(ADULT_SIZES, adult) > 0 && ['ADULTO', ADULT_SIZES, adult],
-    sumOf(KIDS_SIZES, kids) > 0 && ['BAMBINO', KIDS_SIZES, kids],
-  ].filter(Boolean)
+  const uni = art.sizes?.uni || 0
   const x = M + 26, w = R - x
   k.sans().size(7.5)
   const notes = art.notes ? k.wrap(art.notes, w) : []
   const tot = artSizeTotal(art)
   const h = 14 + (art.color ? 4.5 : 0) + notes.length * 3.8 + ((art.omaggio || 0) > 0 ? 7 : 0)
-    + grids.length * 13 + (uni > 0 ? 7 : 0) + (tot > 0 ? 6 : 0) + 4
+    + sizeGridsCount(art) * 13 + (uni > 0 ? 7 : 0) + (tot > 0 ? 6 : 0) + 4
   k.ensure(h)
   let y = k.y + 5
   doc.setFillColor('#f0ece4'); doc.rect(M, y - 4, 22, 6.5, 'F')
@@ -170,22 +108,7 @@ function drawArticle(k, art) {
     k.sans('bold').size(6.5).color(C.CLAY).spaced(`OMAGGIO: ${art.omaggio} PZ`, x + 2, y + 3.8, {}, 0.6); y += 5.5
   }
   y += 3
-  const cw = 11, lw = 18
-  for (const [name, sizes, vals] of grids) {
-    const cells = [name, ...sizes, 'TOT']
-    doc.setDrawColor(C.BORDER); doc.setLineWidth(0.2)
-    cells.forEach((c, i) => {
-      const cx = i === 0 ? x : x + lw + (i - 1) * cw, ww = i === 0 ? lw : cw, last = i === cells.length - 1
-      doc.setFillColor(last ? C.WARM : '#f0ece4'); doc.rect(cx, y, ww, 6, 'FD')
-      doc.setFillColor(last ? C.WARM : '#ffffff'); doc.rect(cx, y + 6, ww, 6.5, 'FD')
-      k.sans(i === 0 ? 'bold' : 'normal').size(6).color(i === 0 ? C.NAVY : C.MUTED).text(c, cx + ww / 2, y + 4.1, { align: 'center' })
-      if (i > 0) {
-        const v = last ? sumOf(sizes, vals) : (parseInt(vals[c]) || 0)
-        k.serif().size(11).color(last ? C.CLAY : v > 0 ? C.NAVY : C.DIM).text(String(v), cx + ww / 2, y + 11, { align: 'center' })
-      }
-    })
-    y += 13
-  }
+  y = sizeGrids(k, x, y, art)
   if (uni > 0) { y += 1; k.sans().size(6.5).color('#4a9e6e').spaced('TAGLIA UNICA', x, y + 3.5, {}, 0.6); k.sans('bold').size(9).color(C.NAVY).text(String(uni), x + 22, y + 3.6); y += 6 }
   if (tot > 0) { y += 2; k.sans().size(6.5).color(C.CLAY).spaced(`TOTALE PEZZI: ${tot}`, x, y + 2, {}, 0.6); y += 4 }
   k.y = y + 4
@@ -279,42 +202,12 @@ function drawPricing(k, order, { isKit, allSingle, noSingle, articles, subtotal,
     : '* I prezzi sono indicativi e soggetti a conferma. Le quantità finali potrebbero variare.'
   k.sans().size(7)
   const footL = k.wrap(foot, inR - inX)
-  const tailH = (tail.length ? 4 + tail.length * 5 : 0) + (totRows.length ? 6 + totRows.length * 6 + 12 : 0) + 4 + footL.length * 3.5 + 4
+  const tailH = (tail.length ? 4 + tail.length * 5 : 0) + (totRows.length ? 4 + totalsHeight(totRows) : 0) + 4 + footL.length * 3.5 + 4
 
-  // Riquadro beige che continua sulle pagine successive: si chiude e si riapre a ogni salto.
-  let boxTop = null
-  const openBox = () => { boxTop = k.y }
-  const closeBox = () => {
-    doc.setDrawColor(C.BORDER); doc.setLineWidth(0.3)
-    doc.roundedRect(M, boxTop, R - M, k.y - boxTop, 2, 2)
-  }
-  const fill = (h) => { doc.setFillColor(C.BEIGE); doc.rect(M + 0.15, k.y, R - M - 0.3, h, 'F') }
-  const need = (h) => {
-    if (k.y + h > k.BOTTOM) { closeBox(); doc.addPage(); k.y = k.M; openBox() }
-  }
-
-  k.ensure(16 + (rows[0]?.[0] || 0)); k.y += 2; openBox()
-  fill(12); k.sans().size(6.5).color(C.MUTED).spaced(title, inX, k.y + 8, {}, 1.2); k.y += 12
-  rows.forEach(([h, draw], i) => {
-    need(h); fill(h); draw(k.y); k.y += h
-    if (i < rows.length - 1 || tail.length || totRows.length) k.rule(k.y - 2, '#e8e0d0', 0.2, inX, inR)
+  priceBox(k, title, rows, tailH, (y) => {
+    let ty = y
+    if (tail.length) { ty += 4; tail.forEach(t => { k.sans().size(8.5).color(C.NAVY).text(t, inX, ty + 2); ty += 5 }) }
+    if (totRows.length) ty = totals(k, ty + 4, totRows, 'TOTALE PREVENTIVO' + (order.ivaEnabled ? ' IVA INCL.' : ''), eur(total))
+    ty += 3; k.sans().size(7).color(C.MUTED); doc.text(footL, inX, ty, { lineHeightFactor: 1.3 })
   })
-  need(tailH); fill(tailH)
-  let ty = k.y
-  if (tail.length) { ty += 4; tail.forEach(t => { k.sans().size(8.5).color(C.NAVY).text(t, inX, ty + 2); ty += 5 }) }
-  if (totRows.length) {
-    ty += 4; k.rule(ty, C.BORDER, 0.5, inX, inR); ty += 4
-    const lx = inR - 100
-    totRows.forEach(([l, v, col]) => {
-      k.sans().size(7).color(C.MUTED).spaced(l, lx, ty + 2, {}, 0.6)
-      k.sans().size(10).color(col || C.NAVY).text(v, inR, ty + 2, { align: 'right' }); ty += 6
-    })
-    k.rule(ty - 1, C.BORDER, 0.2, lx, inR); ty += 4
-    k.sans('bold').size(7.5).color(C.NAVY).spaced('TOTALE PREVENTIVO' + (order.ivaEnabled ? ' IVA INCL.' : ''), lx, ty + 2, {}, 0.6)
-    k.serif().size(18).color(C.CLAY).text(eur(total), inR, ty + 3, { align: 'right' }); ty += 8
-  }
-  ty += 3; k.sans().size(7).color(C.MUTED); doc.text(footL, inX, ty, { lineHeightFactor: 1.3 })
-  k.y += tailH
-  closeBox()
-  k.y += 4
 }
