@@ -76,13 +76,13 @@ export async function newPdf(title) {
     },
 
     // Piede su ogni pagina: testo a sinistra, "pagina x di y" (e altro) a destra
-    footer(left, right = '') {
+    footer(left, right = '', pageWord = (p, n) => `pagina ${p} di ${n}`) {
       const pages = doc.getNumberOfPages()
       for (let p = 1; p <= pages; p++) {
         doc.setPage(p)
         k.rule(k.H - 12, C.BORDER, 0.2)
         k.sans().size(6.5).color(C.MUTED).spaced(left, k.M, k.H - 8, {}, 0.8)
-        k.text([right, `pagina ${p} di ${pages}`].filter(Boolean).join(' · '), k.R, k.H - 8, { align: 'right' })
+        k.text([right, pageWord(p, pages)].filter(Boolean).join(' · '), k.R, k.H - 8, { align: 'right' })
       }
     },
 

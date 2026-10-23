@@ -1,4 +1,4 @@
-import { askConfirm } from '../components/ConfirmDialog.jsx'
+import { askConfirm, showAlert } from '../components/ConfirmDialog.jsx'
 import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, GREEN, BORDER, CATEGORIES, WHITE } from '../tokens.js'
 import {
@@ -8,7 +8,8 @@ import {
   itemCostValue, itemOutcome, isGift, foreignCountryLabel,
 } from '../utils/samples.js'
 import { PurposeBadge, OutcomeBadge, FollowUpBadge, GiftBadge } from '../components/SampleTimeline.jsx'
-import { generateSamplePDF, documentLanguage } from '../utils/pdfSample.js'
+import { buildSamplePdf, samplePdfName, documentLanguage } from '../utils/pdfSample.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 import DatePicker from '../components/DatePicker.jsx'
 
 const inputStyle = {
@@ -468,11 +469,8 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {(() => {
                         const lang = documentLanguage(sh, clients, prospects)
-                        const openPDF = (l) => {
-                          const html = generateSamplePDF(sh, clients, prospects, l)
-                          const w = window.open('', '_blank')
-                          w.document.write(html); w.document.close()
-                        }
+                        const openPDF = (l) => buildSamplePdf(sh, clients, prospects, l)
+                          .then(b => shareOrDownload(b, samplePdfName(sh, clients, prospects, l))).catch(e => { console.error('Bolla campioni:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
                         const btn = { padding: '11px', borderRadius: 8, cursor: 'pointer', fontSize: 13, letterSpacing: 1.5,
                           background: 'transparent', border: `1px solid ${GOLD}`, color: GOLD, fontFamily: "'Josefin Sans', sans-serif" }
                         return (

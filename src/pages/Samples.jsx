@@ -1,11 +1,12 @@
-import { askConfirm } from '../components/ConfirmDialog.jsx'
+import { askConfirm, showAlert } from '../components/ConfirmDialog.jsx'
 import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import StatCard from '../components/StatCard.jsx'
 import SampleModal, { emptyShipment, shipmentToForm } from '../components/SampleModal.jsx'
 import { exportSamplesCSV } from '../utils/exportCSV.js'
-import { generateSamplePDF, documentLanguage } from '../utils/pdfSample.js'
+import { buildSamplePdf, samplePdfName, documentLanguage } from '../utils/pdfSample.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 import {
   fmtDate, euro, samplePieces, sampleCostValue, itemOutcome,
   sampleStats, recipientLabel, needsFollowUp, returnPending,
@@ -86,12 +87,9 @@ export default function Samples({
 
   const docLang = (sh) => documentLanguage(sh, clients, prospects)
 
-  const openSamplePDF = (sh, lang) => {
-    const html = generateSamplePDF(sh, clients, prospects, lang)
-    const w = window.open('', '_blank')
-    w.document.write(html)
-    w.document.close()
-  }
+  // PDF vero (niente link del browser): condivisione su telefono, download sul computer
+  const openSamplePDF = (sh, lang) => buildSamplePdf(sh, clients, prospects, lang)
+    .then(b => shareOrDownload(b, samplePdfName(sh, clients, prospects, lang))).catch(e => { console.error('Bolla campioni:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
 
   return (
     <div>
