@@ -1,161 +1,163 @@
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 import { italianDay } from '../lib/production.js'
+import { loadFonts } from '../lib/sizesPdf.js'
 
-// Riepilogo per il cliente: articoli, colori, taglie e quantita' da verificare e confermare
-// prima della produzione. Niente prezzi, niente codici interni.
+// Riepilogo per il club: articoli, colori, taglie e quantita' da verificare e confermare prima
+// della produzione. Niente prezzi, niente codici interni. PDF vero generato nel browser (jsPDF):
+// non passa dalla stampa, quindi niente link, data e titolo aggiunti da Safari/Chrome.
+//
+//   const blob = await buildRecapPdf(order, sizesSubmittedAt)
+//   await shareOrDownload(blob, recapPdfName(order))
 
-const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const NAVY = '#1a2744', CREAM = '#f5f0e8', GOLD = '#b8965a', CLAY = '#c4623a'
+const MUTED = '#8a9ab5', BEIGE = '#f8f5f0', BORDER = '#e0d8cc', RULE = '#eee6da'
 
-// Una griglia (adulto o bambino) solo con le taglie ordinate: piu' facile da controllare.
-function grid(label, sizes, values, sizeLabel) {
-  const used = sizes.filter(sz => (values?.[sz] || 0) > 0)
-  if (!used.length) return ''
-  const tot = used.reduce((s, sz) => s + values[sz], 0)
-  return `
-    <tr>
-      <td style="padding:7px 10px;font-size:9px;letter-spacing:2px;color:#8a9ab5;border:1px solid #e0d8cc;background:#f8f5f0;white-space:nowrap;width:90px;">${label}</td>
-      ${used.map(sz => `
-        <td style="padding:5px 6px;text-align:center;border:1px solid #e0d8cc;min-width:46px;">
-          <div style="font-size:9px;letter-spacing:1px;color:#8a9ab5;">${sizeLabel(sz)}</div>
-          <div style="font-size:15px;font-weight:600;color:#1a2744;margin-top:2px;">${values[sz]}</div>
-        </td>`).join('')}
-      <td style="padding:5px 10px;text-align:center;border:1px solid #e0d8cc;background:#f8f5f0;min-width:52px;">
-        <div style="font-size:9px;letter-spacing:1px;color:#8a9ab5;">TOT</div>
-        <div style="font-size:15px;font-weight:700;color:#c4623a;margin-top:2px;">${tot}</div>
-      </td>
-    </tr>`
-}
+export const recapPdfName = (order) =>
+  ['Riepilogo ordine', order?.id, order?.client].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g, '') + '.pdf'
 
-function articleBlock(art) {
-  const pieces = artPieceCount(art)
-  const uni = art.sizes?.uni || 0
-  const grids = grid('ADULTO', ADULT_SIZES, art.sizes?.adult, sz => sz)
-    + grid('BAMBINO', KIDS_SIZES, art.sizes?.kids, sz => `${sz} ANNI`)
-  return `
-    <div style="padding:14px 0;border-bottom:1px solid #eee6da;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:8px;">
-        <div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:19px;color:#1a2744;">${esc(art.description)}</div>
-          <div style="font-size:10px;letter-spacing:1px;color:#8a9ab5;margin-top:2px;">
-            ${[art.category ? esc(art.category) : '', art.color ? `Colore <strong style="color:#1a2744;">${esc(art.color)}</strong>` : ''].filter(Boolean).join(' · ')}
-          </div>
-        </div>
-        <div style="font-size:11px;color:#8a9ab5;white-space:nowrap;">Totale <strong style="font-size:16px;color:#1a2744;">${pieces}</strong> pz</div>
-      </div>
-      ${grids ? `<table style="border-collapse:collapse;">${grids}</table>` : ''}
-      ${uni > 0 ? `<div style="margin-top:6px;font-size:11px;color:#1a2744;">Taglia unica: <strong>${uni}</strong></div>` : ''}
-      ${!grids && !uni ? `<div style="font-size:11px;color:#c4623a;">Taglie da definire</div>` : ''}
-    </div>`
-}
+// Solo le taglie ordinate: piu' facile da controllare.
+const usedSizes = (sizes, values) => sizes.filter(sz => (parseInt(values?.[sz]) || 0) > 0)
 
 // La data dell'ordine per il club e' quella in cui ci ha mandato le taglie (submitted_at del modulo);
 // senza modulo resta la data dell'ordine.
-export function generateRecapPDF(order, sizesSubmittedAt = null) {
+export async function buildRecapPdf(order, sizesSubmittedAt = null) {
+  const [{ jsPDF }, fonts] = await Promise.all([import('jspdf'), loadFonts()])
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  for (const f of fonts) { doc.addFileToVFS(f.file, f.data); doc.addFont(f.file, f.family, f.style) }
+  doc.setProperties({ title: recapPdfName(order).replace(/\.pdf$/, ''), author: 'DOUBLEU' })
+
+  const W = 210, H = 297, M = 16, R = W - M, BOTTOM = H - 16
+  const sans = (style = 'normal') => doc.setFont('Josefin', style)
+  const serif = () => doc.setFont('Cormorant', 'normal')
+  const spaced = (txt, x, y, opts = {}, cs = 0.6) => { doc.setCharSpace(cs); doc.text(txt, x, y, opts); doc.setCharSpace(0) }
+
   const orderDate = sizesSubmittedAt ? italianDay(sizesSubmittedAt).split('-').reverse().join('/') : order.date
   const articles = getAllArticles(order)
   const totalPieces = articles.reduce((s, a) => s + artPieceCount(a), 0)
   const kits = (order.kits || []).filter(k => (k.articles || []).length)
   const showKits = kits.length > 1 || kits.some(k => k.name)
 
-  // Una riga di tabella per articolo: le righe non si spezzano tra due pagine.
-  // Il nome del kit sta nella riga del suo primo articolo, cosi' resta sulla stessa pagina.
-  const articleRows = kits.flatMap((kit, k) => {
-    const kitPieces = kit.articles.reduce((s, a) => s + artPieceCount(a), 0)
-    return kit.articles.map((art, i) => `
-      <div style="padding:0 40px;${i === 0 ? `padding-top:${k ? 22 : 24}px;` : ''}">
-        ${i === 0 && showKits ? `
-        <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #1a2744;padding-bottom:6px;">
-          <div style="font-size:12px;letter-spacing:3px;color:#1a2744;font-weight:700;text-transform:uppercase;">${esc(kit.name || 'Articoli')}</div>
-          <div style="font-size:11px;color:#8a9ab5;">${kitPieces} pz</div>
-        </div>` : ''}
-        ${articleBlock(art)}
-      </div>`)
+  // ── Intestazione ──
+  doc.setFillColor(NAVY); doc.rect(0, 0, W, 30, 'F')
+  serif(); doc.setFontSize(22); doc.setTextColor(CREAM); spaced('DOUBLEU', M, 15, {}, 2)
+  sans(); doc.setFontSize(6.5); doc.setTextColor(GOLD); spaced('MADE IN ITALY · PREMIUM CLUBWEAR', M, 21.5)
+  spaced('RIEPILOGO ORDINE · DA CONFERMARE', R, 12.5, { align: 'right' })
+  serif(); doc.setFontSize(17); doc.setTextColor(CREAM); spaced(order.id || '', R, 21.5, { align: 'right' }, 0.8)
+
+  // ── Club, data, totale e istruzioni ──
+  sans(); doc.setFontSize(8.6)
+  const intro = doc.splitTextToSize(
+    "Vi chiediamo di verificare articoli, colori, taglie e quantità riportati qui sotto. Se è tutto corretto, confermate rispondendo al messaggio o firmando in fondo: la produzione parte dopo la vostra conferma. Eventuali correzioni vanno segnalate prima dell'avvio della produzione.",
+    R - M)
+  const note = order.orderNote ? doc.splitTextToSize(`Nota: ${order.orderNote}`, R - M) : []
+  const bandH = 26 + intro.length * 4.2 + (note.length ? 2 + note.length * 4.2 : 0) + 5
+  doc.setFillColor(BEIGE); doc.rect(0, 30, W, bandH, 'F')
+  doc.setDrawColor(BORDER); doc.setLineWidth(0.5); doc.line(0, 30 + bandH, W, 30 + bandH)
+  const label = (txt, x, y) => { sans(); doc.setFontSize(6.2); doc.setTextColor(MUTED); spaced(txt, x, y, {}, 0.7) }
+  label('CLUB', M, 38); serif(); doc.setFontSize(15); doc.setTextColor(NAVY); doc.text(order.client || '', M, 45)
+  const clubW = Math.max(60, doc.getTextWidth(order.client || '') + 12)
+  label('DATA ORDINE', M + clubW, 38); sans('bold'); doc.setFontSize(10); doc.setTextColor(NAVY); doc.text(orderDate || '', M + clubW, 45)
+  label('TOTALE CAPI', M + clubW + 40, 38); serif(); doc.setFontSize(20); doc.setTextColor(CLAY); doc.text(String(totalPieces), M + clubW + 40, 46)
+  sans(); doc.setFontSize(8.6); doc.setTextColor(NAVY)
+  doc.text(intro, M, 54, { lineHeightFactor: 1.45 })
+  if (note.length) doc.text(note, M, 56 + intro.length * 4.2, { lineHeightFactor: 1.45 })
+
+  let y = 30 + bandH + 8
+  const newPage = () => { doc.addPage(); y = M }
+
+  // ── Articoli ──
+  const CELL = 13, LAB = 22, ROW = 10
+  const gridsOf = (art) => [
+    ['ADULTO', usedSizes(ADULT_SIZES, art.sizes?.adult), art.sizes?.adult, sz => sz],
+    ['BAMBINO', usedSizes(KIDS_SIZES, art.sizes?.kids), art.sizes?.kids, sz => `${sz} ANNI`],
+  ].filter(([, used]) => used.length)
+  const articleH = (art) => {
+    const g = gridsOf(art).length
+    return 12 + (g ? g * ROW : 0) + ((art.sizes?.uni || 0) > 0 ? 5 : 0) + (!g && !(art.sizes?.uni > 0) ? 5 : 0) + 6
+  }
+  const KIT_H = 10
+
+  const drawArticle = (art) => {
+    const pieces = artPieceCount(art)
+    serif(); doc.setFontSize(13); doc.setTextColor(NAVY); doc.text(art.description || art.category || '', M, y + 5)
+    sans(); doc.setFontSize(7); doc.setTextColor(MUTED)
+    const meta = [art.category, art.color ? `Colore ${art.color}` : null].filter(Boolean).join(' · ')
+    doc.text(meta, M, y + 9.5)
+    // "Totale 50 pz" allineato a destra
+    doc.setFontSize(7.5); doc.text('pz', R, y + 5, { align: 'right' })
+    const pzW = doc.getTextWidth('pz') + 1.2
+    sans('bold'); doc.setFontSize(11); doc.setTextColor(NAVY); doc.text(String(pieces), R - pzW, y + 5, { align: 'right' })
+    const numW = doc.getTextWidth(String(pieces)) + 1.5
+    sans(); doc.setFontSize(7.5); doc.setTextColor(MUTED); doc.text('Totale', R - pzW - numW, y + 5, { align: 'right' })
+    let gy = y + 12
+    doc.setDrawColor(BORDER); doc.setLineWidth(0.2)
+    for (const [name, used, values, sizeLabel] of gridsOf(art)) {
+      doc.setFillColor(BEIGE); doc.rect(M, gy, LAB, ROW, 'FD')
+      sans(); doc.setFontSize(6); doc.setTextColor(MUTED); spaced(name, M + 2.5, gy + 6, {}, 0.6)
+      used.forEach((sz, i) => {
+        const x = M + LAB + i * CELL
+        doc.rect(x, gy, CELL, ROW)
+        sans(); doc.setFontSize(5.6); doc.setTextColor(MUTED); doc.text(sizeLabel(sz), x + CELL / 2, gy + 3.6, { align: 'center' })
+        sans('bold'); doc.setFontSize(10); doc.setTextColor(NAVY); doc.text(String(parseInt(values[sz]) || 0), x + CELL / 2, gy + 8.3, { align: 'center' })
+      })
+      const tx = M + LAB + used.length * CELL
+      doc.setFillColor(BEIGE); doc.rect(tx, gy, CELL, ROW, 'FD')
+      sans(); doc.setFontSize(5.6); doc.setTextColor(MUTED); doc.text('TOT', tx + CELL / 2, gy + 3.6, { align: 'center' })
+      sans('bold'); doc.setFontSize(10); doc.setTextColor(CLAY)
+      doc.text(String(used.reduce((s, sz) => s + (parseInt(values[sz]) || 0), 0)), tx + CELL / 2, gy + 8.3, { align: 'center' })
+      gy += ROW
+    }
+    const uni = art.sizes?.uni || 0
+    if (uni > 0) { sans(); doc.setFontSize(8); doc.setTextColor(NAVY); doc.text(`Taglia unica: ${uni}`, M, gy + 4); gy += 5 }
+    if (!gridsOf(art).length && !uni) { sans(); doc.setFontSize(8); doc.setTextColor(CLAY); doc.text('Taglie da definire', M, gy + 4); gy += 5 }
+    doc.setDrawColor(RULE); doc.setLineWidth(0.3); doc.line(M, gy + 3, R, gy + 3)
+    y = gy + 6
+  }
+
+  kits.forEach((kit, k) => {
+    kit.articles.forEach((art, i) => {
+      const withKit = i === 0 && showKits
+      // Nome e prospetto taglie (e il nome del kit col suo primo articolo) sempre sulla stessa pagina.
+      const need = articleH(art) + (withKit ? KIT_H + (k ? 4 : 0) : 0)
+      if (y + need > BOTTOM) newPage()
+      if (withKit) {
+        if (k && y > M) y += 4
+        sans('bold'); doc.setFontSize(8); doc.setTextColor(NAVY); spaced((kit.name || 'Articoli').toUpperCase(), M, y + 4, {}, 1)
+        sans(); doc.setFontSize(7.5); doc.setTextColor(MUTED)
+        doc.text(`${kit.articles.reduce((s, a) => s + artPieceCount(a), 0)} pz`, R, y + 4, { align: 'right' })
+        doc.setDrawColor(NAVY); doc.setLineWidth(0.5); doc.line(M, y + 6.5, R, y + 6.5)
+        y += KIT_H
+      }
+      drawArticle(art)
+    })
   })
 
-  return `<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <title>Riepilogo ordine ${esc(order.id)} — ${esc(order.client)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Josefin+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Josefin Sans', sans-serif; color: #1a2744; margin: 0; background: #fff; }
-    /* Pagina senza margini del browser: e' li' che stampa link, data e titolo (su iPad non si possono togliere).
-       Il margine lo danno le righe vuote di thead/tfoot, che il browser ripete in cima e in fondo a ogni pagina. */
-    @page { size: A4; margin: 0; }
-    table.pagina { width: 100%; border-collapse: collapse; }
-    table.pagina > * > tr > td { padding: 0; vertical-align: top; }
-    table.pagina tr { break-inside: avoid; page-break-inside: avoid; }
-    td.spazio { height: 12mm; }
-    .print-btn { position:fixed;bottom:20px;right:20px;z-index:999;background:#c4623a;box-shadow:0 6px 18px rgba(0,0,0,.25);color:white;border:none;padding:12px 28px;font-family:'Josefin Sans',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; }
-    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } }
-  </style>
-</head>
-<body>
-  <button class="print-btn" onclick="window.print()">↓ Stampa / Salva PDF</button>
+  // ── Conferma del club ──
+  const boxH = 36
+  if (y + 6 + boxH > BOTTOM) newPage()
+  y += 6
+  doc.setDrawColor(NAVY); doc.setLineWidth(0.3); doc.roundedRect(M, y, R - M, boxH, 2, 2)
+  sans('bold'); doc.setFontSize(7); doc.setTextColor(NAVY); spaced('CONFERMA DEL CLUB', M + 6, y + 8, {}, 1)
+  sans(); doc.setFontSize(9); doc.text(`Confermo articoli, colori, taglie e quantità per un totale di ${totalPieces} capi.`, M + 6, y + 15)
+  const fields = [['NOME E COGNOME', 70], ['DATA', 35], ['FIRMA', 0]]
+  let fx = M + 6
+  const fw = R - M - 12 - 20
+  fields.forEach(([lab, w]) => {
+    const width = w || (fw - 70 - 35)
+    sans(); doc.setFontSize(6.5); doc.setTextColor(MUTED); spaced(lab, fx, y + 23, {}, 0.6)
+    doc.setDrawColor(MUTED); doc.setLineWidth(0.2); doc.line(fx, y + 30, fx + width, y + 30)
+    fx += width + 10
+  })
 
-  <table class="pagina">
-  <thead><tr><td class="spazio"></td></tr></thead>
-  <tfoot><tr><td class="spazio"></td></tr></tfoot>
-  <tbody>
-  <tr><td>
-  <div style="background:#1a2744;padding:26px 40px;display:flex;justify-content:space-between;align-items:center;">
-    <div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:#f5f0e8;letter-spacing:6px;">DOUBLEU</div>
-      <div style="font-size:9px;letter-spacing:3px;color:#b8965a;margin-top:4px;">MADE IN ITALY · PREMIUM CLUBWEAR</div>
-    </div>
-    <div style="text-align:right;">
-      <div style="font-size:9px;letter-spacing:3px;color:#b8965a;margin-bottom:4px;">RIEPILOGO ORDINE · DA CONFERMARE</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0e8;letter-spacing:3px;">${esc(order.id)}</div>
-    </div>
-  </div>
-  </td></tr>
+  // ── Piede di ogni pagina ──
+  const pages = doc.getNumberOfPages()
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p)
+    sans(); doc.setFontSize(6.5); doc.setTextColor(MUTED)
+    spaced('DOUBLEU · RIEPILOGO SENZA PREZZI', M, H - 8, {}, 0.8)
+    doc.text(`${order.id || ''} · pagina ${p} di ${pages}`, R, H - 8, { align: 'right' })
+  }
 
-  <tr><td>
-  <div style="background:#f8f5f0;padding:20px 40px;border-bottom:2px solid #e0d8cc;">
-    <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:flex-end;">
-      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;">${esc(order.client)}</div></div>
-      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA ORDINE</div>
-        <div style="font-size:14px;font-weight:600;">${esc(orderDate)}</div></div>
-      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE CAPI</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:30px;color:#c4623a;line-height:1;">${totalPieces}</div></div>
-    </div>
-    <div style="margin-top:16px;font-size:13px;line-height:1.6;color:#1a2744;">
-      Vi chiediamo di verificare <strong>articoli, colori, taglie e quantità</strong> riportati qui sotto.
-      Se è tutto corretto, confermate rispondendo al messaggio o firmando in fondo: la produzione parte dopo la vostra conferma.
-      Eventuali correzioni vanno segnalate prima dell'avvio della produzione.
-    </div>
-    ${order.orderNote ? `<div style="margin-top:12px;font-size:13px;color:#1a2744;"><strong>Nota:</strong> ${esc(order.orderNote)}</div>` : ''}
-  </div>
-  </td></tr>
-
-  ${articleRows.map(r => `<tr><td>${r}</td></tr>`).join('')}
-
-  <tr><td>
-  <div style="padding:30px 40px 32px;">
-  <div style="border:1px solid #1a2744;border-radius:8px;padding:20px 24px;">
-    <div style="font-size:10px;letter-spacing:3px;color:#1a2744;font-weight:700;margin-bottom:14px;">CONFERMA DEL CLUB</div>
-    <div style="font-size:13px;margin-bottom:22px;">Confermo articoli, colori, taglie e quantità per un totale di <strong>${totalPieces} capi</strong>.</div>
-    <div style="display:flex;gap:40px;flex-wrap:wrap;font-size:11px;color:#8a9ab5;letter-spacing:1px;">
-      <div style="flex:1;min-width:160px;">NOME E COGNOME<div style="border-bottom:1px solid #8a9ab5;height:26px;"></div></div>
-      <div style="width:140px;">DATA<div style="border-bottom:1px solid #8a9ab5;height:26px;"></div></div>
-      <div style="flex:1;min-width:160px;">FIRMA<div style="border-bottom:1px solid #8a9ab5;height:26px;"></div></div>
-    </div>
-  </div>
-  </div>
-  </td></tr>
-
-  <tr><td>
-  <div style="background:#1a2744;padding:14px 40px;display:flex;justify-content:space-between;align-items:center;">
-    <div style="font-size:9px;letter-spacing:3px;color:#b8965a;">DOUBLEU · RIEPILOGO SENZA PREZZI</div>
-    <div style="font-size:9px;color:rgba(255,255,255,0.4);">Generato il ${new Date().toLocaleDateString('it-IT')}</div>
-  </div>
-  </td></tr>
-  </tbody>
-  </table>
-</body>
-</html>`
+  return doc.output('blob')
 }
