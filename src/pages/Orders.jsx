@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../utils/helpers.js'
-import { generateProductionPDF } from '../utils/pdfProduction.js'
+import { buildProductionPdf, productionPdfName } from '../utils/pdfProduction.js'
 import { buildClientPdf, clientPdfName } from '../utils/pdfClient.js'
 import { buildDeliveryPdf, deliveryPdfName } from '../utils/pdfDelivery.js'
 import { buildRecapPdf, recapPdfName } from '../utils/pdfRecap.js'
@@ -281,9 +281,6 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
       return 0
     })
 
-  const openPDF = (gen, order) => {
-    const h=gen(order); const w=window.open('','_blank'); w.document.write(h); w.document.close()
-  }
 
   const handleStatusChange   = (orderId, newStatus, dateFields, cancelFields={}) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(dateFields?{shippedDate:dateFields.shipped_date||null,actualDeliveryDate:dateFields.actual_delivery_date||null}:{}),...('cancel_reason' in cancelFields?{cancelReason:cancelFields.cancel_reason||'',cancelDate:cancelFields.cancel_date||null}:{})}:o))
   const handlePaymentToggle  = (orderId, paymentId, newPaid, paidDate=null) => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid,paidDate:newPaid?paidDate:null}:p)}))
@@ -377,7 +374,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                       <FormButton form={formsByOrder[o.id]} onClick={()=>openForm(o.id)}/>
                       <RowMenu items={[
                         { section: 'Documenti' },
-                        { label: 'Scheda produzione', onClick: () => openPDF(generateProductionPDF, o) },
+                        { label: 'Scheda produzione', onClick: () => buildProductionPdf(o).then(b => shareOrDownload(b, productionPdfName(o))).catch(e => { console.error('Scheda produzione:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }) },
                         { label: 'PDF cliente', onClick: () => buildClientPdf(o).then(b => shareOrDownload(b, clientPdfName(o))).catch(e => { console.error('PDF cliente:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }) },
                         { label: 'Riepilogo taglie (senza prezzi)', onClick: () => buildRecapPdf(o, formsByOrder[o.id]?.submitted_at).then(b => shareOrDownload(b, recapPdfName(o))).catch(e => { console.error('Riepilogo taglie:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }) },
                         { label: 'Bolla di consegna', onClick: () => o.status === 'CONSEGNA PARZIALE' ? setBollaOrder(o) : buildDeliveryPdf(o).then(b => shareOrDownload(b, deliveryPdfName(o))).catch(e => { console.error('Bolla:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }) },
