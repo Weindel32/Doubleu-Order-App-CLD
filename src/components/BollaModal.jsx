@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { CREAM, GOLD, MUTED, CLAY, BORDER } from '../tokens.js'
 import { getAllArticles, artPieceCount } from '../utils/helpers.js'
-import { generateDeliveryPDF } from '../utils/pdfDelivery.js'
+import { buildDeliveryPdf, deliveryPdfName } from '../utils/pdfDelivery.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
+import { showAlert } from './ConfirmDialog.jsx'
 
 export default function BollaModal({ order, onClose }) {
   const allArticles = getAllArticles(order)
@@ -18,10 +20,8 @@ export default function BollaModal({ order, onClose }) {
 
   const generate = () => {
     const articles = allArticles.filter((_, i) => selected.has(i))
-    const h = generateDeliveryPDF(order, articles)
-    const w = window.open('', '_blank')
-    w.document.write(h)
-    w.document.close()
+    // PDF vero (niente link del browser): condivisione su telefono, download sul computer
+    buildDeliveryPdf(order, articles).then(b => shareOrDownload(b, deliveryPdfName(order))).catch(e => { console.error('Bolla:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
     onClose()
   }
 
