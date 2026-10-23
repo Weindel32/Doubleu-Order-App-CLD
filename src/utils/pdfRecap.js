@@ -155,7 +155,7 @@ export async function buildRecapPdf(order, sizesSubmittedAt = null) {
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p)
     sans(); doc.setFontSize(6.5); doc.setTextColor(MUTED)
-    spaced('DOUBLEU · RIEPILOGO SENZA PREZZI', M, H - 8, {}, 0.8)
+    spaced('DOUBLEU · RIEPILOGO ORDINE', M, H - 8, {}, 0.8)
     doc.text(`${order.id || ''} · pagina ${p} di ${pages}`, R, H - 8, { align: 'right' })
   }
 
