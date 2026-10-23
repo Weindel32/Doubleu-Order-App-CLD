@@ -4,7 +4,8 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, CATEGORIES, LINES, ADULT_SIZES, KIDS_
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal as calcOrderTotal,
          artPieceCount, artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitProductionQty, grossUnitPrice } from '../utils/helpers.js'
-import { generateQuotePDF } from '../utils/pdfQuote.js'
+import { buildQuotePdf, quotePdfName } from '../utils/pdfQuote.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 import { createOrder, updateOrder, generateOrderId } from '../lib/dataService.js'
 import SpAutocomplete from '../components/SpAutocomplete.jsx'
 import DiscountFields from '../components/DiscountFields.jsx'
@@ -189,11 +190,9 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
         quoteForPDF = { ...order }
       } catch {}
     }
-    const h = generateQuotePDF(quoteForPDF)
-    const w = window.open('', '_blank')
-    if (!w) { showAlert({ title: 'Popup bloccato', body: ['Il browser ha bloccato la finestra: abilita i popup per visualizzare il PDF.'] }); return }
-    w.document.write(h)
-    w.document.close()
+    // PDF vero (niente link del browser): foglio di condivisione su telefono, download sul computer
+    try { await shareOrDownload(await buildQuotePdf(quoteForPDF), quotePdfName(quoteForPDF)) }
+    catch (e) { console.error('Preventivo PDF:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }
   }
 
   const canGo2 = allArticles.some(a => a.sp && a.description)

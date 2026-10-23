@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, LOSS_REASONS } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle } from '../tokens.js'
 import { orderTotal } from '../utils/helpers.js'
-import { generateQuotePDF } from '../utils/pdfQuote.js'
+import { buildQuotePdf, quotePdfName } from '../utils/pdfQuote.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 import NegotiationModal from '../components/NegotiationModal.jsx'
+import { showAlert } from '../components/ConfirmDialog.jsx'
 import { stageOf } from '../utils/negotiation.js'
 
 const RED = '#ef4444'
@@ -110,12 +112,9 @@ export default function Quotes({ orders, setView, setEditOrder, onDelete, onConv
       return 0
     })
 
-  const openPDF = (order) => {
-    const h = generateQuotePDF(order)
-    const w = window.open('', '_blank')
-    w.document.write(h)
-    w.document.close()
-  }
+  // PDF vero (niente link del browser): foglio di condivisione su telefono, download sul computer
+  const openPDF = (order) => buildQuotePdf(order).then(b => shareOrDownload(b, quotePdfName(order)))
+    .catch(e => { console.error('Preventivo PDF:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
 
   const thStyle = (col) => ({
     ...s.th, cursor: 'pointer', userSelect: 'none',
