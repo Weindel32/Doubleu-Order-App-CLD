@@ -5,6 +5,7 @@ import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../ut
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
+import { generateRecapPDF }      from '../utils/pdfRecap.js'
 import BollaModal                from '../components/BollaModal.jsx'
 import OrderFormModal            from '../components/OrderFormModal.jsx'
 import { fetchOrderForms, pendingFormWarning, formStage } from '../lib/orderForms.js'
@@ -377,6 +378,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                         { section: 'Documenti' },
                         { label: 'Scheda produzione', onClick: () => openPDF(generateProductionPDF, o) },
                         { label: 'PDF cliente', onClick: () => openPDF(generateClientPDF, o) },
+                        { label: 'Riepilogo taglie (senza prezzi)', onClick: () => openPDF(generateRecapPDF, o) },
                         { label: 'Bolla di consegna', onClick: () => o.status === 'CONSEGNA PARZIALE' ? setBollaOrder(o) : openPDF(generateDeliveryPDF, o) },
                         { section: 'Azioni' },
                         { label: formsByOrder[o.id] ? 'Modulo taglie' : 'Invia modulo taglie', onClick: () => openForm(o.id) },
