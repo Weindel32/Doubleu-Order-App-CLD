@@ -8,7 +8,9 @@ import {
   PURPOSES, PURPOSE_LABELS, alwaysReturned, OUTCOMES, OUTCOME_LABELS, OUTCOME_CFG,
   todayISO, addDaysISO, itemCostValue, itemPriceValue, euro, FOLLOW_UP_DAYS,
 } from '../utils/samples.js'
-import { generateSamplePDF } from '../utils/pdfSample.js'
+import { buildSamplePdf, samplePdfName } from '../utils/pdfSample.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
+import { showAlert } from './ConfirmDialog.jsx'
 
 const inp = { ...s.input, fontSize: 14 }
 
@@ -506,11 +508,8 @@ export default function SampleModal({ form, setForm, clients = [], prospects = [
         <button style={{ ...btnStyle(false), padding: '9px 20px' }} onClick={onCancel}>Annulla</button>
         {form.id && (
           <button style={{ ...btnStyle(false), padding: '9px 20px' }}
-            onClick={() => {
-              const html = generateSamplePDF(form, clients, prospects)
-              const w = window.open('', '_blank')
-              w.document.write(html); w.document.close()
-            }}>
+            onClick={() => buildSamplePdf(form, clients, prospects)
+              .then(b => shareOrDownload(b, samplePdfName(form, clients, prospects))).catch(e => { console.error('Bolla campioni:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })}>
             Bolla Campioni
           </button>
         )}
