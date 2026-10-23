@@ -1,260 +1,141 @@
-import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal,
          artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
+import { newPdf, C, eur, pdfName, clientBand, sizeGrids, sizeGridsCount, paragraphBox, priceBox, totals, totalsHeight } from '../lib/pdfKit.js'
 
-// Riga sconto sotto il prezzo di listino della singola voce
-const lineDisc = (base, disc, entity) => disc > 0
-  ? `<div style="font-size:11px;color:#c4623a;margin-top:2px;">sconto${entity.discountType !== 'importo' ? ` ${parseFloat(entity.discountValue) || 0}%` : ''} − € ${disc.toFixed(2)}</div>`
-  : ''
+// Conferma d'ordine per il club (PDF cliente) come PDF vero: niente link e data aggiunti dalla stampa.
+//
+//   const blob = await buildClientPdf(order)
+//   await shareOrDownload(blob, clientPdfName(order))
 
-export function generateClientPDF(order) {
+export const clientPdfName = (order) => pdfName('Conferma ordine', order?.id, order?.client)
+
+const CONDITIONS = [
+  ['1. Oggetto', 'Le presenti condizioni regolano la vendita di prodotti personalizzati a marchio DOUBLEU. Tutti i prodotti sono realizzati su richiesta e personalizzati secondo le specifiche approvate dal cliente.'],
+  ['2. Conferma dell\'Ordine', 'L\'ordine si considera confermato al verificarsi congiunto di: firma del presente documento, approvazione grafica definitiva, versamento dell\'acconto previsto.'],
+  ['3. Produzione e Tempistiche', 'I tempi decorrono dalla data di conferma definitiva. Le tempistiche sono indicative e possono variare per cause di forza maggiore.'],
+  ['4. Prodotti Personalizzati', 'Non è previsto diritto di recesso. Non è possibile annullare l\'ordine dopo l\'avvio della produzione. Non sono accettati resi per errori di taglia comunicati dal cliente.'],
+  ['5. Pagamenti', 'Acconto al momento della conferma, saldo alla consegna, salvo accordi diversi.'],
+  ['6. Foro Competente', 'Per ogni controversia è competente il Foro di Salerno.'],
+]
+
+export async function buildClientPdf(order) {
+  const k = await newPdf(clientPdfName(order).replace(/\.pdf$/, ''))
+  const { doc, M, R } = k
   const articles = getAllArticles(order)
-  const hasKids  = articles.some(a => KIDS_SIZES.some(sz => (a.sizes.kids?.[sz] || 0) > 0))
-  const hasAdult = articles.some(a => ADULT_SIZES.some(sz => (a.sizes.adult?.[sz] || 0) > 0))
-  const subtotal = orderSubtotal(order)
-  const shipAmt  = orderShipping(order)
-  const discAmt  = orderDiscount(order)
-  const ivaAmt   = orderIVA(order)
-  const total    = orderTotal(order)
+  const isKit = order.pricingMode === 'kit'
+  const persone = (order.kits || []).reduce((s, kt) => s + (parseInt(kt.quantity) || parseInt(order.kitQuantity) || 0), 0)
 
-  const pricingBlock = (() => {
-    if (order.pricingMode === 'kit') {
-      return order.kits.map(kit => {
-        const qty      = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
-        const kitTotal = (parseFloat(kit.price) || 0) * qty
-        const omaggioInKit = kit.articles.filter(a=>(a.omaggio||0)>0).map(a=>`${a.description} (${a.omaggio} pz)`).join(', ')
-        return `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
-            <div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${kit.name}</div>
-              <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${kit.articles.map(a=>a.description).join(' + ')}</div>
-              ${omaggioInKit?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">In omaggio: ${omaggioInKit}</div>`:''}
-              ${(parseFloat(kit.omaggio)||0)>0?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">+ ${parseFloat(kit.omaggio)} kit in omaggio</div>`:''}
-            </div>
-            <div style="text-align:right;">
-              <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO KIT × N° PERSONE</div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(kit.price)||0).toFixed(2)} × ${qty} pers.</div>
-              ${lineDisc(kitTotal, kitDiscountApplied(order, kit), kit)}
-              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${(kitTotal - kitDiscountApplied(order, kit)).toFixed(2)}</div>
-            </div>
-          </div>`
-      }).join('')
-    } else {
-      return articles.map(a => {
-        const pz  = artPieceCount(a)
-        const tot = (parseFloat(a.price) || 0) * pz
-        return `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e8e0d0;">
-            <div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#1a2744;">${a.description}</div>
-              <div style="font-size:10px;color:#8a9ab5;margin-top:2px;">${[a.category, a.color].filter(Boolean).join(' · ')}</div>
-              ${(a.omaggio||0)>0?`<div style="font-size:10px;color:#c4623a;margin-top:3px;font-style:italic;">${a.omaggio} pz in omaggio</div>`:''}
-            </div>
-            <div style="text-align:right;">
-              <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;">PREZZO UNITARIO</div>
-              <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#c4623a;">€ ${(parseFloat(a.price)||0).toFixed(2)} × ${pz} pz</div>
-              ${lineDisc(tot, artDiscountApplied(order, a), a)}
-              <div style="font-size:13px;color:#1a2744;font-weight:700;margin-top:4px;">= € ${(tot - artDiscountApplied(order, a)).toFixed(2)}</div>
-            </div>
-          </div>`
-      }).join('')
+  k.header('CONFERMA ORDINE', order.id)
+  clientBand(k, order, [
+    { label: 'CLUB', value: order.client || '', style: 'serif', min: 50 },
+    { label: 'DATA ORDINE', value: order.date || '' },
+    ...(order.invoiceNumber ? [{ label: 'RIF. FATTURA', value: order.invoiceNumber }] : []),
+    { label: 'TOTALE PEZZI', value: String(order.pieces ?? articles.reduce((s, a) => s + artPieceCount(a), 0)), style: 'big', min: 26 },
+    ...(isKit ? [{ label: 'TOTALE PERSONE', value: String(persone), style: 'big', min: 26 }] : []),
+    { label: 'STATO', value: order.status || '', style: 'clay' },
+  ], { noteTitle: 'NOTA ORDINE' })
+
+  // ── Dettaglio articoli: taglie e quantità ──
+  k.sans().size(6.5).color(C.MUTED).spaced('DETTAGLIO ARTICOLI', M, k.y, {}, 1.2)
+  k.rule(k.y + 3, C.RULE, 0.5); k.y += 8
+  for (const art of articles) {
+    const uni = art.sizes?.uni || 0
+    const h = 12 + sizeGridsCount(art) * 13 + (uni > 0 ? 7 : 0) + 10
+    k.ensure(h)
+    let y = k.y + 5
+    k.serif().size(14).color(C.NAVY).text(art.description || '—', M, y)
+    k.sans().size(6.2).color(C.MUTED).spaced('COLORE', R, y - 2.5, { align: 'right' }, 0.7)
+    k.sans('bold').size(9).color(C.CLAY).text(art.color || '—', R, y + 2, { align: 'right' })
+    y += 4.5; k.sans().size(7).color(C.MUTED).spaced(art.category || '', M, y, {}, 0.3)
+    y = sizeGrids(k, M, y + 3, art)
+    if (uni > 0) { y += 1; k.sans().size(6.5).color('#4a9e6e').spaced('TAGLIA UNICA', M, y + 3.5, {}, 0.6); k.sans('bold').size(9).color(C.NAVY).text(String(uni), M + 22, y + 3.6); y += 6 }
+    y += 4.5
+    const omTxt = (art.omaggio || 0) > 0 ? `di cui ${art.omaggio} pz in omaggio` : ''
+    if (omTxt) k.sans('bold').size(7.5).color(C.CLAY).text(omTxt, R, y, { align: 'right' })
+    const totTxt = String(artPieceCount(art))
+    const off = omTxt ? doc.getTextWidth(omTxt) + 4 : 0
+    k.sans('bold').size(8.5).color(C.NAVY).text(totTxt, R - off, y, { align: 'right' })
+    k.sans().size(7.5).color(C.MUTED).text('Totale pezzi: ', R - off - doc.getTextWidth(totTxt) - 1, y, { align: 'right' })
+    k.y = y + 3
+    k.rule(k.y, '#f0ece4')
+    k.y += 3
+  }
+  k.y += 2
+
+  // ── Prezzi ──
+  const inX = M + 7, inR = R - 7, leftW = inR - inX - 60
+  const rows = []
+  if (isKit) {
+    for (const kit of order.kits || []) {
+      const qty = parseInt(kit.quantity) || parseInt(order.kitQuantity) || 0
+      const kitTotal = (parseFloat(kit.price) || 0) * qty
+      const disc = kitDiscountApplied(order, kit)
+      const om = (kit.articles || []).filter(a => (a.omaggio || 0) > 0).map(a => `${a.description} (${a.omaggio} pz)`).join(', ')
+      k.sans().size(8)
+      const subL = k.wrap((kit.articles || []).map(a => a.description).join(' + '), leftW)
+      const omL = om ? k.wrap('In omaggio: ' + om, leftW) : []
+      const staff = parseFloat(kit.omaggio) || 0
+      const h = Math.max(8 + subL.length * 3.9 + omL.length * 3.6 + (staff > 0 ? 4 : 0), disc > 0 ? 22 : 18) + 4
+      rows.push([h, (y) => {
+        k.serif().size(15).color(C.NAVY).text(kit.name || 'Kit', inX, y + 5)
+        let ly = y + 5
+        if (subL.length) { ly += 4.6; k.sans().size(8).color(C.SOFT); doc.text(subL, inX, ly, { lineHeightFactor: 1.35 }); ly += (subL.length - 1) * 3.9 }
+        if (omL.length) { ly += 4; k.sans().size(7.5).color(C.CLAY); doc.text(omL, inX, ly); ly += (omL.length - 1) * 3.6 }
+        if (staff > 0) { ly += 4; k.sans().size(7.5).color(C.CLAY).text(`+ ${staff} kit in omaggio`, inX, ly) }
+        k.sans().size(6.2).color(C.MUTED).spaced('PREZZO KIT × N° PERSONE', inR, y + 2.5, { align: 'right' }, 0.6)
+        k.serif().size(14).color(C.CLAY).text(`${eur(kit.price)} × ${qty} pers.`, inR, y + 8, { align: 'right' })
+        let ry = y + 8
+        if (disc > 0) { ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${kit.discountType !== 'importo' ? ` ${parseFloat(kit.discountValue) || 0}%` : ''} − ${eur(disc)}`, inR, ry, { align: 'right' }) }
+        ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(kitTotal - disc)}`, inR, ry, { align: 'right' })
+      }])
     }
-  })()
+  } else {
+    for (const a of articles) {
+      const pz = artPieceCount(a)
+      const price = parseFloat(a.price) || 0
+      const disc = artDiscountApplied(order, a)
+      rows.push([disc > 0 ? 22 : 18, (y) => {
+        k.serif().size(13).color(C.NAVY).text(a.description || '', inX, y + 5)
+        k.sans().size(7).color(C.MUTED).text([a.category, a.color].filter(Boolean).join(' · '), inX, y + 9.5)
+        if ((a.omaggio || 0) > 0) k.sans().size(7).color(C.CLAY).text(`${a.omaggio} pz in omaggio`, inX, y + 13.5)
+        k.sans().size(6.2).color(C.MUTED).spaced('PREZZO UNITARIO', inR, y + 2.5, { align: 'right' }, 0.6)
+        k.serif().size(14).color(C.CLAY).text(`${eur(price)} × ${pz} pz`, inR, y + 8, { align: 'right' })
+        let ry = y + 8
+        if (disc > 0) { ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${a.discountType !== 'importo' ? ` ${parseFloat(a.discountValue) || 0}%` : ''} − ${eur(disc)}`, inR, ry, { align: 'right' }) }
+        ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(price * pz - disc)}`, inR, ry, { align: 'right' })
+      }])
+    }
+  }
+  // Totali solo se l'ordine li vuole nel PDF del cliente
+  const subtotal = orderSubtotal(order), discAmt = orderDiscount(order), ivaAmt = orderIVA(order), shipAmt = orderShipping(order)
+  const totRows = order.showTotalInClientPDF ? [
+    [discAmt > 0 ? 'SUBTOTALE' : 'IMPONIBILE', eur(subtotal)],
+    ...(discAmt > 0 ? [
+      [order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''), '− ' + eur(discAmt), C.CLAY],
+      ['IMPONIBILE', eur(subtotal - discAmt)],
+    ] : []),
+    ...(order.ivaEnabled ? [[`IVA ${order.ivaRate || 22}%`, eur(ivaAmt)]] : []),
+    ...(shipAmt > 0 ? [['SPEDIZIONE', eur(shipAmt)]] : []),
+  ] : []
+  priceBox(k, isKit ? 'COMPOSIZIONE KIT E PREZZI' : 'PREZZI PER ARTICOLO', rows,
+    totRows.length ? 6 + totalsHeight(totRows) : 0,
+    (y) => totals(k, y + 4, totRows, 'TOTALE' + (order.ivaEnabled ? ' IVA INCL.' : ''), eur(orderTotal(order)), C.NAVY))
 
-  const articleRows = articles.map(art => {
-    const adultTotal = ADULT_SIZES.reduce((s, sz) => s + (art.sizes.adult?.[sz] || 0), 0)
-    const kidsTotal  = KIDS_SIZES.reduce((s, sz)  => s + (art.sizes.kids?.[sz]  || 0), 0)
-    const uniTotal   = art.sizes.uni || 0
+  // ── Condizioni e firma ──
+  paragraphBox(k, 'CONDIZIONI GENERALI DI VENDITA', CONDITIONS)
+  const signH = 36
+  k.ensure(signH + 4); k.y += 4
+  doc.setDrawColor(C.BORDER); doc.setLineWidth(0.3); doc.roundedRect(M, k.y, R - M, signH, 2, 2)
+  k.sans().size(6.5).color(C.MUTED).spaced('FIRMA PER ACCETTAZIONE', M + 6, k.y + 8, {}, 1.2)
+  const colW = (R - M - 12 - 14) / 2
+  ;[['LUOGO E DATA', ''], ['FIRMA DEL CLIENTE', 'Per accettazione condizioni e ordine']].forEach(([lab, sub], i) => {
+    const x = M + 6 + i * (colW + 14)
+    k.sans().size(6.5).color(C.MUTED).spaced(lab, x, k.y + 16, {}, 0.6)
+    k.rule(k.y + 27, '#aaaaaa', 0.3, x, x + colW)
+    if (sub) k.sans().size(6.5).color('#aaaaaa').text(sub, x, k.y + 31)
+  })
+  k.y += signH + 4
 
-    const uniSection = uniTotal > 0 ? `
-      <div style="margin-top:6px;display:inline-block;background:#f0f8f4;border:1px solid #cfe3d6;border-radius:4px;padding:6px 14px;">
-        <span style="font-size:9px;letter-spacing:2px;color:#4a9e6e;">TAGLIA UNICA</span>
-        <strong style="font-size:14px;color:#1a2744;margin-left:10px;">${uniTotal}</strong>
-      </div>` : ''
-
-    const adultSection = hasAdult ? `
-      <tr style="background:#f0f4f8;">
-        <td style="padding:6px 10px;font-size:9px;letter-spacing:2px;color:#8a9ab5;border:1px solid #e0d8cc;">ADULTO</td>
-        ${ADULT_SIZES.map(sz=>`<td style="padding:6px;text-align:center;font-size:9px;color:#8a9ab5;border:1px solid #e0d8cc;">${sz}</td>`).join('')}
-        ${hasKids?KIDS_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;background:#f0f4f8;"></td>`).join(''):''}
-        <td style="padding:6px;text-align:center;font-size:9px;color:#8a9ab5;border:1px solid #e0d8cc;">TOT</td>
-      </tr>
-      <tr>
-        <td style="padding:8px 10px;border:1px solid #e0d8cc;font-size:11px;color:#8a9ab5;">pz</td>
-        ${ADULT_SIZES.map(sz=>`<td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-size:13px;color:${(art.sizes.adult?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.adult?.[sz]??0}</td>`).join('')}
-        ${hasKids?KIDS_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join(''):''}
-        <td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-weight:700;font-size:15px;color:#1a2744;">${adultTotal}</td>
-      </tr>` : ''
-
-    const kidsSection = hasKids ? `
-      <tr style="background:#f4f0f8;">
-        <td style="padding:6px 10px;font-size:9px;letter-spacing:2px;color:#8a9ab5;border:1px solid #e0d8cc;">BAMBINO</td>
-        ${hasAdult?ADULT_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;background:#f4f0f8;"></td>`).join(''):''}
-        ${KIDS_SIZES.map(sz=>`<td style="padding:6px;text-align:center;font-size:9px;color:#8a9ab5;border:1px solid #e0d8cc;">${sz}</td>`).join('')}
-        <td style="padding:6px;text-align:center;font-size:9px;color:#8a9ab5;border:1px solid #e0d8cc;">TOT</td>
-      </tr>
-      <tr>
-        <td style="padding:8px 10px;border:1px solid #e0d8cc;font-size:11px;color:#8a9ab5;">pz</td>
-        ${hasAdult?ADULT_SIZES.map(()=>`<td style="border:1px solid #e0d8cc;text-align:center;color:#ddd;">—</td>`).join(''):''}
-        ${KIDS_SIZES.map(sz=>`<td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-size:13px;color:${(art.sizes.kids?.[sz]||0)>0?'#1a2744':'#ccc'};">${art.sizes.kids?.[sz]??0}</td>`).join('')}
-        <td style="padding:8px;text-align:center;border:1px solid #e0d8cc;font-weight:700;font-size:15px;color:#1a2744;">${kidsTotal}</td>
-      </tr>` : ''
-
-    return `
-      <div style="margin-bottom:28px;page-break-inside:avoid;">
-        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;">
-          <div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#1a2744;">${art.description}</div>
-            <div style="font-size:10px;letter-spacing:2px;color:#8a9ab5;margin-top:2px;">${art.category}</div>
-          </div>
-          <div style="margin-left:auto;text-align:right;">
-            <div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;">COLORE</div>
-            <div style="font-size:13px;font-weight:700;color:#c4623a;">${art.color}</div>
-          </div>
-        </div>
-        <table style="border-collapse:collapse;font-family:'Josefin Sans',sans-serif;width:100%;">
-          ${adultSection}${kidsSection}
-        </table>
-        ${uniSection}
-        <div style="text-align:right;margin-top:6px;font-size:11px;color:#8a9ab5;">
-          Totale pezzi: <strong style="color:#1a2744;">${adultTotal+kidsTotal+uniTotal}</strong>
-          ${(art.omaggio||0)>0?`&nbsp;&nbsp;<span style="color:#c4623a;font-weight:700;">di cui ${art.omaggio} pz in omaggio</span>`:''}
-        </div>
-      </div>`
-  }).join('')
-
-  const orderNoteBlock = order.orderNote ? `
-    <div style="margin-top:12px;padding:10px 16px;background:#fff7f0;border-left:3px solid #c4623a;border-radius:4px;">
-      <div style="font-size:9px;letter-spacing:2px;color:#c4623a;margin-bottom:3px;">NOTA ORDINE</div>
-      <div style="font-size:13px;color:#1a2744;">${order.orderNote}</div>
-    </div>` : ''
-
-  const clientDetailsBlock = (order.clientContact || order.clientEmail || order.clientPhone || order.clientCity) ? `
-    <div style="margin-top:12px;display:flex;gap:28px;flex-wrap:wrap;">
-      ${order.clientContact ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">REFERENTE</div><div style="font-size:13px;color:#1a2744;">${order.clientContact}</div></div>` : ''}
-      ${order.clientEmail   ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">EMAIL</div><div style="font-size:13px;color:#1a2744;">${order.clientEmail}</div></div>` : ''}
-      ${order.clientPhone   ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">TELEFONO</div><div style="font-size:13px;color:#1a2744;">${order.clientPhone}</div></div>` : ''}
-      ${order.clientCity    ? `<div><div style="font-size:9px;letter-spacing:2px;color:#8a9ab5;margin-bottom:2px;">CITTÀ</div><div style="font-size:13px;color:#1a2744;">${order.clientCity}${order.clientCountry?', '+order.clientCountry:''}</div></div>` : ''}
-    </div>` : ''
-
-  const totalBlock = order.showTotalInClientPDF ? `
-    <div style="margin-top:20px;padding-top:16px;border-top:2px solid #e0d8cc;">
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-        <div style="display:flex;justify-content:space-between;width:280px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">${discAmt > 0 ? 'SUBTOTALE' : 'IMPONIBILE'}</span>
-          <span style="font-size:15px;color:#1a2744;">€ ${subtotal.toFixed(2)}</span>
-        </div>
-        ${discAmt > 0 ? `
-        <div style="display:flex;justify-content:space-between;width:280px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">${order.discountMode === 'articolo' ? 'SCONTO TOTALE' : `SCONTO${order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''}`}</span>
-          <span style="font-size:15px;color:#c4623a;">− € ${discAmt.toFixed(2)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;width:280px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IMPONIBILE</span>
-          <span style="font-size:15px;color:#1a2744;">€ ${(subtotal - discAmt).toFixed(2)}</span>
-        </div>` : ''}
-        ${order.ivaEnabled ? `
-        <div style="display:flex;justify-content:space-between;width:280px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">IVA ${order.ivaRate || 22}%</span>
-          <span style="font-size:15px;color:#1a2744;">€ ${ivaAmt.toFixed(2)}</span>
-        </div>` : ''}
-        ${shipAmt > 0 ? `
-        <div style="display:flex;justify-content:space-between;width:280px;">
-          <span style="font-size:11px;color:#8a9ab5;letter-spacing:2px;">SPEDIZIONE</span>
-          <span style="font-size:15px;color:#1a2744;">€ ${shipAmt.toFixed(2)}</span>
-        </div>` : ''}
-        <div style="display:flex;justify-content:space-between;width:280px;padding-top:8px;border-top:1px solid #e0d8cc;">
-          <span style="font-size:11px;color:#1a2744;font-weight:700;letter-spacing:2px;">TOTALE ${order.ivaEnabled?'IVA INCL.':''}</span>
-          <span style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#1a2744;font-weight:600;">€ ${total.toFixed(2)}</span>
-        </div>
-      </div>
-    </div>` : ''
-
-  return `<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <title>Conferma Ordine — ${order.id}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Josefin Sans', sans-serif; color: #1a2744; margin: 0; background: #fff; }
-    .print-btn { position:fixed;top:20px;right:20px;z-index:999;background:#1a2744;color:white;border:none;padding:12px 28px;font-family:'Josefin Sans',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;border-radius:3px;font-weight:600; }
-    @media print { .print-btn { display:none!important; } body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } @page { margin:15mm; margin-top:0 } }
-  </style>
-</head>
-<body>
-  <button class="print-btn" onclick="window.print()">↓ Salva / Stampa</button>
-
-  <div style="background:#1a2744;padding:28px 40px;display:flex;justify-content:space-between;align-items:center;">
-    <div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:#f5f0e8;letter-spacing:6px;">DOUBLEU</div>
-      <div style="font-size:9px;letter-spacing:3px;color:#b8965a;margin-top:4px;">MADE IN ITALY · PREMIUM CLUBWEAR</div>
-    </div>
-    <div style="text-align:right;">
-      <div style="font-size:9px;letter-spacing:3px;color:rgba(255,255,255,0.4);margin-bottom:4px;">CONFERMA ORDINE</div>
-      <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0e8;letter-spacing:3px;">${order.id}</div>
-    </div>
-  </div>
-
-  <div style="background:#f8f5f0;padding:20px 40px;border-bottom:2px solid #e0d8cc;">
-    <div style="display:flex;gap:40px;flex-wrap:wrap;">
-      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">CLUB</div><div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#1a2744;">${order.client}</div></div>
-      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">DATA ORDINE</div><div style="font-size:14px;font-weight:600;">${order.date}</div></div>
-      ${order.invoiceNumber?`<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">RIF. FATTURA</div><div style="font-size:14px;font-weight:600;">${order.invoiceNumber}</div></div>`:''}
-      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PEZZI</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4623a;">${order.pieces}</div></div>
-      ${order.pricingMode==='kit'?`<div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">TOTALE PERSONE</div><div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#1a2744;">${order.kits.reduce((s,k)=>s+(parseInt(k.quantity)||parseInt(order.kitQuantity)||0),0)}</div></div>`:''}
-      <div><div style="font-size:9px;letter-spacing:3px;color:#8a9ab5;margin-bottom:4px;">STATO</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;">${order.status}</div></div>
-    </div>
-    ${clientDetailsBlock}
-    ${orderNoteBlock}
-    ${order.notes ? `<div style="margin-top:14px;padding:10px 16px;background:white;border-radius:6px;border:1px solid #e0d8cc;font-size:13px;color:#1a2744;">${order.notes}</div>` : ''}
-  </div>
-
-  <div style="padding:28px 40px;">
-    <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:24px;padding-bottom:10px;border-bottom:2px solid #e8e0d0;">Dettaglio Articoli</div>
-    ${articleRows}
-  </div>
-
-  <div style="margin:0 40px 28px;background:#f8f5f0;border:1px solid #e0d8cc;border-radius:10px;padding:22px 28px;page-break-inside:avoid;">
-    <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">${order.pricingMode==='kit'?'COMPOSIZIONE KIT E PREZZI':'PREZZI PER ARTICOLO'}</div>
-    ${pricingBlock}
-    ${totalBlock}
-  </div>
-
-  <div style="margin:0 40px 28px;padding:22px 28px;border:1px solid #e0d8cc;border-radius:10px;page-break-inside:avoid;">
-    <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:16px;">CONDIZIONI GENERALI DI VENDITA</div>
-    <div style="font-size:11px;color:#555;line-height:1.8;">
-      <p style="margin-bottom:8px;"><strong>1. Oggetto</strong> — Le presenti condizioni regolano la vendita di prodotti personalizzati a marchio DOUBLEU. Tutti i prodotti sono realizzati su richiesta e personalizzati secondo le specifiche approvate dal cliente.</p>
-      <p style="margin-bottom:8px;"><strong>2. Conferma dell'Ordine</strong> — L'ordine si considera confermato al verificarsi congiunto di: firma del presente documento, approvazione grafica definitiva, versamento dell'acconto previsto.</p>
-      <p style="margin-bottom:8px;"><strong>3. Produzione e Tempistiche</strong> — I tempi decorrono dalla data di conferma definitiva. Le tempistiche sono indicative e possono variare per cause di forza maggiore.</p>
-      <p style="margin-bottom:8px;"><strong>4. Prodotti Personalizzati</strong> — Non è previsto diritto di recesso. Non è possibile annullare l'ordine dopo l'avvio della produzione. Non sono accettati resi per errori di taglia comunicati dal cliente.</p>
-      <p style="margin-bottom:8px;"><strong>5. Pagamenti</strong> — Acconto al momento della conferma, saldo alla consegna, salvo accordi diversi.</p>
-      <p style="margin-bottom:0;"><strong>6. Foro Competente</strong> — Per ogni controversia è competente il Foro di Salerno.</p>
-    </div>
-  </div>
-
-  <div style="margin:0 40px 40px;padding:28px;border:1px solid #e0d8cc;border-radius:10px;page-break-inside:avoid;">
-    <div style="font-size:9px;letter-spacing:4px;color:#8a9ab5;margin-bottom:24px;">FIRMA PER ACCETTAZIONE</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
-      <div>
-        <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;margin-bottom:8px;">LUOGO E DATA</div>
-        <div style="border-bottom:1px solid #aaa;height:36px;margin-bottom:8px;"></div>
-        <div style="font-size:9px;color:#aaa;">_________________________________</div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:#8a9ab5;letter-spacing:2px;margin-bottom:8px;">FIRMA DEL CLIENTE</div>
-        <div style="border-bottom:1px solid #aaa;height:36px;margin-bottom:8px;"></div>
-        <div style="font-size:9px;color:#aaa;">Per accettazione condizioni e ordine</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- FOOTER - solo sito web, niente indirizzo fisico -->
-  <div style="background:#1a2744;padding:16px 40px;display:flex;justify-content:space-between;align-items:center;">
-    <div style="font-size:9px;letter-spacing:3px;color:#b8965a;">DOUBLEU · MADE IN ITALY · www.doubleutennis.com</div>
-    <div style="font-size:9px;color:rgba(255,255,255,0.3);">Generato il ${new Date().toLocaleDateString('it-IT')}</div>
-  </div>
-</body>
-</html>`
+  k.footer('DOUBLEU · MADE IN ITALY · DOUBLEUTENNIS.COM', `${order.id || ''} · ${new Date().toLocaleDateString('it-IT')}`)
+  return k.blob()
 }
