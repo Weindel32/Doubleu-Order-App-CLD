@@ -6,8 +6,8 @@ import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
 import OrderFormModal from '../components/OrderFormModal.jsx'
 import { fetchOrderFormFor, formStage } from '../lib/orderForms.js'
 import { productionPlan, shortDay } from '../lib/production.js'
+import { generateRecapPDF } from '../utils/pdfRecap.js'
 
-// Modulo taglie dal telefono: e' qui che parte il link su WhatsApp.
 // Ricezione taglie e pronto stimato (giorni lavorativi dall'invio del modulo, o dall'inizio a mano).
 function ProductionRows({ order }) {
   const [submittedAt, setSubmittedAt] = useState(null)
@@ -25,6 +25,7 @@ function ProductionRows({ order }) {
   )
 }
 
+// Modulo taglie dal telefono: e' qui che parte il link su WhatsApp.
 function OrderFormCard({ order, onOrderUpdated }) {
   const [form, setForm] = useState(undefined)   // undefined = in caricamento
   const [open, setOpen] = useState(false)
@@ -163,6 +164,14 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
         )}
 
         <OrderFormCard order={order} onOrderUpdated={onOrderUpdated}/>
+
+        {/* Riepilogo senza prezzi da mandare al club per la conferma (Condividi → PDF dal telefono) */}
+        <button onClick={() => { const w = window.open('', '_blank'); w.document.write(generateRecapPDF(order)); w.document.close() }} style={{
+          width: '100%', marginTop: 10, background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10,
+          padding: '14px 16px', color: CREAM, fontSize: 14, textAlign: 'left', cursor: 'pointer',
+        }}>
+          Riepilogo taglie senza prezzi <span style={{ color: MUTED, fontSize: 12 }}>· da far confermare al club</span>
+        </button>
 
         {/* Nota ordine */}
         {order.orderNote && (
