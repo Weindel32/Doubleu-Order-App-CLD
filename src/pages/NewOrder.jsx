@@ -3,7 +3,7 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEG
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
          artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitProductionQty, grossUnitPrice } from '../utils/helpers.js'
-import { generateProductionPDF } from '../utils/pdfProduction.js'
+import { buildProductionPdf, productionPdfName } from '../utils/pdfProduction.js'
 import { buildClientPdf, clientPdfName } from '../utils/pdfClient.js'
 import { buildRecapPdf, recapPdfName } from '../utils/pdfRecap.js'
 import { shareOrDownload } from '../lib/sizesPdf.js'
@@ -277,7 +277,6 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     }
   }
 
-  const openPDF = (gen) => { const h=gen(currentOrder); const w=window.open('','_blank'); w.document.write(h); w.document.close() }
   const canGo2  = allArticles.some(a=>a.sp&&a.description)
   const inp     = {...s.input}
 
@@ -896,7 +895,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
           <button style={btnStyle(false)} onClick={()=>setStep(4)}>← Indietro</button>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             <button style={{...btnStyle(false),color:'#7aaee8',border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)'}} onClick={()=>exportSizesCSV(currentOrder)}>↓ CSV</button>
-            <button style={{...btnGoldStyle,borderColor:CLAY,color:CLAY}} onClick={()=>openPDF(generateProductionPDF)}>↓ PDF Prod.</button>
+            <button style={{...btnGoldStyle,borderColor:CLAY,color:CLAY}} onClick={()=>buildProductionPdf(currentOrder).then(b=>shareOrDownload(b, productionPdfName(currentOrder))).catch(e => { console.error('Scheda produzione:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })}>↓ PDF Prod.</button>
             <button style={btnGoldStyle} onClick={()=>buildClientPdf(currentOrder).then(b=>shareOrDownload(b, clientPdfName(currentOrder))).catch(e=>{ console.error('PDF cliente:', e); showAlert({ title:'PDF non creato', body:['Riprova tra poco.'] }) })}>↓ PDF Cliente</button>
             <button style={btnGoldStyle} onClick={()=>buildRecapPdf(currentOrder, sizesSubmittedAt).then(b=>shareOrDownload(b, recapPdfName(currentOrder))).catch(e=>{ console.error('Riepilogo taglie:', e); showAlert({ title:'PDF non creato', body:['Riprova tra poco.'] }) })}>↓ Riepilogo taglie</button>
             <button style={{...btnGoldStyle,borderColor:'#7aaee8',color:'#7aaee8'}} onClick={()=>status==='CONSEGNA PARZIALE'?setShowBollaModal(true):buildDeliveryPdf(currentOrder).then(b=>shareOrDownload(b, deliveryPdfName(currentOrder))).catch(e => { console.error('Bolla:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })}>↓ Bolla</button>
