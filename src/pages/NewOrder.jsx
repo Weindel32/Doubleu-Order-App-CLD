@@ -5,7 +5,8 @@ import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, o
          artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitProductionQty, grossUnitPrice } from '../utils/helpers.js'
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
-import { generateRecapPDF }      from '../utils/pdfRecap.js'
+import { buildRecapPdf, recapPdfName } from '../utils/pdfRecap.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
 import { exportSizesCSV }        from '../utils/exportCSV.js'
 import { createOrder, updateOrder, generateOrderId, saveProductionPlan } from '../lib/dataService.js'
@@ -897,7 +898,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
             <button style={{...btnStyle(false),color:'#7aaee8',border:'1px solid rgba(122,174,232,0.3)',background:'rgba(122,174,232,0.06)'}} onClick={()=>exportSizesCSV(currentOrder)}>↓ CSV</button>
             <button style={{...btnGoldStyle,borderColor:CLAY,color:CLAY}} onClick={()=>openPDF(generateProductionPDF)}>↓ PDF Prod.</button>
             <button style={btnGoldStyle} onClick={()=>openPDF(generateClientPDF)}>↓ PDF Cliente</button>
-            <button style={btnGoldStyle} onClick={()=>openPDF(o=>generateRecapPDF(o, sizesSubmittedAt))}>↓ Riepilogo taglie</button>
+            <button style={btnGoldStyle} onClick={()=>buildRecapPdf(currentOrder, sizesSubmittedAt).then(b=>shareOrDownload(b, recapPdfName(currentOrder))).catch(e=>{ console.error('Riepilogo taglie:', e); showAlert({ title:'PDF non creato', body:['Riprova tra poco.'] }) })}>↓ Riepilogo taglie</button>
             <button style={{...btnGoldStyle,borderColor:'#7aaee8',color:'#7aaee8'}} onClick={()=>status==='CONSEGNA PARZIALE'?setShowBollaModal(true):openPDF(generateDeliveryPDF)}>↓ Bolla</button>
             <button style={{...btnStyle(false),opacity:saving?0.5:1}} onClick={()=>handleSave(false)} disabled={saving}>{saving?'Salvataggio...':'Salva'}</button>
             <button style={{...btnStyle(true),opacity:saving?0.5:1}} onClick={()=>handleSave(true)} disabled={saving}>{saving?'Salvataggio...':'✓ Conferma Ordine'}</button>

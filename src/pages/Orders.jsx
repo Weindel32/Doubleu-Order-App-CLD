@@ -5,12 +5,13 @@ import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../ut
 import { generateProductionPDF } from '../utils/pdfProduction.js'
 import { generateClientPDF }     from '../utils/pdfClient.js'
 import { generateDeliveryPDF }   from '../utils/pdfDelivery.js'
-import { generateRecapPDF }      from '../utils/pdfRecap.js'
+import { buildRecapPdf, recapPdfName } from '../utils/pdfRecap.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 import BollaModal                from '../components/BollaModal.jsx'
 import OrderFormModal            from '../components/OrderFormModal.jsx'
 import { fetchOrderForms, pendingFormWarning, formStage } from '../lib/orderForms.js'
 import { productionPlan, shortDay } from '../lib/production.js'
-import { askConfirm, askText }   from '../components/ConfirmDialog.jsx'
+import { askConfirm, askText, showAlert } from '../components/ConfirmDialog.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
 import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
 import { exportSizesCSV, exportAllOrdersCSV } from '../utils/exportCSV.js'
@@ -378,7 +379,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                         { section: 'Documenti' },
                         { label: 'Scheda produzione', onClick: () => openPDF(generateProductionPDF, o) },
                         { label: 'PDF cliente', onClick: () => openPDF(generateClientPDF, o) },
-                        { label: 'Riepilogo taglie (senza prezzi)', onClick: () => openPDF(ord => generateRecapPDF(ord, formsByOrder[o.id]?.submitted_at), o) },
+                        { label: 'Riepilogo taglie (senza prezzi)', onClick: () => buildRecapPdf(o, formsByOrder[o.id]?.submitted_at).then(b => shareOrDownload(b, recapPdfName(o))).catch(e => { console.error('Riepilogo taglie:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }) },
                         { label: 'Bolla di consegna', onClick: () => o.status === 'CONSEGNA PARZIALE' ? setBollaOrder(o) : openPDF(generateDeliveryPDF, o) },
                         { section: 'Azioni' },
                         { label: formsByOrder[o.id] ? 'Modulo taglie' : 'Invia modulo taglie', onClick: () => openForm(o.id) },

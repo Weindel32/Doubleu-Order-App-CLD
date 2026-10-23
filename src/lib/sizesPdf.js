@@ -18,7 +18,7 @@ const FONTS = [
   ['JosefinSans-Bold.ttf', 'Josefin', 'bold'],
 ]
 
-async function loadFonts() {
+export async function loadFonts() {
   return Promise.all(FONTS.map(async ([file, family, style]) => {
     const res = await fetch(`/fonts/${file}`)
     if (!res.ok) throw new Error(`font ${file}: ${res.status}`)

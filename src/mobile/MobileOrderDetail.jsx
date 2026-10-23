@@ -4,9 +4,11 @@ import { badgeStyle } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery, artDiscountApplied } from '../utils/helpers.js'
 import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
 import OrderFormModal from '../components/OrderFormModal.jsx'
+import { showAlert } from '../components/ConfirmDialog.jsx'
 import { fetchOrderFormFor, formStage } from '../lib/orderForms.js'
 import { productionPlan, shortDay } from '../lib/production.js'
-import { generateRecapPDF } from '../utils/pdfRecap.js'
+import { buildRecapPdf, recapPdfName } from '../utils/pdfRecap.js'
+import { shareOrDownload } from '../lib/sizesPdf.js'
 
 // Ricezione taglie e pronto stimato (giorni lavorativi dall'invio del modulo, o dall'inizio a mano).
 function ProductionRows({ order }) {
@@ -167,10 +169,11 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
 
         {/* Riepilogo senza prezzi da mandare al club per la conferma (Condividi → PDF dal telefono) */}
         <button onClick={async () => {
-          // La finestra si apre subito (Safari blocca i popup aperti dopo un'attesa), poi si riempie.
-          const w = window.open('', '_blank')
-          const form = await fetchOrderFormFor(order.id)
-          w.document.write(generateRecapPDF(order, form?.submitted_at)); w.document.close()
+          // PDF vero: niente link e data aggiunti dalla stampa di Safari. Si condivide (WhatsApp, Mail…) o si scarica.
+          try {
+            const form = await fetchOrderFormFor(order.id)
+            await shareOrDownload(await buildRecapPdf(order, form?.submitted_at), recapPdfName(order))
+          } catch (e) { console.error('Riepilogo taglie:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }
         }} style={{
           width: '100%', marginTop: 10, background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10,
           padding: '14px 16px', color: CREAM, fontSize: 14, textAlign: 'left', cursor: 'pointer',
