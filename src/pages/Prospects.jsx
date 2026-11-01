@@ -10,6 +10,7 @@ import CommercialHistory from '../components/CommercialHistory.jsx'
 import WebRequests from '../components/WebRequests.jsx'
 import { shipmentFromProspect } from '../components/SampleModal.jsx'
 import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
+import { ChannelOptions, channelLabel } from '../utils/channels.jsx'
 
 // ─── Config ──────────────────────────────────────────────────────
 const STAGE_CFG = {
@@ -29,7 +30,6 @@ const CT_CFG = {
 const CONTACT_TYPES   = ['cliente','ambassador','segnalatore']
 // Etichette mostrate in UI (il valore 'segnalatore' resta invariato nel database)
 const CT_LABELS       = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
-const CHANNELS        = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
 const LANGUAGES       = ['it','de','es','en']
 const EMPTY_PROSPECT = () => ({
   name:'', category:'', city:'', province:'', country:'', channel_origin:'',
@@ -122,7 +122,7 @@ function ProspectForm({ form, setForm, prospects, onSave, onCancel, saving, titl
             <label style={s.label}>Canale Origine</label>
             <select style={{ ...inp, cursor:'pointer' }} value={form.channel_origin} onChange={e => setForm(f => ({ ...f, channel_origin:e.target.value }))}>
               <option value="">— nessuno —</option>
-              {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
+              <ChannelOptions/>
             </select>
           </div>
           <div>
@@ -416,7 +416,7 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {filtered.map(p => {
             const zona    = [p.city, p.province, p.country].filter(Boolean).join(', ')
-            const sub     = [p.contact_name, p.channel_origin, zona].filter(Boolean).join('  ·  ')
+            const sub     = [p.contact_name, channelLabel(p.channel_origin), zona].filter(Boolean).join('  ·  ')
             const nRef     = isRete ? referredBy(p.id).length : 0
             const rewProvv = isRete ? rewardsOf(p,'provvigione') : 0
             const rewProd  = isRete ? rewardsOf(p,'prodotto') : 0
@@ -515,7 +515,7 @@ export default function Prospects({ prospects, orders = [], onOpenOrder, onUpser
                 <div style={{ display:'flex', gap:10, marginTop:8, flexWrap:'wrap', alignItems:'center' }}>
                   {selected.contact_type === 'cliente' && <StageBadge stage={selected.stage}/>}
                   <CTChip ct={selected.contact_type}/>
-                  {selected.channel_origin && <span style={{ fontSize:11, color:MUTED }}>{selected.channel_origin}</span>}
+                  {selected.channel_origin && <span style={{ fontSize:11, color:MUTED }}>{channelLabel(selected.channel_origin)}</span>}
                   {selected.vincolo_altro_brand && (
                     <span style={{ fontSize:9, letterSpacing:1, color:CLAY, background:'rgba(196,98,58,0.1)', border:'1px solid rgba(196,98,58,0.3)', padding:'2px 8px', borderRadius:2 }}>VINCOLO BRAND</span>
                   )}

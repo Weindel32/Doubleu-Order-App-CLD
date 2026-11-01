@@ -5,6 +5,7 @@ import { getAllArticles, artPieceCount, orderTotal, isConfirmed, isCancelled } f
 import { clientPaymentDelays, MIN_INCASSI_PER_GIUDIZIO } from '../utils/payments.js'
 import { sampleStats, euro, itemOutcome } from '../utils/samples.js'
 import { YearlyRevenueCard, TopClubsCard } from '../components/RevenueCards.jsx'
+import { CHANNELS, channelLabel, isAiChannel, aiOption } from '../utils/channels.jsx'
 
 const CAT_COLORS = { 'Felpa':CLAY,'T-Shirt':GOLD,'Polo':'#7aaee8','Short':GREEN,'Giacca':'#e8c96e','Pantalone':MUTED,'Altro':'#c87ae8' }
 const LINE_COLORS = { 'Premium':CLAY,'Basic':GOLD,'LS24':'#7aaee8','WFox':GREEN,'Surfaces':'#b48ee8' }
@@ -253,7 +254,62 @@ function SamplesAnalytics({ shipments }) {
   )
 }
 
-export default function Analytics({ orders, shipments = [] }) {
+// Canali di acquisizione: da dove arrivano i prospect (solo tipo 'cliente')
+// e quanto rende ciascun canale in clienti e fatturato confermato.
+function ChannelsAnalytics({ prospects, confirmed }) {
+  const leads = prospects.filter(p => (p.contact_type || 'cliente') === 'cliente')
+  if (!leads.length) return null
+  const revenueByClient = {}
+  confirmed.forEach(o => { if (o.clientId) revenueByClient[o.clientId] = (revenueByClient[o.clientId] || 0) + orderTotal(o) })
+  const rows = {}
+  leads.forEach(p => {
+    const k = p.channel_origin || ''
+    const r = rows[k] || (rows[k] = { channel: k, leads: 0, clients: 0, revenue: 0 })
+    r.leads++
+    if (p.client_id) { r.clients++; r.revenue += revenueByClient[p.client_id] || 0 }
+  })
+  const order = (k) => { const i = CHANNELS.indexOf(k); return i < 0 ? 99 : i }
+  const byLeads = (a, b) => b.leads - a.leads || order(a.channel) - order(b.channel)
+  // Tutte le IA in una riga di totale, con il dettaglio per strumento sotto
+  const aiRows = Object.values(rows).filter(r => isAiChannel(r.channel)).sort(byLeads)
+  const aiTotal = aiRows.reduce((tot, r) => ({ ...tot, leads: tot.leads + r.leads, clients: tot.clients + r.clients, revenue: tot.revenue + r.revenue }),
+    { channel: 'ia-totale', leads: 0, clients: 0, revenue: 0, total: true })
+  const main = Object.values(rows).filter(r => !isAiChannel(r.channel))
+  if (aiRows.length) main.push(aiTotal)
+  const list = []
+  main.sort(byLeads).forEach(r => {
+    list.push(r)
+    if (r.total && (aiRows.length > 1 || aiRows[0].channel !== 'ia')) aiRows.forEach(a => list.push({ ...a, sub: true }))
+  })
+  const eur = (v) => v > 0 ? `€ ${v.toLocaleString('it-IT', { maximumFractionDigits: 0 })}` : '—'
+  return (
+    <>
+      <div style={s.divider}/>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:GOLD,letterSpacing:2,marginBottom:20}}>Canali di Acquisizione</div>
+      <table style={{...s.table,marginBottom:0}}>
+        <thead>
+          <tr>{['Canale','Prospect','Diventati clienti','Conversione','Fatturato','Medio per cliente'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {list.map(r => (
+            <tr key={(r.sub ? 'sub-' : '') + (r.channel || 'none')}>
+              <td style={{...s.td,fontSize:r.sub?12:13,paddingLeft:r.sub?28:undefined,color:r.total?GOLD:(r.sub?MUTED:(r.channel?CREAM:MUTED))}}>
+                {r.total ? 'IA (totale)' : r.sub ? `↳ ${aiOption(r.channel)}` : r.channel ? channelLabel(r.channel) : 'non indicato'}
+              </td>
+              <td style={{...s.td,fontSize:13}}>{r.leads}</td>
+              <td style={{...s.td,fontSize:13}}>{r.clients}</td>
+              <td style={{...s.td,fontSize:13,color:MUTED}}>{Math.round(r.clients / r.leads * 100)}%</td>
+              <td style={{...s.td,fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GOLD}}>{eur(r.revenue)}</td>
+              <td style={{...s.td,fontSize:13,color:MUTED}}>{r.clients ? eur(r.revenue / r.clients) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )
+}
+
+export default function Analytics({ orders, shipments = [], prospects = [] }) {
   const quotes    = orders.filter(o => o.status === 'PREVENTIVO')
   const confirmed = orders.filter(isConfirmed)
 
@@ -603,6 +659,8 @@ export default function Analytics({ orders, shipments = [] }) {
           </tbody>
         </table>
       )}
+
+      <ChannelsAnalytics prospects={prospects} confirmed={confirmed}/>
 
       <div style={s.divider}/>
 

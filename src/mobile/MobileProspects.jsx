@@ -5,6 +5,7 @@ import ProspectActivities, { ActivitySummary } from '../components/ProspectActiv
 import { fmtDay } from '../lib/activities.js'
 import WebRequests from '../components/WebRequests.jsx'
 import { STANDBY_REASONS, sendToProspectFinder, sendResultMessage } from '../lib/prospectFinder.js'
+import { ChannelOptions, channelLabel } from '../utils/channels.jsx'
 
 // ─── Config (allineata alla pagina desktop) ──────────────────────
 const STAGE_CFG = {
@@ -23,7 +24,6 @@ const CT_CFG = {
 }
 const CT_LABELS = { cliente:'cliente', ambassador:'ambassador', segnalatore:'referral' }
 
-const CHANNELS   = ['linkedin','referral','fiera','outbound','web','instagram','facebook']
 const fmt = n => '€ ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
 // ─── UI helpers ───────────────────────────────────────────────────
@@ -146,7 +146,7 @@ function ProspectForm({ initial, isRete, prospects, onSave, onCancel }) {
         <label style={labelStyle}>Canale</label>
         <select style={inputStyle} value={f.channel_origin} onChange={e => set('channel_origin', e.target.value)}>
           <option value="">—</option>
-          {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
+          <ChannelOptions/>
         </select>
       </div>
 
@@ -269,7 +269,7 @@ function ProspectDetail({ prospect: p, prospects, onBack, onSelectProspect, onUp
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
         <Chip cfg={CT_CFG[p.contact_type] || CT_CFG.cliente}>{CT_LABELS[p.contact_type] || p.contact_type}</Chip>
         {!isRete && <Chip cfg={STAGE_CFG[p.stage] || STAGE_CFG.contatto}>{p.stage}</Chip>}
-        {p.channel_origin && <span style={{ fontSize: 12, color: MUTED, alignSelf: 'center' }}>{p.channel_origin}</span>}
+        {p.channel_origin && <span style={{ fontSize: 12, color: MUTED, alignSelf: 'center' }}>{channelLabel(p.channel_origin)}</span>}
       </div>
 
       {/* Stage advance — solo club */}
@@ -524,7 +524,7 @@ export default function MobileProspects({ prospects, onUpsert, onAddActivity, on
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 12, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {[p.contact_name, p.city].filter(Boolean).join(' · ') || p.channel_origin || ''}
+                {[p.contact_name, p.city].filter(Boolean).join(' · ') || channelLabel(p.channel_origin) || ''}
               </div>
               <div style={{ display: 'flex', gap: 12, flexShrink: 0, alignItems: 'center' }}>
                 {isRete ? (
