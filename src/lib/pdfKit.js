@@ -218,7 +218,8 @@ export function totals(k, y, rows, totalLabel, totalValue, totalColor = C.CLAY) 
     k.sans().size(7).color(C.MUTED).spaced(l, lx, y + 2, {}, 0.6)
     k.sans().size(10).color(col || C.NAVY).text(v, inR, y + 2, { align: 'right' }); y += 6
   })
-  k.rule(y - 1, C.BORDER, 0.2, lx, inR); y += 4
+  if (rows.length) k.rule(y - 1, C.BORDER, 0.2, lx, inR)
+  y += 4
   k.sans('bold').size(7.5).color(C.NAVY).spaced(totalLabel, lx, y + 2, {}, 0.6)
   k.serif().size(18).color(totalColor).text(totalValue, inR, y + 3, { align: 'right' })
   return y + 8
