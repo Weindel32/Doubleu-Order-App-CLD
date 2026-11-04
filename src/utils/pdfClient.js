@@ -1,5 +1,6 @@
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal,
          artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
+import { orderInvoices } from './payments.js'
 import { newPdf, C, eur, pdfName, clientBand, sizeGrids, sizeGridsCount, paragraphBox, priceBox, totals, totalsHeight } from '../lib/pdfKit.js'
 
 // Conferma d'ordine per il club (PDF cliente) come PDF vero: niente link e data aggiunti dalla stampa.
@@ -29,7 +30,7 @@ export async function buildClientPdf(order) {
   clientBand(k, order, [
     { label: 'CLUB', value: order.client || '', style: 'serif', min: 50 },
     { label: 'DATA ORDINE', value: order.date || '' },
-    ...(order.invoiceNumber ? [{ label: 'RIF. FATTURA', value: order.invoiceNumber }] : []),
+    ...(orderInvoices(order).length ? [{ label: orderInvoices(order).length > 1 ? 'RIF. FATTURE' : 'RIF. FATTURA', value: orderInvoices(order).join(' · ') }] : []),
     { label: 'TOTALE PEZZI', value: String(order.pieces ?? articles.reduce((s, a) => s + artPieceCount(a), 0)), style: 'big', min: 26 },
     ...(isKit ? [{ label: 'TOTALE PERSONE', value: String(persone), style: 'big', min: 26 }] : []),
     { label: 'STATO', value: order.status || '', style: 'clay' },

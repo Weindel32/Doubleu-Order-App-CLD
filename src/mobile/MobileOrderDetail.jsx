@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery, artDiscountApplied } from '../utils/helpers.js'
-import { paymentDue, paymentDelay, formatItalian } from '../utils/payments.js'
+import { paymentDue, paymentDelay, formatItalian, orderInvoices } from '../utils/payments.js'
 import OrderFormModal from '../components/OrderFormModal.jsx'
 import { showAlert } from '../components/ConfirmDialog.jsx'
 import { fetchOrderFormFor, formStage } from '../lib/orderForms.js'
@@ -315,9 +315,9 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
             <span style={{ fontSize: 13, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale</span>
             <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD }}>{fmt(total)}</span>
           </div>
-          {order.invoiceNumber && (
+          {orderInvoices(order).length > 0 && (
             <div style={{ marginTop: 4 }}>
-              <InfoRow label="Numero fattura" value={order.invoiceNumber} />
+              <InfoRow label={orderInvoices(order).length > 1 ? 'Fatture' : 'Numero fattura'} value={orderInvoices(order).join(' · ')} />
             </div>
           )}
         </div>
@@ -352,6 +352,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
                       </>)
                     })()}
                     {p.method && <div style={{ fontSize: 12, color: MUTED }}>{p.method}</div>}
+                    {p.invoiceNumber && <div style={{ fontSize: 12, color: GOLD }}>Fatt. {p.invoiceNumber}</div>}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 14, color: p.paid ? GREEN : CREAM, fontFamily: "'Cormorant Garamond', serif" }}>

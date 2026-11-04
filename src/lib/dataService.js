@@ -145,6 +145,7 @@ export async function fetchOrders() {
       dueOffsetDays: p.due_offset_days || 0,
       paidDate: p.paid_date || null,
       paidDateVerified: p.paid_date_verified !== false,
+      invoiceNumber: p.invoice_number || '',
     }))
     return {
       id: order.id, client: order.client, clientId: order.client_id || null,
@@ -241,6 +242,9 @@ function buildPaymentsPayload(order) {
     due_offset_days: parseInt(p.dueOffsetDays) || 0,
     paid_date: p.paidDate || null,
     paid_date_verified: p.paidDateVerified !== false,
+    // Sempre presente: una chiave mancante dice al database di conservare il
+    // numero precedente (client vecchi), una stringa vuota lo cancella.
+    invoice_number: (p.invoiceNumber || '').trim() || null,
   }))
 }
 
@@ -334,10 +338,14 @@ export async function restoreFromStandby(orderId) {
 // paidDate: data reale di incasso. Si passa esplicitamente perche' anche qui
 // vale la regola delle date di consegna — un pagamento si registra spesso a
 // giorni di distanza da quando i soldi sono arrivati davvero.
-export async function quickTogglePayment(paymentId, paid, paidDate = null) {
+// invoiceNumber: fattura emessa per questo incasso. Vuoto = non si tocca il
+// numero gia' registrato; togliere la spunta non cancella la fattura.
+export async function quickTogglePayment(paymentId, paid, paidDate = null, invoiceNumber = '') {
   const fields = paid
     ? { paid: true, paid_date: paidDate, paid_date_verified: true }
     : { paid: false, paid_date: null, paid_date_verified: true }
+  const inv = (invoiceNumber || '').trim()
+  if (paid && inv) fields.invoice_number = inv
   const { error } = await supabase.from('payments').update(fields).eq('id', paymentId)
   if (error) { console.error('quickTogglePayment:', error); return false }
   return true
