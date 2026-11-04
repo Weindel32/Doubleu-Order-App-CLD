@@ -42,17 +42,17 @@ export async function buildQuotePdf(order) {
   const anyHasSizes = articles.some(a => artSizeTotal(a) > 0)
   const isKit = order.pricingMode === 'kit'
 
-  // A kit: quanti kit propone il preventivo (non il totale persone, che sarebbe una stima non confermata).
-  const nSingle = isKit ? kits.filter(isSingleArticle).length : 0
-  const allSingle = isKit && nSingle === kits.length
-  const noSingle  = isKit && nSingle === 0
+  // A gruppi: quante proposte contiene il preventivo (non la quantita' totale, che e' una stima).
+  // "Kit" non si scrive: una tuta o un completino restano tali, kit e' solo l'unione
+  // di piu' referenze e l'app non puo' distinguerlo dal nome.
+  const allSingle = isKit && kits.every(isSingleArticle)
 
   k.header('PREVENTIVO', order.id)
 
   clientBand(k, order, [
     { label: 'CLUB', value: order.client || '', style: 'serif', min: 60 },
     { label: 'DATA PREVENTIVO', value: order.date || '' },
-    { label: isKit ? (allSingle ? 'ARTICOLI PROPOSTI' : noSingle ? 'KIT PROPOSTI' : 'PROPOSTE') : 'N° ARTICOLI', value: String(isKit ? kits.length : articles.length), style: 'big', min: 36 },
+    { label: isKit ? (allSingle ? 'ARTICOLI PROPOSTI' : 'PROPOSTE') : 'N° ARTICOLI', value: String(isKit ? kits.length : articles.length), style: 'big', min: 36 },
     { label: 'STATO', value: 'PREVENTIVO', style: 'clay' },
   ], { noteTitle: 'NOTA PREVENTIVO', bg: C.WARM })
 
@@ -70,7 +70,7 @@ export async function buildQuotePdf(order) {
   }
 
   // ── Prezzi ──
-  drawPricing(k, order, { isKit, allSingle, noSingle, articles, subtotal, discAmt, ivaAmt, total })
+  drawPricing(k, order, { isKit, allSingle, articles, subtotal, discAmt, ivaAmt, total })
 
   // ── Note e validità ──
   const paras = [
@@ -115,10 +115,10 @@ function drawArticle(k, art) {
   k.rule(k.y - 2, '#f0ece4')
 }
 
-function drawPricing(k, order, { isKit, allSingle, noSingle, articles, subtotal, discAmt, ivaAmt, total }) {
+function drawPricing(k, order, { isKit, allSingle, articles, subtotal, discAmt, ivaAmt, total }) {
   const { doc, M, R } = k
   const inX = M + 7, inR = R - 7, rightW = 48, leftW = inR - inX - rightW - 6
-  const title = isKit ? (allSingle ? 'ARTICOLI E PREZZI' : noSingle ? 'COMPOSIZIONE KIT E PREZZI' : 'KIT, ARTICOLI E PREZZI') : 'PREZZI PER ARTICOLO'
+  const title = isKit ? (allSingle ? 'ARTICOLI E PREZZI' : 'COMPOSIZIONE E PREZZI') : 'PREZZI PER ARTICOLO'
 
   // Righe da disegnare: [altezza, funzione che disegna a partire da y]
   const rows = []
@@ -136,18 +136,18 @@ function drawPricing(k, order, { isKit, allSingle, noSingle, articles, subtotal,
       const kDisc = kitDiscountApplied(order, kit)
       const net = grossUnitPrice(order, kDisc > 0 && billable > 0 ? list - kDisc / billable : list)
       const omaggio = (kit.articles || []).filter(a => (a.omaggio || 0) > 0).map(a => a.description).join(', ')
-      const qty = billable > 0 ? `Quantità stimata indicata dal club: ${billable}` + (staff > 0 ? ` · + ${staff}${single ? ' in omaggio allo staff' : ' kit staff in omaggio'}` : '') : ''
+      const qty = billable > 0 ? `Quantità stimata indicata dal club: ${billable}` + (staff > 0 ? ` · + ${staff} in omaggio allo staff` : '') : ''
       k.sans().size(8)
       const subL = k.wrap(sub, leftW)
       const omL = omaggio ? k.wrap('In omaggio: ' + omaggio, leftW) : []
       const h = Math.max(8 + subL.length * 3.9 + omL.length * 3.6 + (qty ? 5 : 0), kDisc > 0 ? 20 : 16) + 6
       rows.push([h, (y) => {
-        k.serif().size(15).color(C.NAVY).text(kit.name || 'Kit', inX, y + 5)
+        k.serif().size(15).color(C.NAVY).text(kit.name || 'Proposta', inX, y + 5)
         let ly = y + 5
         if (subL.length) { ly += 4.6; k.sans().size(8).color(C.SOFT); doc.text(subL, inX, ly, { lineHeightFactor: 1.35 }); ly += (subL.length - 1) * 3.9 }
         if (omL.length) { ly += 4; k.sans().size(7.5).color(C.CLAY); doc.text(omL, inX, ly); ly += (omL.length - 1) * 3.6 }
         if (qty) { ly += 5; k.sans().size(7.2).color(C.MUTED).text(qty, inX, ly) }
-        k.sans().size(6.2).color(C.MUTED).spaced(single ? 'PREZZO' : 'PREZZO KIT', inR, y + 2.5, { align: 'right' }, 0.7)
+        k.sans().size(6.2).color(C.MUTED).spaced('PREZZO', inR, y + 2.5, { align: 'right' }, 0.7)
         k.serif().size(18).color(C.CLAY).text(eur(net), inR, y + 9, { align: 'right' })
         k.sans().size(7).color(C.MUTED).text(ivaTxt, inR, y + 13, { align: 'right' })
         if (kDisc > 0) {
@@ -198,7 +198,7 @@ function drawPricing(k, order, { isKit, allSingle, noSingle, articles, subtotal,
     ...(order.ivaEnabled ? [[`IVA ${order.ivaRate || 22}%`, eur(ivaAmt)]] : []),
   ]
   const foot = isKit
-    ? `* ${allSingle ? 'Prezzi unitari' : noSingle ? 'Prezzi per singolo kit' : 'Prezzi per singolo kit o articolo'}, soggetti a conferma. Le quantità sono stime indicate dal club e verranno definite in fase di conferma ordine.`
+    ? `* Prezzi unitari, soggetti a conferma. Le quantità sono stime indicate dal club e verranno definite in fase di conferma ordine.`
     : '* I prezzi sono indicativi e soggetti a conferma. Le quantità finali potrebbero variare.'
   k.sans().size(7)
   const footL = k.wrap(foot, inR - inX)
