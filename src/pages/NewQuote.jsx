@@ -459,10 +459,10 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
               {pricingMode === 'kit' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px 140px', gap: 16, marginBottom: 20, alignItems: 'end' }}>
                   <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e => updateKit(ki, 'name', e.target.value)} placeholder="Es. Kit Scuola Tennis"/></div>
-                  <div><label style={s.label}>Prezzo Kit € (per pers.)</label><input type="number" style={inp} value={kit.price} onChange={e => updateKit(ki, 'price', e.target.value)} placeholder="85"/>
+                  <div><label style={s.label}>Prezzo Kit €</label><input type="number" style={inp} value={kit.price} onChange={e => updateKit(ki, 'price', e.target.value)} placeholder="85"/>
                     {ivaEnabled && parseFloat(kit.price) > 0 && <div style={{ fontSize: 11, color: GOLD, marginTop: 4 }}>= € {grossUnitPrice(currentQuote, kit.price).toFixed(2).replace('.', ',')} IVA incl.</div>}</div>
                   <div>
-                    <label style={s.label}>Quantità pagata (n° persone) *</label>
+                    <label style={s.label}>Kit pagati *</label>
                     <input type="number" min="1" style={{ ...inp, borderColor: !kit.quantity ? 'rgba(196,98,58,0.5)' : undefined }} value={kit.quantity} onChange={e => updateKit(ki, 'quantity', e.target.value)} placeholder="Es. 50"/>
                   </div>
                   <div>
@@ -633,7 +633,7 @@ export default function NewQuote({ editOrder, setView, onSaved, prefillClient, c
                 { l: 'CLUB',      v: club || '—',          serif: true },
                 { l: 'ARTICOLI',  v: allArticles.length,   serif: true, color: GOLD },
                 pricingMode === 'kit'
-                  ? { l: 'TOTALE PERSONE', v: kits.reduce((s, k) => s + (parseInt(k.quantity) || 0), 0) || '—', serif: true, color: GOLD }
+                  ? { l: 'TOTALE KIT', v: kits.reduce((s, k) => s + (parseInt(k.quantity) || 0), 0) || '—', serif: true, color: GOLD }
                   : { l: 'DATA',           v: toItalianDate(orderDate) || '—' },
               ].map(item => (
                 <div key={item.l}>
