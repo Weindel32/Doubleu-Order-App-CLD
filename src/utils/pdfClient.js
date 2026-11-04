@@ -1,4 +1,4 @@
-import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal,
+import { getAllArticles, artPieceCount, orderSubtotal, orderShipping, orderDiscount, orderTotal,
          artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
 import { newPdf, C, eur, pdfName, clientBand, sizeGrids, sizeGridsCount, paragraphBox, priceBox, totals, totalsHeight } from '../lib/pdfKit.js'
 
@@ -109,21 +109,26 @@ export async function buildClientPdf(order) {
     }
   }
   // Totali solo se l'ordine li vuole nel PDF del cliente
-  const subtotal = orderSubtotal(order), discAmt = orderDiscount(order), ivaAmt = orderIVA(order), shipAmt = orderShipping(order)
-  // Righe IVA inclusa: subtotale e sconto nella stessa unita' delle righe,
-  // poi lo scorporo imponibile/IVA che porta al totale.
-  const totRows = order.showTotalInClientPDF ? [
-    ...(discAmt > 0 ? [
-      ['SUBTOTALE' + ivaTag, eur(gross(subtotal))],
-      [order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''), '− ' + eur(gross(discAmt)), C.CLAY],
-    ] : []),
-    ['IMPONIBILE', eur(subtotal - discAmt)],
-    ...(order.ivaEnabled ? [[`IVA ${order.ivaRate || 22}%`, eur(ivaAmt)]] : []),
-    ...(shipAmt > 0 ? [['SPEDIZIONE', eur(shipAmt)]] : []),
+  const subtotal = orderSubtotal(order), discAmt = orderDiscount(order), shipAmt = orderShipping(order)
+  // Con IVA le righe sono gia' IVA inclusa: basta il totale IVA inclusa, senza
+  // scorporo imponibile/IVA. Subtotale e sconto solo se c'e' uno sconto, nella
+  // stessa unita' delle righe. Senza IVA resta il riepilogo netto.
+  const showTot = !!order.showTotalInClientPDF
+  const discRows = discAmt > 0 ? [
+    ['SUBTOTALE' + ivaTag, eur(gross(subtotal))],
+    [order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''), '− ' + eur(gross(discAmt)), C.CLAY],
   ] : []
+  const totRows = !showTot ? [] : iva ? [
+    ...discRows,
+    ...(shipAmt > 0 ? [['SPEDIZIONE', eur(shipAmt)]] : []),
+  ] : [
+    ...discRows,
+    ...(discAmt > 0 || shipAmt > 0 ? [['IMPONIBILE', eur(subtotal - discAmt)]] : []),
+    ...(shipAmt > 0 ? [['SPEDIZIONE', eur(shipAmt)]] : []),
+  ]
   priceBox(k, isKit ? 'COMPOSIZIONE E PREZZI' : 'PREZZI PER ARTICOLO', rows,
-    totRows.length ? 6 + totalsHeight(totRows) : 0,
-    (y) => totals(k, y + 4, totRows, 'TOTALE' + (order.ivaEnabled ? ' IVA INCL.' : ''), eur(orderTotal(order)), C.NAVY))
+    showTot ? 6 + totalsHeight(totRows) : 0,
+    (y) => totals(k, y + 4, totRows, 'TOTALE' + ivaTag, eur(orderTotal(order)), C.NAVY))
 
   // ── Condizioni e firma ──
   paragraphBox(k, 'CONDIZIONI GENERALI DI VENDITA', CONDITIONS)
