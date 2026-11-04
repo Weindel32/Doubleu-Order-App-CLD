@@ -13,7 +13,7 @@ import { fetchOrderForms, pendingFormWarning, formStage } from '../lib/orderForm
 import { productionPlan, shortDay } from '../lib/production.js'
 import { askConfirm, askText, showAlert } from '../components/ConfirmDialog.jsx'
 import DatePicker, { toItalianDate, fromItalianDate } from '../components/DatePicker.jsx'
-import { paymentDue, paymentDelay, overdueSummary, formatItalian } from '../utils/payments.js'
+import { paymentDue, paymentDelay, overdueSummary, formatItalian, orderInvoices } from '../utils/payments.js'
 import { exportSizesCSV, exportAllOrdersCSV } from '../utils/exportCSV.js'
 import { quickUpdateStatus, quickTogglePayment } from '../lib/dataService.js'
 import { BORDER } from '../tokens.js'
@@ -124,19 +124,26 @@ function StatusSelector({ order, onStatusChange }) {
   )
 }
 
+// Segnare un incasso chiede data reale e fattura emessa per quel pagamento:
+// e' il momento in cui la fattura esiste davvero, dopo ce se ne dimentica.
+// Togliere la spunta resta un clic secco.
 function PaymentQuick({ order, onPaymentToggle }) {
   const { paid, pending, total } = paymentSummary(order)
   const [saving, setSaving] = useState(null)
-  const toggle = async (payment) => {
+  const [asking, setAsking] = useState(null)   // { payment, paidISO, invoice }
+  const save = async (payment, nowPaid, paidDate, invoice) => {
     setSaving(payment.id)
-    const nowPaid = !payment.paid
-    const ok = await quickTogglePayment(payment.id, nowPaid, nowPaid ? todayItalian() : null)
-    if (ok) onPaymentToggle(order.id, payment.id, nowPaid, nowPaid ? todayItalian() : null)
-    setSaving(null)
+    const ok = await quickTogglePayment(payment.id, nowPaid, paidDate, invoice)
+    if (ok) onPaymentToggle(order.id, payment.id, nowPaid, paidDate, invoice)
+    setSaving(null); setAsking(null)
+  }
+  const toggle = (payment) => {
+    if (payment.paid) { save(payment, false, null, ''); return }
+    setAsking({ payment, paidISO: todayISO(), invoice: payment.invoiceNumber || '' })
   }
   if (total === 0) return <span style={{ color:MUTED, fontSize:10 }}>—</span>
   return (
-    <div>
+    <div style={{ position:'relative' }}>
       {[...order.payments].sort((a, b) => {
         const when = p => paymentDue(order, p).date?.getTime() ?? 0
         return when(a) - when(b)
@@ -152,6 +159,26 @@ function PaymentQuick({ order, onPaymentToggle }) {
           {late && <span style={{ fontSize:8, letterSpacing:1, fontWeight:700, color:'#ef4444' }}>+{delay}gg</span>}
         </div>
       )})}
+      {asking && (
+        <div style={{ position:'absolute', zIndex:120, marginTop:4, background:'#1e2d50', border:`1px solid ${BORDER}`, borderRadius:8, padding:16, width:260, boxShadow:'0 8px 24px rgba(0,0,0,0.45)' }}>
+          <div style={{ fontSize:9, letterSpacing:2, color:GOLD, textTransform:'uppercase', marginBottom:12 }}>
+            Incasso {asking.payment.type} · € {(parseFloat(asking.payment.amount)||0).toLocaleString('it-IT',{minimumFractionDigits:2, maximumFractionDigits:2})}
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <DatePicker label="Incassato il" value={asking.paidISO} onChange={v=>setAsking(a=>({ ...a, paidISO:v }))}/>
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={s.label}>Fattura n. (facoltativo)</label>
+            <input style={s.input} value={asking.invoice} autoFocus placeholder="Es. FPR 23/26"
+              onChange={e=>setAsking(a=>({ ...a, invoice:e.target.value }))}
+              onKeyDown={e=>{ if (e.key==='Enter' && asking.paidISO) save(asking.payment, true, toItalianDate(asking.paidISO), asking.invoice) }}/>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={()=>save(asking.payment, true, toItalianDate(asking.paidISO), asking.invoice)} disabled={!asking.paidISO || saving} style={{ ...btnGoldStyle, flex:1, padding:'9px 12px', fontSize:10, opacity:(!asking.paidISO||saving)?0.5:1 }}>{saving?'...':'Conferma'}</button>
+            <button onClick={()=>setAsking(null)} disabled={!!saving} style={{ ...btnStyle(false), flex:1, padding:'9px 12px', fontSize:10 }}>Annulla</button>
+          </div>
+        </div>
+      )}
       <div style={{ height:3, background:'rgba(255,255,255,0.06)', borderRadius:2, marginTop:4, overflow:'hidden', display:'flex', width:80 }}>
         <div style={{ width:`${total>0?Math.min(100,(paid/total)*100):0}%`, background:GREEN }}/>
         <div style={{ width:`${total>0?Math.min(100,(pending/total)*100):0}%`, background:GOLD, opacity:0.6 }}/>
@@ -283,7 +310,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
 
 
   const handleStatusChange   = (orderId, newStatus, dateFields, cancelFields={}) => onOrdersChange(orders.map(o=>o.id===orderId?{...o,status:newStatus,...(dateFields?{shippedDate:dateFields.shipped_date||null,actualDeliveryDate:dateFields.actual_delivery_date||null}:{}),...('cancel_reason' in cancelFields?{cancelReason:cancelFields.cancel_reason||'',cancelDate:cancelFields.cancel_date||null}:{})}:o))
-  const handlePaymentToggle  = (orderId, paymentId, newPaid, paidDate=null) => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid,paidDate:newPaid?paidDate:null}:p)}))
+  const handlePaymentToggle  = (orderId, paymentId, newPaid, paidDate=null, invoice='') => onOrdersChange(orders.map(o=>o.id!==orderId?o:{...o,payments:o.payments.map(p=>p.id===paymentId?{...p,paid:newPaid,paidDate:newPaid?paidDate:null,invoiceNumber:(newPaid&&invoice.trim())?invoice.trim():p.invoiceNumber}:p)}))
 
   const thStyle = (col) => ({
     ...s.th, cursor:'pointer', userSelect:'none',
@@ -349,7 +376,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
                   <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>{o.date||'—'}</td>
                   <td style={{...s.td,color:MUTED,fontSize:11,letterSpacing:1}}>
                     {o.id}
-                    {o.invoiceNumber&&<div style={{fontSize:9,marginTop:2,color:GOLD,opacity:0.75,letterSpacing:0.5}}>Fatt. {o.invoiceNumber}</div>}
+                    {orderInvoices(o).length>0&&<div style={{fontSize:9,marginTop:2,color:GOLD,opacity:0.75,letterSpacing:0.5}}>Fatt. {orderInvoices(o).join(' · ')}</div>}
                   </td>
                   <td style={{...s.td,fontSize:11,color:days!==null&&days<=7&&o.status!=='CONSEGNATO'?CLAY:MUTED}}>
                     {o.deliveryDate||'—'}

@@ -288,3 +288,20 @@ export function depositDeviation(terms, payments, orderTotal, tolerance = 5) {
     reason: actual === 0 ? 'nessun acconto' : actual < expected ? 'acconto inferiore' : 'acconto superiore',
   }
 }
+
+// ─── Fatture ─────────────────────────────────────────────────────────────────
+
+// Numeri fattura distinti di un ordine, nell'ordine delle scadenze: acconto,
+// saldo e rate si fatturano spesso separatamente. Gli ordini registrati prima
+// della fattura per pagamento ricadono sul vecchio numero unico dell'ordine.
+export function orderInvoices(order) {
+  const when = p => paymentDue(order, p).date?.getTime() ?? Infinity
+  const seen = new Set()
+  const list = []
+  for (const p of [...(order?.payments || [])].sort((a, b) => when(a) - when(b))) {
+    const n = (p.invoiceNumber || '').trim()
+    if (n && !seen.has(n)) { seen.add(n); list.push(n) }
+  }
+  if (!list.length && (order?.invoiceNumber || '').trim()) list.push(order.invoiceNumber.trim())
+  return list
+}

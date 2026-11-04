@@ -34,8 +34,8 @@ const displayToIso = (display) => {
   return `${y}-${m}-${d}`
 }
 
-export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, invoiceNumber, setInvoiceNumber, order, clientTerms, onInstallmentsGranted, negotiation }) {
-  const emptyPayment = { type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false, dueMode: 'fissa', dueOffsetDays: 0, paidDate: '' }
+export default function PaymentsPanel({ payments, setPayments, orderTotal, shipping, setShipping, order, clientTerms, onInstallmentsGranted, negotiation }) {
+  const emptyPayment = { type: 'acconto', amount: '', date: '', method: 'Bonifico', note: '', paid: false, dueMode: 'fissa', dueOffsetDays: 0, paidDate: '', invoiceNumber: '' }
   const [newP, setNewP] = useState(emptyPayment)
   const [editingId, setEditingId] = useState(null)
   const [splitting, setSplitting] = useState(null)   // { id, parts, firstDate, everyDays }
@@ -330,22 +330,6 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
         </div>
       )}
 
-      {/* Invoice reference */}
-      {setInvoiceNumber && (
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '14px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 9, letterSpacing: 2, color: MUTED, marginBottom: 2 }}>NUMERO FATTURA</div>
-            <div style={{ fontSize: 10, color: MUTED, opacity: 0.8 }}>Riferimento del documento emesso. Se inserito, compare anche sul PDF cliente.</div>
-          </div>
-          <input
-            style={{ ...inp, width: 200 }}
-            value={invoiceNumber}
-            onChange={e => setInvoiceNumber(e.target.value)}
-            placeholder="Es. FT/2026/152"
-          />
-        </div>
-      )}
-
       {/* Summary bar */}
       {orderTotal > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
@@ -416,9 +400,15 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                   </div>
                   <DueFields value={editP} onChange={setEditP} />
                   <PaidDateField value={editP} onChange={setEditP} />
-                  <div style={{ marginBottom: 10 }}>
-                    <label style={s.label}>Nota</label>
-                    <input style={inp} value={editP.note} onChange={e => setEditP({ ...editP, note: e.target.value })} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <label style={s.label}>Fattura n.</label>
+                      <input style={inp} value={editP.invoiceNumber || ''} onChange={e => setEditP({ ...editP, invoiceNumber: e.target.value })} placeholder="Es. FPR 23/26" />
+                    </div>
+                    <div>
+                      <label style={s.label}>Nota</label>
+                      <input style={inp} value={editP.note} onChange={e => setEditP({ ...editP, note: e.target.value })} />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11, color: MUTED }}>
@@ -514,6 +504,7 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
                         )}
                       </span>
                       {p.method && <span style={{ fontSize: 10, color: MUTED, opacity: 0.7 }}>{p.method}</span>}
+                      {p.invoiceNumber && <span style={{ fontSize: 10, color: GOLD, opacity: 0.85, letterSpacing: 0.5 }}>Fatt. {p.invoiceNumber}</span>}
                       {suspect && (
                         <span style={{ padding: '2px 8px', borderRadius: 2, fontSize: 9, letterSpacing: 1, fontWeight: 700, background: 'rgba(196,98,58,0.15)', color: CLAY, border: `1px solid rgba(196,98,58,0.35)` }}>
                           SCADENZA DA CONTROLLARE
@@ -591,9 +582,15 @@ export default function PaymentsPanel({ payments, setPayments, orderTotal, shipp
         </div>
         <DueFields value={newP} onChange={setNewP} />
         <PaidDateField value={newP} onChange={setNewP} />
-        <div style={{ marginBottom: 10 }}>
-          <label style={s.label}>Nota</label>
-          <input style={inp} value={newP.note} onChange={e => setNewP({ ...newP, note: e.target.value })} placeholder="Es. Acconto 50%" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, marginBottom: 10 }}>
+          <div>
+            <label style={s.label}>Fattura n.</label>
+            <input style={inp} value={newP.invoiceNumber} onChange={e => setNewP({ ...newP, invoiceNumber: e.target.value })} placeholder="Es. FPR 23/26" />
+          </div>
+          <div>
+            <label style={s.label}>Nota</label>
+            <input style={inp} value={newP.note} onChange={e => setNewP({ ...newP, note: e.target.value })} placeholder="Es. Acconto 50%" />
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11, color: MUTED }}>
