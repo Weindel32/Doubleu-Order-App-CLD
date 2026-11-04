@@ -1,6 +1,5 @@
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal,
-         artDiscountApplied, kitDiscountApplied } from '../utils/helpers.js'
-import { orderInvoices } from './payments.js'
+         artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
 import { newPdf, C, eur, pdfName, clientBand, sizeGrids, sizeGridsCount, paragraphBox, priceBox, totals, totalsHeight } from '../lib/pdfKit.js'
 
 // Conferma d'ordine per il club (PDF cliente) come PDF vero: niente link e data aggiunti dalla stampa.
@@ -24,15 +23,17 @@ export async function buildClientPdf(order) {
   const { doc, M, R } = k
   const articles = getAllArticles(order)
   const isKit = order.pricingMode === 'kit'
-  const persone = (order.kits || []).reduce((s, kt) => s + (parseInt(kt.quantity) || parseInt(order.kitQuantity) || 0), 0)
+  // Con IVA i prezzi si comunicano al club IVA inclusa, come nel preventivo:
+  // nel database restano netti, qui si converte solo la presentazione.
+  const iva = !!order.ivaEnabled
+  const gross = (n) => iva ? Math.round((Number(n) || 0) * (1 + (parseFloat(order.ivaRate) || 22) / 100) * 100) / 100 : (Number(n) || 0)
+  const ivaTag = iva ? ' IVA INCL.' : ''
 
   k.header('CONFERMA ORDINE', order.id)
   clientBand(k, order, [
     { label: 'CLUB', value: order.client || '', style: 'serif', min: 50 },
     { label: 'DATA ORDINE', value: order.date || '' },
-    ...(orderInvoices(order).length ? [{ label: orderInvoices(order).length > 1 ? 'RIF. FATTURE' : 'RIF. FATTURA', value: orderInvoices(order).join(' · ') }] : []),
     { label: 'TOTALE PEZZI', value: String(order.pieces ?? articles.reduce((s, a) => s + artPieceCount(a), 0)), style: 'big', min: 26 },
-    ...(isKit ? [{ label: 'TOTALE PERSONE', value: String(persone), style: 'big', min: 26 }] : []),
     { label: 'STATO', value: order.status || '', style: 'clay' },
   ], { noteTitle: 'NOTA ORDINE' })
 
@@ -83,11 +84,11 @@ export async function buildClientPdf(order) {
         if (subL.length) { ly += 4.6; k.sans().size(8).color(C.SOFT); doc.text(subL, inX, ly, { lineHeightFactor: 1.35 }); ly += (subL.length - 1) * 3.9 }
         if (omL.length) { ly += 4; k.sans().size(7.5).color(C.CLAY); doc.text(omL, inX, ly); ly += (omL.length - 1) * 3.6 }
         if (staff > 0) { ly += 4; k.sans().size(7.5).color(C.CLAY).text(`+ ${staff} kit in omaggio`, inX, ly) }
-        k.sans().size(6.2).color(C.MUTED).spaced('PREZZO KIT × N° PERSONE', inR, y + 2.5, { align: 'right' }, 0.6)
-        k.serif().size(14).color(C.CLAY).text(`${eur(kit.price)} × ${qty} pers.`, inR, y + 8, { align: 'right' })
+        k.sans().size(6.2).color(C.MUTED).spaced(`PREZZO KIT${ivaTag} × N° PERSONE`, inR, y + 2.5, { align: 'right' }, 0.6)
+        k.serif().size(14).color(C.CLAY).text(`${eur(grossUnitPrice(order, kit.price))} × ${qty} pers.`, inR, y + 8, { align: 'right' })
         let ry = y + 8
-        if (disc > 0) { ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${kit.discountType !== 'importo' ? ` ${parseFloat(kit.discountValue) || 0}%` : ''} − ${eur(disc)}`, inR, ry, { align: 'right' }) }
-        ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(kitTotal - disc)}`, inR, ry, { align: 'right' })
+        if (disc > 0) { ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${kit.discountType !== 'importo' ? ` ${parseFloat(kit.discountValue) || 0}%` : ''} − ${eur(gross(disc))}`, inR, ry, { align: 'right' }) }
+        ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(gross(kitTotal - disc))}`, inR, ry, { align: 'right' })
       }])
     }
   } else {
@@ -99,22 +100,24 @@ export async function buildClientPdf(order) {
         k.serif().size(13).color(C.NAVY).text(a.description || '', inX, y + 5)
         k.sans().size(7).color(C.MUTED).text([a.category, a.color].filter(Boolean).join(' · '), inX, y + 9.5)
         if ((a.omaggio || 0) > 0) k.sans().size(7).color(C.CLAY).text(`${a.omaggio} pz in omaggio`, inX, y + 13.5)
-        k.sans().size(6.2).color(C.MUTED).spaced('PREZZO UNITARIO', inR, y + 2.5, { align: 'right' }, 0.6)
-        k.serif().size(14).color(C.CLAY).text(`${eur(price)} × ${pz} pz`, inR, y + 8, { align: 'right' })
+        k.sans().size(6.2).color(C.MUTED).spaced(`PREZZO UNITARIO${ivaTag}`, inR, y + 2.5, { align: 'right' }, 0.6)
+        k.serif().size(14).color(C.CLAY).text(`${eur(grossUnitPrice(order, price))} × ${pz} pz`, inR, y + 8, { align: 'right' })
         let ry = y + 8
-        if (disc > 0) { ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${a.discountType !== 'importo' ? ` ${parseFloat(a.discountValue) || 0}%` : ''} − ${eur(disc)}`, inR, ry, { align: 'right' }) }
-        ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(price * pz - disc)}`, inR, ry, { align: 'right' })
+        if (disc > 0) { ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${a.discountType !== 'importo' ? ` ${parseFloat(a.discountValue) || 0}%` : ''} − ${eur(gross(disc))}`, inR, ry, { align: 'right' }) }
+        ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(gross(price * pz - disc))}`, inR, ry, { align: 'right' })
       }])
     }
   }
   // Totali solo se l'ordine li vuole nel PDF del cliente
   const subtotal = orderSubtotal(order), discAmt = orderDiscount(order), ivaAmt = orderIVA(order), shipAmt = orderShipping(order)
+  // Righe IVA inclusa: subtotale e sconto nella stessa unita' delle righe,
+  // poi lo scorporo imponibile/IVA che porta al totale.
   const totRows = order.showTotalInClientPDF ? [
-    [discAmt > 0 ? 'SUBTOTALE' : 'IMPONIBILE', eur(subtotal)],
     ...(discAmt > 0 ? [
-      [order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''), '− ' + eur(discAmt), C.CLAY],
-      ['IMPONIBILE', eur(subtotal - discAmt)],
+      ['SUBTOTALE' + ivaTag, eur(gross(subtotal))],
+      [order.discountMode === 'articolo' ? 'SCONTO TOTALE' : 'SCONTO' + (order.discountType === 'percentuale' ? ` ${parseFloat(order.discountValue) || 0}%` : ''), '− ' + eur(gross(discAmt)), C.CLAY],
     ] : []),
+    ['IMPONIBILE', eur(subtotal - discAmt)],
     ...(order.ivaEnabled ? [[`IVA ${order.ivaRate || 22}%`, eur(ivaAmt)]] : []),
     ...(shipAmt > 0 ? [['SPEDIZIONE', eur(shipAmt)]] : []),
   ] : []
