@@ -667,10 +667,10 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
           <div key={ki} style={{...s.card,border:`1px solid rgba(184,150,90,0.25)`}}>
             {pricingMode==='kit' && <div style={{display:'grid',gridTemplateColumns:'1fr 140px 140px 140px',gap:16,marginBottom:20,alignItems:'end'}}>
               <div><label style={s.label}>Nome Kit</label><input style={inp} value={kit.name} onChange={e=>updateKit(ki,'name',e.target.value)} placeholder="Es. Kit Scuola Tennis"/></div>
-              <div><label style={s.label}>Prezzo Kit €</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="85"/>
+              <div><label style={s.label}>Prezzo €</label><input type="number" style={inp} value={kit.price} onChange={e=>updateKit(ki,'price',e.target.value)} placeholder="85"/>
                 {ivaEnabled && parseFloat(kit.price)>0 && <div style={{ fontSize:11, color:GOLD, marginTop:4 }}>= € {grossUnitPrice(currentOrder, kit.price).toFixed(2).replace('.', ',')} IVA incl.</div>}</div>
               <div>
-                <label style={s.label}>Kit pagati *</label>
+                <label style={s.label}>Quantità *</label>
                 <input type="number" min="1" style={{...inp,borderColor:!kit.quantity?'rgba(184,150,90,0.5)':undefined}} value={kit.quantity} onChange={e=>updateKit(ki,'quantity',e.target.value)} placeholder="Es. 50"/>
               </div>
               <div>
@@ -830,7 +830,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
             {[
               {l:'CLUB',v:club||'—',serif:true},
               {l:'PEZZI',v:totalPieces,serif:true,color:GOLD},
-              pricingMode==='kit'?{l:'TOTALE KIT',v:kits.reduce((s,k)=>s+(parseInt(k.quantity)||0),0)||'—',serif:true,color:GOLD}:{l:'ARTICOLI',v:allArticles.length,serif:true},
+              pricingMode==='kit'?{l:'QUANTITÀ TOTALE',v:kits.reduce((s,k)=>s+(parseInt(k.quantity)||0),0)||'—',serif:true,color:GOLD}:{l:'ARTICOLI',v:allArticles.length,serif:true},
               {l:'STATO',badge:status},
             ].map(item=>(
               <div key={item.l}>

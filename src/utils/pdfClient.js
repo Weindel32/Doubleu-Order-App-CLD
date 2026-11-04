@@ -83,9 +83,9 @@ export async function buildClientPdf(order) {
         let ly = y + 5
         if (subL.length) { ly += 4.6; k.sans().size(8).color(C.SOFT); doc.text(subL, inX, ly, { lineHeightFactor: 1.35 }); ly += (subL.length - 1) * 3.9 }
         if (omL.length) { ly += 4; k.sans().size(7.5).color(C.CLAY); doc.text(omL, inX, ly); ly += (omL.length - 1) * 3.6 }
-        if (staff > 0) { ly += 4; k.sans().size(7.5).color(C.CLAY).text(`+ ${staff} kit in omaggio`, inX, ly) }
-        k.sans().size(6.2).color(C.MUTED).spaced(`PREZZO KIT${ivaTag} × N° KIT`, inR, y + 2.5, { align: 'right' }, 0.6)
-        k.serif().size(14).color(C.CLAY).text(`${eur(grossUnitPrice(order, kit.price))} × ${qty} kit`, inR, y + 8, { align: 'right' })
+        if (staff > 0) { ly += 4; k.sans().size(7.5).color(C.CLAY).text(`+ ${staff} in omaggio`, inX, ly) }
+        k.sans().size(6.2).color(C.MUTED).spaced(`PREZZO${ivaTag} × QUANTITÀ`, inR, y + 2.5, { align: 'right' }, 0.6)
+        k.serif().size(14).color(C.CLAY).text(`${eur(grossUnitPrice(order, kit.price))} × ${qty}`, inR, y + 8, { align: 'right' })
         let ry = y + 8
         if (disc > 0) { ry += 4; k.sans().size(7).color(C.CLAY).text(`sconto${kit.discountType !== 'importo' ? ` ${parseFloat(kit.discountValue) || 0}%` : ''} − ${eur(gross(disc))}`, inR, ry, { align: 'right' }) }
         ry += 4.5; k.sans('bold').size(8.5).color(C.NAVY).text(`= ${eur(gross(kitTotal - disc))}`, inR, ry, { align: 'right' })
@@ -121,7 +121,7 @@ export async function buildClientPdf(order) {
     ...(order.ivaEnabled ? [[`IVA ${order.ivaRate || 22}%`, eur(ivaAmt)]] : []),
     ...(shipAmt > 0 ? [['SPEDIZIONE', eur(shipAmt)]] : []),
   ] : []
-  priceBox(k, isKit ? 'COMPOSIZIONE KIT E PREZZI' : 'PREZZI PER ARTICOLO', rows,
+  priceBox(k, isKit ? 'COMPOSIZIONE E PREZZI' : 'PREZZI PER ARTICOLO', rows,
     totRows.length ? 6 + totalsHeight(totRows) : 0,
     (y) => totals(k, y + 4, totRows, 'TOTALE' + (order.ivaEnabled ? ' IVA INCL.' : ''), eur(orderTotal(order)), C.NAVY))
 
