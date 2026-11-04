@@ -79,7 +79,7 @@ export async function buildClientPdf(order) {
       const staff = parseFloat(kit.omaggio) || 0
       const h = Math.max(8 + subL.length * 3.9 + omL.length * 3.6 + (staff > 0 ? 4 : 0), disc > 0 ? 22 : 18) + 4
       rows.push([h, (y) => {
-        k.serif().size(15).color(C.NAVY).text(kit.name || 'Kit', inX, y + 5)
+        k.serif().size(15).color(C.NAVY).text(kit.name || 'Proposta', inX, y + 5)
         let ly = y + 5
         if (subL.length) { ly += 4.6; k.sans().size(8).color(C.SOFT); doc.text(subL, inX, ly, { lineHeightFactor: 1.35 }); ly += (subL.length - 1) * 3.9 }
         if (omL.length) { ly += 4; k.sans().size(7.5).color(C.CLAY); doc.text(omL, inX, ly); ly += (omL.length - 1) * 3.6 }
