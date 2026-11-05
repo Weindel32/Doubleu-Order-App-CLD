@@ -162,7 +162,9 @@ export async function shareOrDownload(blob, name) {
   const file = new File([blob], name, { type: 'application/pdf' })
   const touch = window.matchMedia?.('(pointer: coarse)').matches
   if (touch && navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: name.replace(/\.pdf$/, '') }); return }
+    // Solo il file: con un titolo accanto, "Salva su File" di iPhone salva
+    // anche un .txt con quel titolo. Il nome lo porta già il PDF.
+    try { await navigator.share({ files: [file] }); return }
     catch (e) { if (e?.name === 'AbortError') return }
   }
   const url = URL.createObjectURL(blob)
