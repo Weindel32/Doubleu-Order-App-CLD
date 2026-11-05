@@ -145,7 +145,9 @@ export async function buildSamplePdf(shipment, clients = [], prospects = [], lan
   // ── Elenco campioni ──
   k.sans().size(6.5).color(C.MUTED).spaced(L.listTitle.toUpperCase(), M, k.y, {}, 1.2)
   k.rule(k.y + 3, C.BORDER, 0.3); k.y += 7
-  const cols = [22, 0, 30, 30, 16, 14]
+  // Taglia larga abbastanza per un set misure ("8, 12, 16, S, M, L, XL, XXL"
+  // va a capo dentro la cella invece di uscire sulla quantità).
+  const cols = [20, 0, 26, 24, 34, 14]
   cols[1] = R - M - cols.reduce((a, b) => a + b, 0)
   let cx = M
   const xs = cols.map(w => { const x = cx; cx += w; return x })
@@ -164,7 +166,8 @@ export async function buildSamplePdf(shipment, clients = [], prospects = [], lan
     k.sans().size(8)
     const cat = k.wrap(it.category || '—', cols[2] - 5)
     const col = k.wrap(it.color || '—', cols[3] - 5)
-    const h = Math.max(desc.length * 4.6, cat.length * 3.6, col.length * 3.6) + 5
+    const size = k.wrap(it.size || '—', cols[4] - 5)
+    const h = Math.max(desc.length * 4.6, cat.length * 3.6, col.length * 3.6, size.length * 3.6) + 5
     if (k.y + h > k.BOTTOM) { doc.addPage(); k.y = k.M; head() }
     doc.setDrawColor(C.BORDER); doc.setLineWidth(0.2)
     cols.forEach((w, i) => doc.rect(xs[i], k.y, w, h))
@@ -173,7 +176,7 @@ export async function buildSamplePdf(shipment, clients = [], prospects = [], lan
     k.serif().size(12).color(C.NAVY); doc.text(desc, xs[1] + 2.5, ty + 0.3, { lineHeightFactor: 1.15 })
     k.sans().size(8).color('#666666'); doc.text(cat, xs[2] + 2.5, ty, { lineHeightFactor: 1.3 })
     k.sans('bold').size(8).color(C.CLAY); doc.text(col, xs[3] + 2.5, ty, { lineHeightFactor: 1.3 })
-    k.sans().size(8).color('#666666').text(it.size || '—', xs[4] + cols[4] / 2, ty, { align: 'center' })
+    k.sans().size(8).color('#666666'); doc.text(size, xs[4] + cols[4] / 2, ty, { align: 'center', lineHeightFactor: 1.3 })
     k.serif().size(13).color(C.NAVY).text(String(it.quantity || 1), xs[5] + cols[5] / 2, ty + 0.5, { align: 'center' })
     k.y += h
   }
