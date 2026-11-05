@@ -11,11 +11,16 @@
 // questo qui si usano solo letture mirate e la funzione
 // create_sample_shipment, mai scritture libere.
 
+// Le regole dell'app (scadenze, ritardi, "oggi") ragionano in ora italiana:
+// sul server Vercel l'orologio è UTC, quindi si fissa il fuso prima di tutto.
+process.env.TZ = 'Europe/Rome'
+
 import { createClient } from '@supabase/supabase-js'
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { handleBody } from './_mcp-server.js'
 import { syncSampleFollowUp } from './_todoist.js'
 import { italianDay } from '../src/lib/production.js'
+import { assembleOrders, assembleShipments } from '../src/lib/orderModel.js'
 
 const SUPABASE_URL = 'https://bixayovstdptbgauvsgm.supabase.co'
 
@@ -76,6 +81,40 @@ function supabaseRepo(db) {
       if (!sh) return null
       const { sample_items, ...rest } = sh
       return { ...rest, items: [...(sample_items || [])].sort((a, b) => (a.position || 0) - (b.position || 0)) }
+    },
+    // Tutto quello che serve alle letture, nel formato dell'app (come fetchOrders,
+    // fetchSampleShipments e fetchOrderForms nel browser). Pochi dati: si
+    // rilegge a ogni domanda, così la chat vede sempre lo stato attuale.
+    async snapshot() {
+      // Supabase restituisce al massimo 1000 righe per richiesta: si legge a
+      // pagine, così un archivio che cresce non perde righe in silenzio.
+      const all = async (label, build) => {
+        const out = []
+        for (let from = 0; ; from += 1000) {
+          const rows = check(label, await build().range(from, from + 999)) || []
+          out.push(...rows)
+          if (rows.length < 1000) return out
+        }
+      }
+      const [orders, kits, payments, articles, formRows, shipments, clients, prospects] = await Promise.all([
+        all('ordini', () => db.from('orders').select('*').order('created_at', { ascending: false }).order('id')),
+        all('kit', () => db.from('kits').select('*').order('position').order('id')),
+        all('pagamenti', () => db.from('payments').select('*').order('id')),
+        all('articoli', () => db.from('articles').select('*').order('id')),
+        all('moduli taglie', () => db.from('order_forms').select('*').neq('status', 'revocato').order('created_at', { ascending: false }).order('token')),
+        all('campionature', () => db.from('sample_shipments').select('*, sample_items(*)').order('shipped_date', { ascending: false }).order('id')),
+        all('clienti', () => db.from('clients').select('*').order('name').order('id')),
+        all('prospect', () => db.from('prospects').select('*').order('id')),
+      ])
+      const forms = {}
+      for (const row of formRows) if (!forms[row.order_id]) forms[row.order_id] = row
+      return {
+        orders: assembleOrders(orders, kits, payments, articles),
+        forms,
+        shipments: assembleShipments(shipments),
+        clients,
+        prospects,
+      }
     },
     async audit(entry) {
       check('registro', await db.from('mcp_audit_log').insert({
