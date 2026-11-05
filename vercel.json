@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/mcp/:key", "destination": "/api/mcp?key=:key" },
     { "source": "/taglie/:token", "destination": "/index.html" },
     { "source": "/m/:token", "destination": "/index.html" }
   ],

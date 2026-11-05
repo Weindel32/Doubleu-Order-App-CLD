@@ -59,3 +59,59 @@ export async function findOrCreateSection(token, projectId, name) {
   if (existing) return existing
   return todoistFetch(token, '/sections', { method: 'POST', body: JSON.stringify({ project_id: projectId, name }) })
 }
+
+// ─── Follow-up campionature ──────────────────────────────────────
+// Un task su Todoist (progetto "Campionature", sezione "Follow up") per
+// ogni invio campioni con articoli ancora senza esito. Lo usano sia
+// l'app (api/sync-todoist-followup.js) sia il connettore MCP (api/mcp.js),
+// così le regole restano una sola.
+//
+// Il task viene ritrovato tramite un marcatore order-app:<id> scritto
+// nella sua descrizione, non tramite un id esterno salvato nel database
+// di Order App: nessuna modifica di schema, sincronizzazione opportunista.
+// Nota: GET /tasks di Todoist restituisce solo i task attivi, quindi se
+// un follow-up viene chiuso e poi torna aperto (esito rimesso "in
+// attesa") viene creato un nuovo task invece di riaprire quello vecchio.
+
+const FOLLOWUP_PROJECT = 'Campionature'
+const FOLLOWUP_SECTION = 'Follow up'
+
+// Il marcatore non è più racchiuso tra parentesi quadre: così può stare
+// dentro un link Markdown senza confondere la sintassi. I task creati
+// prima, che scrivevano [order-app:<id>], restano ritrovabili perché la
+// ricerca è per sottostringa.
+const followUpMarker = (shipmentId) => `order-app:${shipmentId}`
+
+// Todoist rende il Markdown della descrizione: chi legge vede solo il
+// motivo dell'invio, mentre l'id — che serve a ritrovare il task ed
+// evitare doppioni — resta nell'indirizzo del link.
+const followUpDescription = (shipmentId, purpose) =>
+  `[${purpose || 'Campionatura'}](${APP_URL}/#${followUpMarker(shipmentId)})`
+
+export async function syncSampleFollowUp(token, { shipmentId, clubName, open, dueDate, purpose }) {
+  const project = await findOrCreateProject(token, FOLLOWUP_PROJECT)
+  const section = await findOrCreateSection(token, project.id, FOLLOWUP_SECTION)
+  const tasks = await todoistList(token, `/tasks?section_id=${section.id}`)
+  const existing = tasks.find(t => (t.description || '').includes(followUpMarker(shipmentId))) || null
+
+  if (!open) {
+    if (!existing) return { action: 'noop' }
+    await todoistFetch(token, `/tasks/${existing.id}/close`, { method: 'POST' })
+    return { action: 'closed' }
+  }
+
+  const content = (clubName || 'Campionatura').trim() || 'Campionatura'
+  const description = followUpDescription(shipmentId, purpose)
+  const body = { content, description, ...(dueDate ? { due_date: dueDate } : {}) }
+
+  if (existing) {
+    await todoistFetch(token, `/tasks/${existing.id}`, { method: 'POST', body: JSON.stringify(body) })
+    return { action: 'updated', taskId: existing.id }
+  }
+
+  const created = await todoistFetch(token, '/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ project_id: project.id, section_id: section.id, ...body }),
+  })
+  return { action: 'created', taskId: created.id }
+}
