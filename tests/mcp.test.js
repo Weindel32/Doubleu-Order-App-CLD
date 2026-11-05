@@ -266,8 +266,9 @@ test('JSON-RPC: initialize, tools/list, notifiche, errori come risultato', async
   assert.ok(init.result.capabilities.tools)
   assert.equal(await handleBody({ jsonrpc: '2.0', method: 'notifications/initialized' }, d), null)
   const list = await handleBody({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, d)
-  assert.deepEqual(list.result.tools.map(t => t.name), ['cerca_cliente', 'cerca_articolo', 'anteprima_invio_campioni', 'crea_invio_campioni', 'leggi_invio_campioni'])
-  assert.equal(TOOLS.length, 5)
+  assert.deepEqual(list.result.tools.slice(0, 5).map(t => t.name), ['cerca_cliente', 'cerca_articolo', 'anteprima_invio_campioni', 'crea_invio_campioni', 'leggi_invio_campioni'])
+  // Unico strumento che scrive: crea_invio_campioni
+  assert.deepEqual(TOOLS.filter(t => !t.annotations?.readOnlyHint).map(t => t.name), ['crea_invio_campioni'])
   const bad = await handleBody({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'crea_invio_campioni', arguments: { confirmation_token: 'x' } } }, d)
   assert.equal(bad.result.isError, true)
   assert.match(bad.result.content[0].text, /non valido/)

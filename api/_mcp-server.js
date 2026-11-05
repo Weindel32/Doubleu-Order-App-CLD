@@ -12,15 +12,18 @@ import {
   buildShipment, previewText, shipmentText, signToken, verifyToken, tokenHash, followUpDue, SIZE_ORDER,
 } from './_mcp-logic.js'
 import { PURPOSES, PURPOSE_LABELS } from '../src/utils/samples.js'
+import { READ_TOOLS, createReadTools } from './_mcp-read.js'
 
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
 
-const INSTRUCTIONS = `Connettore Order App DOUBLEU per registrare invii campioni.
-Flusso obbligatorio:
+const INSTRUCTIONS = `Connettore Order App DOUBLEU (abbigliamento sportivo per club di tennis, padel e pickleball).
+Lettura (nessuna modifica): panoramica, scadenze (cosa fare oggi e cosa arriva), cerca_ordini, leggi_ordine, preventivi_aperti, scheda_cliente, elenca_invii_campioni, cerca_cliente, cerca_articolo, leggi_invio_campioni. I numeri sono calcolati con le stesse regole dell'app: riportali così come sono, senza ricalcolarli.
+Scrittura: solo nuovi invii campioni, con questo flusso obbligatorio:
 1. cerca_cliente con il nome del club: se escono più candidati, chiedi all'utente quale, non scegliere tu.
 2. anteprima_invio_campioni: una riga per capo, con le taglie in elenco. Nei set misure si manda un pezzo per taglia: il numero scritto dall'utente è il totale dei pezzi di quel capo. Il codice prodotto è facoltativo: basta la descrizione.
 3. Mostra all'utente il riepilogo dell'anteprima e chiedi una conferma esplicita. Non mostrare il codice di conferma.
 4. Solo dopo un sì esplicito chiama crea_invio_campioni con il codice di conferma ricevuto.
+Ordini, preventivi, pagamenti e clienti non si modificano da qui: per quello si usa l'app.
 Se un tool restituisce un errore, riportalo all'utente e chiedi ciò che manca.`
 
 const ROW_SCHEMA = {
@@ -104,6 +107,7 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
+  ...READ_TOOLS,
 ]
 
 const text = (t) => ({ content: [{ type: 'text', text: t }] })
@@ -126,6 +130,8 @@ export function createTools(deps) {
     .catch(err => console.error('mcp: registro non scritto', err))
 
   return {
+    ...createReadTools({ repo, now }),
+
     async cerca_cliente({ query }) {
       const found = searchRecipients(query, await repo.listRecipients())
       if (!found.length) return text(`Nessun cliente o prospect somiglia a "${query}". Prova con un'altra parte del nome.`)

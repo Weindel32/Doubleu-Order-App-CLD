@@ -1,35 +1,23 @@
 import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, GREEN } from '../tokens.js'
 import { s, btnStyle } from '../tokens.js'
-import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert, isConfirmed, isQuote,
-  hasMissingSizes, missingSizeArticles, hasOverduePayment, parseDate } from '../utils/helpers.js'
-import { overdueSummary } from '../utils/payments.js'
-import { needsFollowUp, returnOverdue, fmtDate, daysSince, recipientLabel, followUpBaseDate } from '../utils/samples.js'
+import { orderTotal, paymentSummary, isConfirmed } from '../utils/helpers.js'
 import { fetchOrderForms, formStage, formActivity, lastSendText } from '../lib/orderForms.js'
 import StatCard from '../components/StatCard.jsx'
 import OrderFormModal from '../components/OrderFormModal.jsx'
-import { revenueByYear } from '../components/RevenueCards.jsx'
+import { revenueByYear } from '../lib/revenue.js'
+import { buildTodo } from '../lib/todo.js'
 
 // La Dashboard risponde a una domanda: cosa devo fare oggi. Quattro numeri,
 // la riga del fatturato e una lista unica di cose da fare, dalla piu'
 // urgente. Elenchi e grafici stanno nelle loro pagine (Archivio,
 // Preventivi, Analytics).
 
-const QUOTE_STALE_DAYS = 7   // preventivo senza movimento da almeno 7 giorni
 const TODO_VISIBLE = 8
 
-const RED = '#ef4444', BLUE = '#7aaee8', YELLOW = '#e8c96e'
+const YELLOW = '#e8c96e'
 const eur  = (n) => `€ ${n.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`
-const eur2 = (n) => `€ ${n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
-
-// Ultimo movimento di un preventivo: la data, o l'ultima modifica della
-// trattativa se e' piu' recente.
-function quoteLastMove(q) {
-  const d = parseDate(q.date)?.getTime() || 0
-  const n = q.negotiation?.editedAt ? new Date(q.negotiation.editedAt).getTime() || 0 : 0
-  return Math.max(d, n) || null
-}
 
 export default function Dashboard({ orders, setView, setEditOrder, onOrdersChange, navigateToOrders, onNavigateToQuotes, shipments = [], clients = [], prospects = [] }) {
   const [forms, setForms] = useState({})
@@ -59,75 +47,15 @@ export default function Dashboard({ orders, setView, setEditOrder, onOrdersChang
 
   const openOrder = (o) => { setEditOrder(o); setView('new') }
 
-  // ── Da fare: una lista unica, ordinata per urgenza ──────────────
-  // prio 1 = soldi o consegne gia' in ritardo, 2 = tocca a noi a breve,
-  // 3 = da completare, 4 = da seguire.
-  const todo = []
-  const add = (t) => todo.push({ ...t, seq: todo.length })
-
-  confirmed.filter(hasOverduePayment)
-    .sort((a, b) => overdueSummary(b).days - overdueSummary(a).days)
-    .forEach(o => {
-      const { amount, days } = overdueSummary(o)
-      add({ key: `pay-${o.id}`, prio: 1, color: days > 30 ? RED : GOLD, kind: 'Credito scaduto',
-        title: o.client, sub: o.id, right: eur2(amount), rightSub: `${plural(days, 'giorno', 'giorni')} di ritardo`,
-        onClick: () => openOrder(o) })
-    })
-
-  orders.filter(needsAlert)
-    .sort((a, b) => (daysUntilDelivery(a) ?? 999) - (daysUntilDelivery(b) ?? 999))
-    .forEach(o => {
-      const days = daysUntilDelivery(o)
-      const late = days < 0
-      add({ key: `del-${o.id}`, prio: late ? 1 : 2, color: late ? RED : days <= 3 ? CLAY : YELLOW, kind: 'Consegna',
-        title: o.client, sub: `${o.id} · ${o.deliveryDate}`,
-        right: late ? `In ritardo di ${plural(-days, 'giorno', 'giorni')}` : days === 0 ? 'Consegna oggi' : days === 1 ? 'Consegna domani' : `Tra ${days} giorni`,
-        rightSub: `${o.pieces || 0} pz · ${o.status}`, onClick: () => openOrder(o) })
-    })
-
-  orders.forEach(o => {
-    const stage = formStage(forms[o.id])
-    if (stage.key !== 'received' && stage.key !== 'request') return
-    add({ key: `form-${o.id}`, prio: 2, color: stage.key === 'request' ? CLAY : GREEN,
-      kind: stage.key === 'request' ? 'Richiesta del cliente' : 'Taglie da applicare',
-      title: o.client, sub: `${o.id} · ${stage.text}`, right: stage.badge, rightSub: 'apri il modulo',
-      onClick: () => setFormOrderId(o.id) })
-  })
-
-  orders.filter(hasMissingSizes).forEach(o => {
-    if (forms[o.id] && ['received', 'request'].includes(formStage(forms[o.id]).key)) return
-    const missing = missingSizeArticles(o)
-    const stage = forms[o.id] ? formStage(forms[o.id]) : null
-    add({ key: `size-${o.id}`, prio: 3, color: CLAY, kind: 'Taglie mancanti',
-      title: o.client, sub: `${o.id} · ${missing.map(a => a.description).filter(Boolean).slice(0, 2).join(', ') || 'da completare'}`,
-      right: plural(missing.length, 'articolo senza taglie', 'articoli senza taglie'),
-      rightSub: stage ? `modulo: ${stage.badge.toLowerCase()}` : 'nessun modulo inviato', onClick: () => openOrder(o) })
-  })
-
-  const now = Date.now()
-  orders.filter(o => isQuote(o) && !o.lost && !o.standby)
-    .map(q => ({ q, last: quoteLastMove(q) }))
-    .filter(({ last }) => last && (now - last) / 86400000 >= QUOTE_STALE_DAYS)
-    .sort((a, b) => a.last - b.last)
-    .forEach(({ q, last }) => {
-      const days = Math.floor((now - last) / 86400000)
-      add({ key: `quote-${q.id}`, prio: 4, color: BLUE, kind: 'Preventivo fermo',
-        title: q.client, sub: `${q.id} · ${q.date}`, right: `Fermo da ${days} giorni`, rightSub: 'da sollecitare',
-        onClick: () => { setEditOrder(q); setView('newQuote') } })
-    })
-
-  shipments.filter(sh => needsFollowUp(sh) || returnOverdue(sh))
-    .sort((a, b) => (a.shipped_date || '').localeCompare(b.shipped_date || ''))
-    .forEach(sh => {
-      const overdue = returnOverdue(sh)
-      const days = daysSince(followUpBaseDate(sh))
-      add({ key: `sample-${sh.id}`, prio: overdue ? 3 : 4, color: overdue ? CLAY : BLUE, kind: overdue ? 'Reso scaduto' : 'Campionatura',
-        title: recipientLabel(sh, clients, prospects), sub: `Inviati il ${fmtDate(sh.shipped_date)}`,
-        right: overdue ? `Rientro previsto il ${fmtDate(sh.return_due_date)}` : 'Nessun esito',
-        rightSub: days !== null ? `${days} giorni fa` : 'da sollecitare', onClick: () => setView('samples') })
-    })
-
-  todo.sort((a, b) => a.prio - b.prio || a.seq - b.seq)
+  // ── Da fare: una lista unica, ordinata per urgenza (lib/todo.js) ──
+  const targetClick = {
+    order:  (id) => { const o = orders.find(x => x.id === id); if (o) openOrder(o) },
+    form:   (id) => setFormOrderId(id),
+    quote:  (id) => { const q = orders.find(x => x.id === id); if (q) { setEditOrder(q); setView('newQuote') } },
+    sample: ()   => setView('samples'),
+  }
+  const todo = buildTodo({ orders, forms, shipments, clients, prospects })
+    .map(t => ({ ...t, onClick: () => targetClick[t.target.type](t.target.id) }))
 
   // Moduli mandati e non ancora inviati dal cliente: non sono cose da
   // fare, ma si vede a che punto e' ciascun club (e quando sollecitare).
