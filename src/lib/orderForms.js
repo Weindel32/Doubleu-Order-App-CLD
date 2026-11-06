@@ -1,12 +1,13 @@
 import { supabase, authHeader } from './supabase.js'
 import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { artPieceCount, kitProductionQty } from '../utils/helpers.js'
-import { linePieces, formPieces } from './formStatus.js'
+import { linePieces, formPieces, lineSizes } from './formStatus.js'
+import { catalogUnavailable } from '../data/productCatalog.js'
 
 // Stato e conteggi del modulo (formStage, formActivity, …) stanno in
 // formStatus.js, senza dipendenze dal browser: li legge anche il
 // connettore MCP lato server. Qui si riesportano per i chiamanti di sempre.
-export { FORM_STATUS_LABEL, lastSendText, formActivity, formStage, linePieces, formPieces } from './formStatus.js'
+export { FORM_STATUS_LABEL, lastSendText, formActivity, formStage, linePieces, formPieces, lineSizes } from './formStatus.js'
 
 // Modulo taglie per il cliente.
 //
@@ -72,11 +73,32 @@ function expectedPieces(order, kit, art) {
 
 const emptyGrid = (sizes) => Object.fromEntries(sizes.map(sz => [sz, 0]))
 
-export function sizesForGrids(grids, from) {
+// Le taglie escluse restano a 0 anche se l'ordine le aveva: il cliente non
+// le vede e non devono finire in produzione.
+export function sizesForGrids(grids, from, exclude = {}) {
   const out = {}
-  if (grids.includes('adult')) out.adult = { ...emptyGrid(ADULT_SIZES), ...pickSizes(from?.adult, ADULT_SIZES) }
-  if (grids.includes('kids'))  out.kids  = { ...emptyGrid(KIDS_SIZES),  ...pickSizes(from?.kids,  KIDS_SIZES) }
+  const zero = (obj, g) => { for (const sz of exclude[g] || []) if (sz in obj) obj[sz] = 0; return obj }
+  if (grids.includes('adult')) out.adult = zero({ ...emptyGrid(ADULT_SIZES), ...pickSizes(from?.adult, ADULT_SIZES) }, 'adult')
+  if (grids.includes('kids'))  out.kids  = zero({ ...emptyGrid(KIDS_SIZES),  ...pickSizes(from?.kids,  KIDS_SIZES) }, 'kids')
   if (grids.includes('uni'))   out.uni   = parseInt(from?.uni) || 0
+  return out
+}
+
+// Taglie escluse di partenza per un articolo: quelle che il produttore non
+// fa (catalogo, per codice). Si correggono riga per riga nel modulo di
+// creazione. Forma: { kids: ['6', ...], adult: ['XS'] }, senza chiavi vuote.
+export function defaultExclude(art) {
+  const off = catalogUnavailable(art?.sp)
+  return cleanExclude(off)
+}
+
+export function cleanExclude(ex) {
+  const out = {}
+  for (const g of ['adult', 'kids']) {
+    const list = (ex?.[g] || []).filter(sz => (g === 'adult' ? ADULT_SIZES : KIDS_SIZES).includes(sz))
+    // Non si escludono tutte le taglie di una griglia: per quello si toglie la griglia.
+    if (list.length && list.length < (g === 'adult' ? ADULT_SIZES : KIDS_SIZES).length) out[g] = list
+  }
   return out
 }
 
@@ -86,18 +108,24 @@ function pickSizes(obj, sizes) {
   return out
 }
 
-// Righe del modulo dall'ordine. choices: { [key]: ['adult', ...] }.
-export function buildFormLines(order, choices = {}) {
+// Righe del modulo dall'ordine. choices: { [key]: ['adult', ...] },
+// excludes: { [key]: { kids: ['6'], adult: ['XS'] } }.
+export function buildFormLines(order, choices = {}, excludes = {}) {
   const lines = []
   ;(order.kits || []).forEach((kit, kitIndex) => {
     (kit.articles || []).forEach((art, articleIndex) => {
       const key = `l${lines.length}`
+      const grids = choices[key] || defaultGrids(art)
+      const ex = cleanExclude(excludes[key] || defaultExclude(art))
+      // Si salvano solo le esclusioni delle griglie mostrate.
+      const exclude = Object.fromEntries(Object.entries(ex).filter(([g]) => grids.includes(g)))
       lines.push({
         key, kitIndex, articleIndex,
         kit: order.pricingMode === 'kit' ? (kit.name || '') : '',
         sp: art.sp || '', description: art.description || '', color: art.color || '',
         category: art.category || '',
-        grids: choices[key] || defaultGrids(art),
+        grids,
+        ...(Object.keys(exclude).length ? { exclude } : {}),
         expected: expectedPieces(order, kit, art),
       })
     })
@@ -114,8 +142,8 @@ export function lineDiff(line, base, cur) {
     const d = (parseInt(after) || 0) - (parseInt(before) || 0)
     if (d) parts.push(`${label} ${d > 0 ? '+' : '−'}${Math.abs(d)}`)
   }
-  if (line.grids.includes('kids'))  for (const sz of KIDS_SIZES)  push(`${sz} anni`, b.kids?.[sz], c.kids?.[sz])
-  if (line.grids.includes('adult')) for (const sz of ADULT_SIZES) push(sz, b.adult?.[sz], c.adult?.[sz])
+  if (line.grids.includes('kids'))  for (const sz of lineSizes(line, 'kids'))  push(`${sz} anni`, b.kids?.[sz], c.kids?.[sz])
+  if (line.grids.includes('adult')) for (const sz of lineSizes(line, 'adult')) push(sz, b.adult?.[sz], c.adult?.[sz])
   if (line.grids.includes('uni'))   push('Quantità', b.uni, c.uni)
   return parts.join(' · ')
 }
@@ -138,7 +166,7 @@ export async function fetchOrderForms() {
 export function initialFormSizes(order, lines, prefill) {
   const articles = (order.kits || []).map(k => k.articles || [])
   return Object.fromEntries(lines.map(l => [
-    l.key, sizesForGrids(l.grids, prefill ? articles[l.kitIndex]?.[l.articleIndex]?.sizes : null),
+    l.key, sizesForGrids(l.grids, prefill ? articles[l.kitIndex]?.[l.articleIndex]?.sizes : null, l.exclude),
   ]))
 }
 

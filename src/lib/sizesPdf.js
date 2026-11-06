@@ -117,7 +117,8 @@ export async function buildSizesPdf({ form, lines, sizes }) {
     sans(); doc.setFontSize(9); doc.setTextColor(INK)
     cols.forEach((c, i) => {
       const x = x0 + i * colW
-      const on = l.grids.includes(c.g)
+      // Fuori griglia o taglia esclusa (il produttore non la fa): grigia.
+      const on = l.grids.includes(c.g) && !(l.exclude?.[c.g] || []).includes(c.sz)
       box(x, y, colW, rowH, on ? null : OFF_BG)
       const v = on ? (parseInt(sizes[l.key]?.[c.g]?.[c.sz]) || 0) : 0
       if (v > 0) center(v, x, colW, mid)
