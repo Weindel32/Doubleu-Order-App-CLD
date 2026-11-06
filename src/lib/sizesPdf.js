@@ -103,7 +103,8 @@ export async function buildSizesPdf({ form, lines, sizes }) {
     sans('bold'); doc.setFontSize(8.5)
     const title = doc.splitTextToSize(l.description || l.category || '', artW - 4)
     sans(); doc.setFontSize(6.8)
-    const meta = doc.splitTextToSize([l.color, l.sp, l.kit, l.grids.includes('uni') ? 'taglia unica' : null].filter(Boolean).join(' · '), artW - 4)
+    // Niente codice articolo: e' un riferimento interno, al cliente basta nome e colore.
+    const meta = doc.splitTextToSize([l.color, l.kit, l.grids.includes('uni') ? 'taglia unica' : null].filter(Boolean).join(' · '), artW - 4)
     const rowH = Math.max(10, 3.5 + title.length * 3.6 + meta.length * 3 + 1.5)
     if (y + rowH > bottom) { doc.addPage(); y = drawHead(M + 4) }
 
