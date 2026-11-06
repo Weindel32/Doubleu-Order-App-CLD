@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { buildSizesPdf, shareOrDownload, sizesPdfName } from '../lib/sizesPdf.js'
-import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, GRID_LABEL, orderedGrids } from '../lib/orderForms.js'
+import { getPublicForm, savePublicForm, reopenPublicForm, requestPublicChange, linePieces, formPieces, lineSizes, GRID_LABEL, orderedGrids } from '../lib/orderForms.js'
 
 // Pagina pubblica del modulo taglie (/taglie/<token>): la vede il cliente, dal
 // telefono, senza login. Mostra solo gli articoli dell'ordine e le
@@ -21,13 +20,11 @@ const fmtDateTime = (iso) => iso ? new Date(iso).toLocaleString('it-IT', {
 }) : ''
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: 'long' }) : ''
 
-const SIZE_LIST = { adult: ADULT_SIZES, kids: KIDS_SIZES }
-
 function sizesSummary(line, s) {
   const parts = []
   for (const g of orderedGrids(line.grids)) {
     if (g === 'uni') { if ((s?.uni || 0) > 0) parts.push('taglia unica'); continue }
-    for (const sz of SIZE_LIST[g]) {
+    for (const sz of lineSizes(line, g)) {
       const v = s?.[g]?.[sz] || 0
       if (v > 0) parts.push(`${g === 'kids' ? sz + ' anni' : sz}: ${v}`)
     }
@@ -112,7 +109,6 @@ function LineCard({ line, sizes, setLineSizes, readOnly }) {
           <div style={{ fontFamily: serif, fontSize: 21, lineHeight: 1.15 }}>{line.description || line.category || 'Articolo'}</div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {line.color && <span style={{ color: C.clay, fontWeight: 600 }}>{line.color}</span>}
-            {line.sp && <span>{line.sp}</span>}
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -139,8 +135,11 @@ function LineCard({ line, sizes, setLineSizes, readOnly }) {
               <div style={{ fontSize: 12, color: C.muted, paddingBottom: 14 }}>taglia unica</div>
             </div>
           ) : (
+            // Solo le taglie disponibili: quelle escluse non si mostrano.
+            // Colonne fisse (6 adulto, 7 bambino) per tenere la stessa
+            // larghezza di casella tra le righe.
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${grid === 'adult' ? 6 : 7}, minmax(0, 1fr))`, gap: 6 }}>
-              {SIZE_LIST[grid].map(sz => (
+              {lineSizes(line, grid).map(sz => (
                 <SizeCell key={sz} label={sz} value={s[grid]?.[sz] || 0} onChange={v => set(grid, sz, v)} disabled={readOnly}/>
               ))}
             </div>

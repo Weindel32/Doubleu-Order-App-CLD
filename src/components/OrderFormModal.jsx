@@ -143,6 +143,9 @@ function Setup({ order, onCreated }) {
   const base = buildFormLines(order)
   const arts = (order.kits || []).flatMap(k => k.articles || [])
   const [grids, setGrids]   = useState(() => Object.fromEntries(base.map(l => [l.key, l.grids])))
+  // Taglie escluse per riga: di partenza quelle del catalogo (es. LS427).
+  const [excludes, setExcludes] = useState(() => Object.fromEntries(base.map(l => [l.key, l.exclude || {}])))
+  const [openSizes, setOpenSizes] = useState(() => new Set())
   const [prefill, setPrefill] = useState(() => arts.some(a => artPieceCount(a) > 0))
   const [expiry, setExpiry] = useState('')
   const [busy, setBusy]     = useState(false)
@@ -150,7 +153,7 @@ function Setup({ order, onCreated }) {
   const [preview, setPreview] = useState(null)
 
   const openPreview = () => {
-    const lines = buildFormLines(order, grids)
+    const lines = buildFormLines(order, grids, excludes)
     setPreview({
       client_name: order.client || '', order_id: order.id, status: 'aperto', lines,
       sizes: initialFormSizes(order, lines, prefill),
@@ -164,9 +167,28 @@ function Setup({ order, onCreated }) {
     return next.length ? { ...prev, [key]: next } : prev
   })
 
+  // Tocca una taglia per escluderla o rimetterla. Almeno una per griglia
+  // resta sempre: per toglierle tutte si spegne la griglia.
+  const toggleSize = (key, g, sz) => setExcludes(prev => {
+    const cur = prev[key]?.[g] || []
+    const next = cur.includes(sz) ? cur.filter(x => x !== sz) : [...cur, sz]
+    if (next.length >= (g === 'adult' ? ADULT_SIZES : KIDS_SIZES).length) return prev
+    return { ...prev, [key]: { ...prev[key], [g]: next } }
+  })
+  const toggleOpen = (key) => setOpenSizes(prev => {
+    const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n
+  })
+  const excludeText = (key) => {
+    const ex = excludes[key] || {}
+    const parts = []
+    if (grids[key].includes('kids'))  for (const sz of KIDS_SIZES)  if ((ex.kids  || []).includes(sz)) parts.push(`${sz} anni`)
+    if (grids[key].includes('adult')) for (const sz of ADULT_SIZES) if ((ex.adult || []).includes(sz)) parts.push(sz)
+    return parts.join(' · ')
+  }
+
   const create = async () => {
     setBusy(true); setErr('')
-    const lines = buildFormLines(order, grids)
+    const lines = buildFormLines(order, grids, excludes)
     const expiresAt = expiry ? new Date(`${expiry}T23:59:59`).toISOString() : null
     const form = await createOrderForm(order, lines, { prefill, expiresAt })
     setBusy(false)
@@ -179,7 +201,7 @@ function Setup({ order, onCreated }) {
   return (
     <>
       <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6 }}>
-        Il cliente vedrà solo questi articoli e le griglie scelte, senza prezzi.
+        Il cliente vedrà solo questi articoli e le griglie scelte, senza prezzi. Le taglie escluse non le vede.
       </div>
       <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, overflowY: 'auto', maxHeight: 340 }}>
         {base.map(l => (
@@ -194,6 +216,27 @@ function Setup({ order, onCreated }) {
                   onKeyDown={e => e.key === 'Enter' && toggle(l.key, g)}>{GRID_LABEL[g]}</span>
               ))}
             </div>
+            {grids[l.key].some(g => g !== 'uni') && (
+              <div style={{ flexBasis: '100%', fontSize: 10, color: MUTED, display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                <button style={{ ...linkBtn, fontSize: 10 }} onClick={() => toggleOpen(l.key)}>
+                  {openSizes.has(l.key) ? 'Chiudi taglie' : 'Taglie disponibili'}
+                </button>
+                {excludeText(l.key) && <span style={{ color: CLAY }}>escluse: {excludeText(l.key)}</span>}
+              </div>
+            )}
+            {openSizes.has(l.key) && ['kids', 'adult'].filter(g => grids[l.key].includes(g)).map(g => (
+              <div key={g} style={{ flexBasis: '100%', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ width: 52, fontSize: 9, letterSpacing: 1, color: MUTED, textTransform: 'uppercase' }}>{GRID_LABEL[g]}</span>
+                {(g === 'adult' ? ADULT_SIZES : KIDS_SIZES).map(sz => {
+                  const on = !(excludes[l.key]?.[g] || []).includes(sz)
+                  return (
+                    <span key={sz} role="button" tabIndex={0} aria-pressed={on} title={on ? 'Disponibile: tocca per escludere' : 'Esclusa: tocca per rimettere'}
+                      style={{ ...chip(on), padding: '3px 7px', textDecoration: on ? 'none' : 'line-through' }}
+                      onClick={() => toggleSize(l.key, g, sz)} onKeyDown={e => e.key === 'Enter' && toggleSize(l.key, g, sz)}>{sz}</span>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         ))}
       </div>

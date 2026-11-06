@@ -87,11 +87,20 @@ export function formStage(form) {
   return { key: 'waiting', tone: 'gold', badge: 'Attesa cliente', text: `Inviato via ${sent} · il cliente non ha ancora inviato le taglie` }
 }
 
+// Taglie di una griglia offerte al cliente su questa riga: tutte, tranne
+// quelle escluse alla creazione del link (line.exclude), per gli articoli
+// che il produttore non fa in tutte le taglie (es. LS427).
+const GRID_SIZES = { adult: ADULT_SIZES, kids: KIDS_SIZES }
+export function lineSizes(line, grid) {
+  const off = line?.exclude?.[grid] || []
+  return (GRID_SIZES[grid] || []).filter(sz => !off.includes(sz))
+}
+
 export function linePieces(line, sizes) {
   const s = sizes?.[line.key] || {}
   let n = 0
-  if (line.grids.includes('adult')) n += ADULT_SIZES.reduce((t, sz) => t + (parseInt(s.adult?.[sz]) || 0), 0)
-  if (line.grids.includes('kids'))  n += KIDS_SIZES.reduce((t, sz)  => t + (parseInt(s.kids?.[sz])  || 0), 0)
+  if (line.grids.includes('adult')) n += lineSizes(line, 'adult').reduce((t, sz) => t + (parseInt(s.adult?.[sz]) || 0), 0)
+  if (line.grids.includes('kids'))  n += lineSizes(line, 'kids').reduce((t, sz)  => t + (parseInt(s.kids?.[sz])  || 0), 0)
   if (line.grids.includes('uni'))   n += parseInt(s.uni) || 0
   return n
 }

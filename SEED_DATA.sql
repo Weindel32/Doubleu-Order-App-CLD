@@ -653,3 +653,65 @@ BEGIN
   IF NOT FOUND THEN RETURN NULL; END IF;
   RETURN order_form_view(f);
 END $$;
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION: taglie escluse nel modulo taglie (applicata il 06/11/2026)
+-- ═══════════════════════════════════════════════════════════════
+-- Una riga del modulo puo' avere exclude: { "kids": ["6","10","14"],
+-- "adult": ["XS"] } per gli articoli che il produttore non fa in tutte le
+-- taglie (es. LS427). Il cliente non le vede; qui si azzerano comunque se
+-- arrivassero, cosi' non finiscono nell'ordine. Righe senza exclude: come prima.
+CREATE OR REPLACE FUNCTION order_form_save(
+  p_token text, p_sizes jsonb, p_contact text, p_note text, p_submit boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  f order_forms;
+  ln jsonb; k text; grid text; sz text; v int;
+  src jsonb; out_line jsonb; grid_obj jsonb; clean jsonb := '{}'::jsonb;
+  adult_sizes text[] := ARRAY['XS','S','M','L','XL','XXL'];
+  kids_sizes  text[] := ARRAY['4','6','8','10','12','14','16'];
+BEGIN
+  SELECT * INTO f FROM order_forms WHERE token = p_token FOR UPDATE;
+  IF NOT FOUND OR f.status = 'revocato' THEN RAISE EXCEPTION 'modulo non disponibile'; END IF;
+  IF order_form_is_locked(f) THEN RAISE EXCEPTION 'modulo bloccato'; END IF;
+  IF f.status <> 'aperto' THEN RAISE EXCEPTION 'modulo gia inviato'; END IF;
+  IF f.expires_at IS NOT NULL AND f.expires_at < now() THEN RAISE EXCEPTION 'modulo scaduto'; END IF;
+
+  FOR ln IN SELECT * FROM jsonb_array_elements(f.lines) LOOP
+    k := ln->>'key';
+    src := COALESCE(p_sizes->k, '{}'::jsonb);
+    out_line := '{}'::jsonb;
+    FOR grid IN SELECT jsonb_array_elements_text(COALESCE(ln->'grids', '[]'::jsonb)) LOOP
+      IF grid = 'uni' THEN
+        v := round(LEAST(GREATEST(COALESCE(CASE WHEN jsonb_typeof(src->'uni') = 'number' THEN (src->>'uni')::numeric END, 0), 0), 9999))::int;
+        out_line := out_line || jsonb_build_object('uni', v);
+      ELSIF grid IN ('adult','kids') THEN
+        grid_obj := '{}'::jsonb;
+        FOREACH sz IN ARRAY (CASE WHEN grid = 'adult' THEN adult_sizes ELSE kids_sizes END) LOOP
+          IF COALESCE(ln->'exclude'->grid, '[]'::jsonb) ? sz THEN
+            v := 0;
+          ELSE
+            v := round(LEAST(GREATEST(COALESCE(CASE WHEN jsonb_typeof(src->grid->sz) = 'number' THEN (src->grid->>sz)::numeric END, 0), 0), 9999))::int;
+          END IF;
+          grid_obj := grid_obj || jsonb_build_object(sz, v);
+        END LOOP;
+        out_line := out_line || jsonb_build_object(grid, grid_obj);
+      END IF;
+    END LOOP;
+    clean := clean || jsonb_build_object(k, out_line);
+  END LOOP;
+
+  UPDATE order_forms SET
+    sizes        = clean,
+    contact_name = NULLIF(left(trim(COALESCE(p_contact, '')), 120), ''),
+    client_note  = NULLIF(left(trim(COALESCE(p_note, '')), 2000), ''),
+    status       = CASE WHEN p_submit THEN 'inviato' ELSE status END,
+    submitted_at = CASE WHEN p_submit THEN now() ELSE submitted_at END,
+    prev_submitted_sizes = CASE WHEN p_submit THEN submitted_sizes ELSE prev_submitted_sizes END,
+    submitted_sizes      = CASE WHEN p_submit THEN clean ELSE submitted_sizes END,
+    submit_count         = CASE WHEN p_submit THEN submit_count + 1 ELSE submit_count END,
+    updated_at   = now()
+  WHERE token = p_token
+  RETURNING * INTO f;
+  RETURN order_form_view(f);
+END $$;

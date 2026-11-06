@@ -103,7 +103,8 @@ export async function buildSizesPdf({ form, lines, sizes }) {
     sans('bold'); doc.setFontSize(8.5)
     const title = doc.splitTextToSize(l.description || l.category || '', artW - 4)
     sans(); doc.setFontSize(6.8)
-    const meta = doc.splitTextToSize([l.color, l.sp, l.kit, l.grids.includes('uni') ? 'taglia unica' : null].filter(Boolean).join(' · '), artW - 4)
+    // Niente codice articolo: e' un riferimento interno, al cliente basta nome e colore.
+    const meta = doc.splitTextToSize([l.color, l.kit, l.grids.includes('uni') ? 'taglia unica' : null].filter(Boolean).join(' · '), artW - 4)
     const rowH = Math.max(10, 3.5 + title.length * 3.6 + meta.length * 3 + 1.5)
     if (y + rowH > bottom) { doc.addPage(); y = drawHead(M + 4) }
 
@@ -117,7 +118,8 @@ export async function buildSizesPdf({ form, lines, sizes }) {
     sans(); doc.setFontSize(9); doc.setTextColor(INK)
     cols.forEach((c, i) => {
       const x = x0 + i * colW
-      const on = l.grids.includes(c.g)
+      // Fuori griglia o taglia esclusa (il produttore non la fa): grigia.
+      const on = l.grids.includes(c.g) && !(l.exclude?.[c.g] || []).includes(c.sz)
       box(x, y, colW, rowH, on ? null : OFF_BG)
       const v = on ? (parseInt(sizes[l.key]?.[c.g]?.[c.sz]) || 0) : 0
       if (v > 0) center(v, x, colW, mid)

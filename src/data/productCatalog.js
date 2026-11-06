@@ -84,7 +84,9 @@ export const PRODUCT_CATALOG = [
   // ── LS24 ─────────────────────────────────────────────────────────
   { code: 'LS304',   description: 'T-Shirt Slam Uomo',                  category: 'T-Shirt Bsc' },
   { code: 'LS305',   description: 'T-Shirt Slam Donna',                 category: 'T-Shirt Bsc' },
-  { code: 'LS427',   description: 'T-Shirt Imola Uomo',                 category: 'T-Shirt Bsc' },
+  // Il produttore la fa solo in 4/8/12/16 anni e da S in su.
+  { code: 'LS427',   description: 'T-Shirt Imola Uomo',                 category: 'T-Shirt Bsc',
+    unavailable: { kids: ['6', '10', '14'], adult: ['XS'] } },
   { code: 'LS428',   description: 'T-Shirt Imola Donna',                category: 'T-Shirt Bsc' },
   { code: 'LS6554',  description: 'T-Shirt Cotone BGL 155gr Bianca',    category: 'T-Shirt Bsc' },
   { code: 'LS6554',  description: 'T-Shirt Cotone BGL 155gr Colorata',  category: 'T-Shirt Bsc' },
@@ -98,3 +100,12 @@ export const PRODUCT_CATALOG = [
   { code: 'LS1105',  description: 'Zip Hoodie (leggera)',              category: 'Zip Hoodie' },
   { code: 'LS1174',  description: 'Pantalone felpa',                   category: 'Sweatpants' },
 ]
+
+// Taglie che il produttore non fa per un codice articolo, se note:
+// { kids: [...], adult: [...] }. Il modulo taglie le esclude di partenza.
+const normCode = (c) => String(c || '').toUpperCase().replace(/\s+/g, '')
+export function catalogUnavailable(code) {
+  const k = normCode(code)
+  if (!k) return null
+  return PRODUCT_CATALOG.find(p => p.unavailable && normCode(p.code) === k)?.unavailable || null
+}
