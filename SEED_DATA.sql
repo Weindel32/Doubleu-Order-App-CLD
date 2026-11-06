@@ -655,7 +655,7 @@ BEGIN
 END $$;
 
 -- ═══════════════════════════════════════════════════════════════
--- MIGRATION: taglie escluse nel modulo taglie
+-- MIGRATION: taglie escluse nel modulo taglie (applicata il 06/11/2026)
 -- ═══════════════════════════════════════════════════════════════
 -- Una riga del modulo puo' avere exclude: { "kids": ["6","10","14"],
 -- "adult": ["XS"] } per gli articoli che il produttore non fa in tutte le
