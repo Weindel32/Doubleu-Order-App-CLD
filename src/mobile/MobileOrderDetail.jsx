@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import ContactActions from './ContactActions.jsx'
 import { eur2 } from './format.js'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
@@ -111,7 +112,6 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
       minHeight: '100vh',
       background: '#1a2744',
       color: CREAM,
-      paddingTop: 'env(safe-area-inset-top)',
     }}>
       {/* Nav bar */}
       <div style={{
@@ -119,6 +119,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
         alignItems: 'center',
         gap: 10,
         padding: '12px 16px',
+        paddingTop: 'calc(12px + env(safe-area-inset-top))',
         borderBottom: `1px solid ${BORDER}`,
         background: 'rgba(10,18,40,0.97)',
         position: 'sticky',
@@ -145,6 +146,8 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
 
       {/* Content */}
       <div style={{ padding: '0 16px', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
+
+        <ContactActions phone={order.clientPhone} email={order.clientEmail} contact={order.clientContact}/>
 
         {/* Alert banner */}
         {(isOverdue || isUrgent) && (

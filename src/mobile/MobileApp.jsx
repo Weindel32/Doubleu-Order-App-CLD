@@ -12,18 +12,23 @@ import MobileProspects   from './MobileProspects.jsx'
 import MobileSamples     from './MobileSamples.jsx'
 import NavIcon           from '../components/NavIcon.jsx'
 
+// Cinque schede in basso, come vuole iOS. Statistiche, Prospect, Campioni
+// e account stanno in "Altro".
 const PRIMARY_TABS = [
   { key: 'home',      label: 'Home',       icon: 'home' },
   { key: 'orders',    label: 'Ordini',     icon: 'orders' },
-  { key: 'quotes',    label: 'Prev.',      icon: 'quotes' },
+  { key: 'quotes',    label: 'Preventivi', icon: 'quotes' },
   { key: 'clients',   label: 'Clienti',    icon: 'clients' },
-  { key: 'analytics', label: 'Stats',      icon: 'analytics' },
 ]
 
 const MORE_TABS = [
-  { key: 'prospects', label: 'Prospect',   icon: 'prospects' },
-  { key: 'samples',   label: 'Campioni',   icon: 'samples' },
+  { key: 'analytics', label: 'Statistiche', icon: 'analytics' },
+  { key: 'prospects', label: 'Prospect',    icon: 'prospects' },
+  { key: 'samples',   label: 'Campioni',    icon: 'samples' },
 ]
+
+// Titolo della pagina nella testata (in Home il marchio).
+const TITLES = { orders: 'Ordini', quotes: 'Preventivi', clients: 'Clienti', analytics: 'Statistiche', prospects: 'Prospect', samples: 'Campionature' }
 
 export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, clients, prospects, onLogout, onChangePassword, onUpsertClient, onUpsertProspect, onAddActivity, onSaveActivity, onDeleteActivity, onDeleteProspect, onSetHibernated, shipments = [], onUpsertShipment, onDeleteShipment, onSampleItemOutcome, onMarkSampleReturned }) {
   const [tab, setTab]                   = useState('home')
@@ -42,8 +47,17 @@ export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, c
     })
   }, [])
 
+  // Testata grande in cima alla pagina, compatta quando si scorre.
+  const [scrolled, setScrolled]         = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const isMoreTab = MORE_TABS.some(t => t.key === tab)
-  const selectTab = (key) => { setTab(key); setMoreOpen(false) }
+  const selectTab = (key) => { setTab(key); setMoreOpen(false); window.scrollTo(0, 0) }
 
   const quotes = orders.filter(o => o.status === 'PREVENTIVO' && !o.lost)
   const activeOrders = orders.filter(o => o.status !== 'PREVENTIVO')
@@ -57,33 +71,24 @@ export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, c
     <div style={{
       minHeight: '100vh', background: '#1a2744', color: CREAM,
       display: 'flex', flexDirection: 'column',
-      paddingTop: 'env(safe-area-inset-top)',
     }}>
-      {/* Header */}
+      {/* Header: titolo della pagina, si riduce quando si scorre */}
       <div style={{
-        padding: '18px 20px 14px', borderBottom: `1px solid ${BORDER}`,
-        background: 'rgba(10,18,40,0.97)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        position: 'sticky', top: 0, zIndex: 20,
+        // Lo spazio sotto ora e Dynamic Island sta nella testata fissa: scorrendo
+        // il contenuto non ci finisce sotto.
+        padding: scrolled ? '10px 20px' : '16px 20px 14px',
+        paddingTop: `calc(${scrolled ? 10 : 16}px + env(safe-area-inset-top))`, borderBottom: `1px solid ${scrolled ? BORDER : 'transparent'}`,
+        background: 'rgba(10,18,40,0.97)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        position: 'sticky', top: 0, zIndex: 20, transition: 'padding 0.2s, border-color 0.2s',
       }}>
-        <div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 600, color: CREAM, letterSpacing: 4, lineHeight: 1 }}>DOUBLEU</div>
-          <div style={{ fontSize: 13, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginTop: 4 }}>Order View</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onChangePassword} style={{
-            background: 'transparent', border: `1px solid ${BORDER}`,
-            borderRadius: 4, color: MUTED, fontSize: 13, letterSpacing: 1.5,
-            textTransform: 'uppercase', padding: '8px 12px', minHeight: 44, cursor: 'pointer',
-            fontFamily: "'Josefin Sans', sans-serif",
-          }}>Password</button>
-          <button onClick={onLogout} style={{
-            background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.3)',
-            borderRadius: 4, color: CLAY, fontSize: 13, letterSpacing: 1.5,
-            textTransform: 'uppercase', padding: '8px 14px', minHeight: 44, cursor: 'pointer',
-            fontFamily: "'Josefin Sans', sans-serif",
-          }}>Esci</button>
-        </div>
+        {tab === 'home' ? (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: scrolled ? 22 : 28, fontWeight: 600, color: CREAM, letterSpacing: 4, lineHeight: 1.1, transition: 'font-size 0.2s' }}>DOUBLEU</div>
+            {!scrolled && <div style={{ fontSize: 12, letterSpacing: 2, color: GOLD, textTransform: 'uppercase' }}>Order View</div>}
+          </div>
+        ) : (
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: scrolled ? 22 : 32, color: CREAM, lineHeight: 1.1, transition: 'font-size 0.2s' }}>{TITLES[tab]}</div>
+        )}
       </div>
 
       {/* Content */}
@@ -128,6 +133,21 @@ export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, c
               }}>
                 <NavIcon name={t.icon} size={20}/>
                 <span style={{ fontSize: 16, letterSpacing: 1 }}>{t.label}</span>
+              </button>
+            ))}
+            <div style={{ height: 1, background: BORDER, margin: '6px 14px' }}/>
+            {[
+              { label: 'Cambia password', icon: 'key', color: CREAM, onClick: () => { setMoreOpen(false); onChangePassword() } },
+              { label: 'Esci', icon: 'logout', color: CLAY, onClick: () => { setMoreOpen(false); onLogout() } },
+            ].map(a => (
+              <button key={a.label} onClick={a.onClick} style={{
+                width: '100%', background: 'none', border: 'none',
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '13px 14px', borderRadius: 10, cursor: 'pointer', color: a.color,
+                fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
+              }}>
+                <NavIcon name={a.icon} size={20}/>
+                <span style={{ fontSize: 16, letterSpacing: 1 }}>{a.label}</span>
               </button>
             ))}
             <div style={{ textAlign: 'center', fontSize: 12, letterSpacing: 1, color: MUTED, padding: '10px 0 2px' }}>

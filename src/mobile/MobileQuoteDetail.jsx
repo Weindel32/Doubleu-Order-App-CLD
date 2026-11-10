@@ -1,4 +1,5 @@
 import { showAlert } from '../components/ConfirmDialog.jsx'
+import ContactActions from './ContactActions.jsx'
 import { eur2 } from './format.js'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
@@ -49,12 +50,12 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
     .catch(e => { console.error('Preventivo PDF:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1a2744', color: CREAM, paddingTop: 'env(safe-area-inset-top)' }}>
+    <div style={{ minHeight: '100vh', background: '#1a2744', color: CREAM }}>
 
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 16px', borderBottom: `1px solid ${BORDER}`,
+        padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', borderBottom: `1px solid ${BORDER}`,
         background: 'rgba(10,18,40,0.97)',
         position: 'sticky', top: 0, zIndex: 20,
       }}>
@@ -80,6 +81,7 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
 
       {/* Content */}
       <div style={{ padding: '0 16px', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+        <ContactActions phone={quote.clientPhone} email={quote.clientEmail} contact={quote.clientContact}/>
 
         {/* Dati */}
         {quote.orderNote && (

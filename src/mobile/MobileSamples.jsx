@@ -341,10 +341,10 @@ export default function MobileSamples({ shipments, clients, prospects, onUpsert,
   // ── Elenco ─────────────────────────────────────────────────────
   return (
     <div style={{ padding: '20px 16px 30px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, color: CREAM, letterSpacing: 1 }}>Campionature</div>
-          <div style={{ fontSize: 13, letterSpacing: 1.5, color: GOLD, textTransform: 'uppercase', marginTop: 3 }}>
+          {/* Il titolo "Campionature" e' nella testata dell'app. */}
+          <div style={{ fontSize: 13, letterSpacing: 1.5, color: GOLD, textTransform: 'uppercase' }}>
             {stats.count} invii · {euro(stats.invested)}
           </div>
         </div>
