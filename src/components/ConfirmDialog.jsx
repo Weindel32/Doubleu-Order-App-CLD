@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { CREAM, GOLD, MUTED, CLAY, GREEN, BORDER } from '../tokens.js'
+import { pfs } from '../lib/viewport.js'
 
 // Finestre nello stile dell'app al posto di window.confirm / alert / prompt,
 // che mostrano il riquadro grigio del browser con l'indirizzo del sito.
@@ -48,18 +49,18 @@ function Dialog({ title, body = [], warning, list = [], confirmLabel = 'Conferma
         padding: 'clamp(18px, 4vw, 26px)', width: 460, maxWidth: '100%', boxShadow: '0 18px 50px rgba(0,0,0,0.45)',
         fontFamily: "'Josefin Sans', sans-serif",
       }}>
-        <div style={{ fontSize: 9, letterSpacing: 3, color: MUTED, marginBottom: 6 }}>DOUBLEU · ORDER APP</div>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: CREAM, lineHeight: 1.2, marginBottom: 14 }}>{title}</div>
+        <div style={{ fontSize: pfs(9), letterSpacing: 3, color: MUTED, marginBottom: 6 }}>DOUBLEU · ORDER APP</div>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: pfs(24), color: CREAM, lineHeight: 1.2, marginBottom: 14 }}>{title}</div>
         {body.filter(Boolean).map((p, i) => (
-          <p key={i} style={{ margin: '0 0 10px', fontSize: 13, color: CREAM, lineHeight: 1.6, opacity: 0.9 }}>{p}</p>
+          <p key={i} style={{ margin: '0 0 10px', fontSize: pfs(13), color: CREAM, lineHeight: 1.6, opacity: 0.9 }}>{p}</p>
         ))}
         {list.length > 0 && (
-          <ul style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
+          <ul style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: pfs(12), color: MUTED, lineHeight: 1.6 }}>
             {list.map((l, i) => <li key={i}>{l}</li>)}
           </ul>
         )}
         {warning && (
-          <div style={{ background: 'rgba(196,98,58,0.14)', border: '1px solid rgba(196,98,58,0.45)', borderRadius: 6, padding: '10px 12px', fontSize: 12, color: CREAM, lineHeight: 1.55, margin: '4px 0 12px' }}>
+          <div style={{ background: 'rgba(196,98,58,0.14)', border: '1px solid rgba(196,98,58,0.45)', borderRadius: 6, padding: '10px 12px', fontSize: pfs(12), color: CREAM, lineHeight: 1.55, margin: '4px 0 12px' }}>
             <span style={{ color: CLAY, fontWeight: 700, letterSpacing: 1 }}>ATTENZIONE · </span>{warning}
           </div>
         )}
@@ -68,16 +69,16 @@ function Dialog({ title, body = [], warning, list = [], confirmLabel = 'Conferma
           return <Field ref={inputRef} value={text} placeholder={placeholder} onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !multiline && !okDisabled) finish(true) }}
             style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4,
-              padding: '10px 12px', color: CREAM, fontSize: 14, fontFamily: 'inherit', outline: 'none', margin: '4px 0 4px',
+              padding: '10px 12px', color: CREAM, fontSize: pfs(14), fontFamily: 'inherit', outline: 'none', margin: '4px 0 4px',
               ...(multiline ? { minHeight: 80, resize: 'vertical' } : {}) }}/>
         })()}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
           {mode !== 'alert' && <button onClick={() => finish(false)} style={{
-            padding: '10px 20px', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', borderRadius: 4, cursor: 'pointer',
+            padding: '10px 20px', fontSize: pfs(11), letterSpacing: 1.5, textTransform: 'uppercase', borderRadius: 4, cursor: 'pointer',
             background: 'transparent', border: `1px solid ${BORDER}`, color: MUTED, fontFamily: 'inherit',
           }}>{cancelLabel}</button>}
           <button ref={okRef} disabled={okDisabled} onClick={() => finish(true)} style={{
-            padding: '10px 22px', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, borderRadius: 4,
+            padding: '10px 22px', fontSize: pfs(11), letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, borderRadius: 4,
             cursor: okDisabled ? 'default' : 'pointer', opacity: okDisabled ? 0.45 : 1,
             background: color, border: `1px solid ${color}`, color: '#fff', fontFamily: 'inherit',
           }}>{confirmLabel}</button>

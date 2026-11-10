@@ -8,6 +8,7 @@ import {
   buildFormLines, initialFormSizes, createOrderForm, setOrderFormStatus, patchOrderForm, applyFormToOrder, notifyFormApplied, syncFormLabels, notifyRequestDone, sendFormEmail,
   formUrl, logFormSend, lastSendText, formActivity, SEND_CHANNEL_LABEL, linePieces, formPieces, lineDiff, LOCKING_STATUSES, GRIDS, GRID_LABEL, formStage,
 } from '../lib/orderForms.js'
+import { pfs } from '../lib/viewport.js'
 
 // Modulo taglie da mandare al cliente, per un ordine: crea il link,
 // lo condivide, e quando il cliente ha inviato mostra le taglie accanto a
@@ -43,7 +44,7 @@ function SendCheck({ order, form, phone, email, onPreview }) {
   const expected = lines.reduce((t, l) => t + (l.expected || 0), 0)
   const first = order.clientContact ? order.clientContact.split(' ')[0] : ''
   const row = (label, value, warn) => (
-    <div style={{ display: 'flex', gap: 10, fontSize: 12, lineHeight: 1.5, padding: '3px 0' }}>
+    <div style={{ display: 'flex', gap: 10, fontSize: pfs(12), lineHeight: 1.5, padding: '3px 0' }}>
       <span style={{ width: 92, flexShrink: 0, color: MUTED }}>{label}</span>
       <span style={{ color: warn ? CLAY : CREAM }}>{value}</span>
     </div>
@@ -56,7 +57,7 @@ function SendCheck({ order, form, phone, email, onPreview }) {
   return (
     <div style={{ background: 'rgba(184,150,90,0.08)', border: `1px solid rgba(184,150,90,0.35)`, borderRadius: 6, padding: '12px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <div style={{ flex: 1, fontSize: 10, letterSpacing: 1.5, color: GOLD, textTransform: 'uppercase' }}>Controllo prima dell'invio</div>
+        <div style={{ flex: 1, fontSize: pfs(10), letterSpacing: 1.5, color: GOLD, textTransform: 'uppercase' }}>Controllo prima dell'invio</div>
         <button style={btn(GOLD, true)} onClick={onPreview}>Anteprima</button>
       </div>
       {row('Articoli', `${lines.length}${grids ? ` · ${grids}` : ''}`)}
@@ -75,16 +76,16 @@ const fmtDateTime = (iso) => iso ? new Date(iso).toLocaleString('it-IT', {
 }) : ''
 
 const chip = (on, color = GOLD) => ({
-  padding: '4px 10px', borderRadius: 3, fontSize: 10, letterSpacing: 1, cursor: 'pointer',
+  padding: '4px 10px', borderRadius: 3, fontSize: pfs(10), letterSpacing: 1, cursor: 'pointer',
   border: `1px solid ${on ? color : BORDER}`, background: on ? 'rgba(184,150,90,0.14)' : 'transparent',
   color: on ? CREAM : MUTED,
 })
 const linkBtn = {
-  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11, letterSpacing: 0.5,
+  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: pfs(11), letterSpacing: 0.5,
   color: GOLD, textDecoration: 'underline', fontFamily: 'inherit',
 }
 const btn = (color, filled) => ({
-  padding: '9px 16px', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600,
+  padding: '9px 16px', fontSize: pfs(10), letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600,
   borderRadius: 4, cursor: 'pointer', border: `1px solid ${color}`,
   background: filled ? color : 'transparent', color: filled ? '#fff' : color,
 })
@@ -187,19 +188,19 @@ function Setup({ order, onCreated }) {
     onCreated(form)
   }
 
-  if (!base.length) return <div style={{ color: MUTED, fontSize: 12 }}>L'ordine non ha articoli: aggiungili prima di creare il modulo.</div>
+  if (!base.length) return <div style={{ color: MUTED, fontSize: pfs(12) }}>L'ordine non ha articoli: aggiungili prima di creare il modulo.</div>
 
   return (
     <>
-      <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6 }}>
+      <div style={{ fontSize: pfs(11), color: MUTED, lineHeight: 1.6 }}>
         Il cliente vedrà solo questi articoli e le griglie scelte, senza prezzi. Le taglie escluse non le vede.
       </div>
       <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, overflowY: 'auto', maxHeight: 340 }}>
         {base.map(l => (
           <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: CREAM }}>{l.description || l.category || 'Articolo'} <span style={{ color: CLAY }}>{l.color}</span></div>
-              <div style={{ fontSize: 10, color: MUTED }}>{[l.sp, l.kit, l.expected ? `${l.expected} pz previsti` : null].filter(Boolean).join(' · ')}</div>
+              <div style={{ fontSize: pfs(13), color: CREAM }}>{l.description || l.category || 'Articolo'} <span style={{ color: CLAY }}>{l.color}</span></div>
+              <div style={{ fontSize: pfs(10), color: MUTED }}>{[l.sp, l.kit, l.expected ? `${l.expected} pz previsti` : null].filter(Boolean).join(' · ')}</div>
             </div>
             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
               {GRIDS.map(g => (
@@ -208,8 +209,8 @@ function Setup({ order, onCreated }) {
               ))}
             </div>
             {grids[l.key].some(g => g !== 'uni') && (
-              <div style={{ flexBasis: '100%', fontSize: 10, color: MUTED, display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <button style={{ ...linkBtn, fontSize: 10 }} onClick={() => toggleOpen(l.key)}>
+              <div style={{ flexBasis: '100%', fontSize: pfs(10), color: MUTED, display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                <button style={{ ...linkBtn, fontSize: pfs(10) }} onClick={() => toggleOpen(l.key)}>
                   {openSizes.has(l.key) ? 'Chiudi taglie' : 'Taglie disponibili'}
                 </button>
                 {excludeText(l.key) && <span style={{ color: CLAY }}>escluse: {excludeText(l.key)}</span>}
@@ -217,7 +218,7 @@ function Setup({ order, onCreated }) {
             )}
             {openSizes.has(l.key) && ['kids', 'adult'].filter(g => grids[l.key].includes(g)).map(g => (
               <div key={g} style={{ flexBasis: '100%', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ width: 52, fontSize: 9, letterSpacing: 1, color: MUTED, textTransform: 'uppercase' }}>{GRID_LABEL[g]}</span>
+                <span style={{ width: 52, fontSize: pfs(9), letterSpacing: 1, color: MUTED, textTransform: 'uppercase' }}>{GRID_LABEL[g]}</span>
                 {(g === 'adult' ? ADULT_SIZES : KIDS_SIZES).map(sz => {
                   const on = !(excludes[l.key]?.[g] || []).includes(sz)
                   return (
@@ -231,17 +232,17 @@ function Setup({ order, onCreated }) {
           </div>
         ))}
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: CREAM, cursor: 'pointer' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: pfs(12), color: CREAM, cursor: 'pointer' }}>
         <input type="checkbox" checked={prefill} onChange={e => setPrefill(e.target.checked)} style={{ accentColor: GOLD }}/>
         Parti dalle taglie già inserite nell'ordine
       </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: MUTED, flexWrap: 'wrap' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: pfs(12), color: MUTED, flexWrap: 'wrap' }}>
         Compilabile fino al
         <input type="date" value={expiry} onChange={e => setExpiry(e.target.value)}
-          style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '6px 10px', color: CREAM, colorScheme: 'dark', fontSize: 12 }}/>
-        <span style={{ fontSize: 10 }}>{expiry ? '' : 'nessuna scadenza'}</span>
+          style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '6px 10px', color: CREAM, colorScheme: 'dark', fontSize: pfs(12) }}/>
+        <span style={{ fontSize: pfs(10) }}>{expiry ? '' : 'nessuna scadenza'}</span>
       </label>
-      {err && <div style={{ color: CLAY, fontSize: 12 }}>{err}</div>}
+      {err && <div style={{ color: CLAY, fontSize: pfs(12) }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         <button style={btn(MUTED, false)} onClick={openPreview}>Anteprima</button>
         <button style={btn(GOLD, false)} disabled={busy} onClick={create}>{busy ? 'Creazione…' : 'Crea link per il cliente'}</button>
@@ -255,20 +256,20 @@ function Setup({ order, onCreated }) {
 // SMS: che il messaggio sia partito davvero lo sa solo WhatsApp.
 function SentLog({ log }) {
   const [all, setAll] = useState(false)
-  if (!log?.length) return <div style={{ fontSize: 11, color: MUTED, marginBottom: 12 }}>Non ancora inviato al cliente.</div>
+  if (!log?.length) return <div style={{ fontSize: pfs(11), color: MUTED, marginBottom: 12 }}>Non ancora inviato al cliente.</div>
   const items = [...log].reverse()
   const shown = all ? items : items.slice(0, 3)
   return (
     <div style={{ marginBottom: 12 }}>
       {shown.map((e, i) => (
-        <div key={i} style={{ fontSize: 11, color: CREAM, lineHeight: 1.6 }}>
+        <div key={i} style={{ fontSize: pfs(11), color: CREAM, lineHeight: 1.6 }}>
           <span style={{ color: GREEN }}>✓</span> {SEND_CHANNEL_LABEL[e.channel] || e.channel}{e.to ? ` a ${e.to}` : ''}
           <span style={{ color: MUTED }}> · {fmtDateTime(e.at)}</span>
         </div>
       ))}
       {items.length > 3 && (
         <span role="button" tabIndex={0} onClick={() => setAll(!all)} onKeyDown={e => e.key === 'Enter' && setAll(!all)}
-          style={{ fontSize: 10, color: MUTED, cursor: 'pointer', textDecoration: 'underline' }}>
+          style={{ fontSize: pfs(10), color: MUTED, cursor: 'pointer', textDecoration: 'underline' }}>
           {all ? 'mostra meno' : `altri ${items.length - 3} invii`}
         </span>
       )}
@@ -304,31 +305,31 @@ function LinkBox({ order, form, onChange, onPreview }) {
     <>
     {firstSend && <SendCheck order={order} form={form} phone={phone} email={email} onPreview={onPreview}/>}
     <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: 12 }}>
-      <div style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all', marginBottom: 8 }}>{url}</div>
+      <div style={{ fontSize: pfs(11), color: GOLD, wordBreak: 'break-all', marginBottom: 8 }}>{url}</div>
       <SentLog log={form.sent_log}/>
-      <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6 }}>Invia al numero</label>
+      <label style={{ display: 'block', fontSize: pfs(10), letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6 }}>Invia al numero</label>
       <input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)}
         placeholder="es. 333 123 4567 oppure +41 79…"
-        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '10px 12px', color: CREAM, fontSize: 16, marginBottom: 10, outline: 'none' }}/>
+        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '10px 12px', color: CREAM, fontSize: pfs(16), marginBottom: 10, outline: 'none' }}/>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <a style={{ ...btn(GREEN, validPhone), textDecoration: 'none' }} href={whatsappHref(order, url, phone)} target="_blank" rel="noreferrer" onClick={() => log('whatsapp', phone)}>WhatsApp</a>
         <a style={{ ...btn(GREEN, false), textDecoration: 'none' }} href={smsHref(order, url, phone)} onClick={() => log('sms', phone)}>SMS</a>
       </div>
-      <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', margin: '14px 0 6px' }}>Invia all'email</label>
+      <label style={{ display: 'block', fontSize: pfs(10), letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', margin: '14px 0 6px' }}>Invia all'email</label>
       <input type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}
         placeholder="es. segreteria@tennisclub.it"
-        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '10px 12px', color: CREAM, fontSize: 16, marginBottom: 10, outline: 'none' }}/>
+        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 4, padding: '10px 12px', color: CREAM, fontSize: pfs(16), marginBottom: 10, outline: 'none' }}/>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         <button style={btn(GOLD, validEmail && mail.state !== 'sending')} disabled={!validEmail || mail.state === 'sending'} onClick={sendMail}>
           {mail.state === 'sending' ? 'Invio…' : mail.state === 'sent' ? 'Invia di nuovo' : 'Invia email'}
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: MUTED, cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: pfs(11), color: MUTED, cursor: 'pointer' }}>
           <input type="checkbox" checked={copyToMe} onChange={e => setCopyToMe(e.target.checked)} style={{ accentColor: GOLD }}/>
           copia a me
         </label>
-        <a style={{ fontSize: 11, color: MUTED, alignSelf: 'center', marginLeft: 'auto' }} href={mailHref(order, url, email)} onClick={() => log('posta', email)}>oppure dalla mia posta</a>
+        <a style={{ fontSize: pfs(11), color: MUTED, alignSelf: 'center', marginLeft: 'auto' }} href={mailHref(order, url, email)} onClick={() => log('posta', email)}>oppure dalla mia posta</a>
       </div>
-      {mail.msg && <div style={{ fontSize: 12, color: mail.state === 'sent' ? GREEN : CLAY, marginTop: -6, marginBottom: 12 }}>{mail.state === 'sent' ? '✓ ' : ''}{mail.msg}</div>}
+      {mail.msg && <div style={{ fontSize: pfs(12), color: mail.state === 'sent' ? GREEN : CLAY, marginTop: -6, marginBottom: 12 }}>{mail.state === 'sent' ? '✓ ' : ''}{mail.msg}</div>}
       {canShare && (
         <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
           <button style={btn(CREAM, false)} onClick={share}>Condividi…</button>
@@ -354,14 +355,14 @@ function Comparison({ order, form }) {
         return (
           <div key={l.key} style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-              <div style={{ fontSize: 13, color: CREAM }}>{l.description || l.category} <span style={{ color: CLAY }}>{l.color}</span></div>
-              <div style={{ fontSize: 13, color: l.expected && n !== l.expected ? CLAY : GOLD, whiteSpace: 'nowrap' }}>
-                {n} pz{l.expected ? <span style={{ color: MUTED, fontSize: 10 }}> / {l.expected}</span> : null}
+              <div style={{ fontSize: pfs(13), color: CREAM }}>{l.description || l.category} <span style={{ color: CLAY }}>{l.color}</span></div>
+              <div style={{ fontSize: pfs(13), color: l.expected && n !== l.expected ? CLAY : GOLD, whiteSpace: 'nowrap' }}>
+                {n} pz{l.expected ? <span style={{ color: MUTED, fontSize: pfs(10) }}> / {l.expected}</span> : null}
               </div>
             </div>
-            <div style={{ fontSize: 11, color: CREAM, marginTop: 3 }}>Cliente: {sizesText(l.grids, form.sizes?.[l.key])}</div>
-            {base && (d => d && <div style={{ fontSize: 11, color: GOLD, marginTop: 2 }}>Variazioni{form.applied_sizes ? ' rispetto all\'ordine' : ' rispetto all\'invio precedente'}: {d}</div>)(lineDiff(l, base, form.sizes))}
-            {cur && artPieceCount(cur) > 0 && <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Ordine ora: {sizesText(GRIDS, cur.sizes)}</div>}
+            <div style={{ fontSize: pfs(11), color: CREAM, marginTop: 3 }}>Cliente: {sizesText(l.grids, form.sizes?.[l.key])}</div>
+            {base && (d => d && <div style={{ fontSize: pfs(11), color: GOLD, marginTop: 2 }}>Variazioni{form.applied_sizes ? ' rispetto all\'ordine' : ' rispetto all\'invio precedente'}: {d}</div>)(lineDiff(l, base, form.sizes))}
+            {cur && artPieceCount(cur) > 0 && <div style={{ fontSize: pfs(10), color: MUTED, marginTop: 2 }}>Ordine ora: {sizesText(GRIDS, cur.sizes)}</div>}
           </div>
         )
       })}
@@ -457,14 +458,14 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
       <div onClick={e => e.stopPropagation()} style={{ background: '#1e2d50', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 'clamp(16px, 4vw, 28px)', width: 620, maxWidth: '96vw', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 9, letterSpacing: 3, color: MUTED, marginBottom: 4 }}>MODULO TAGLIE CLIENTE</div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, color: CREAM }}>{order.client}</div>
-            <div style={{ fontSize: 11, color: MUTED }}>{order.id}</div>
+            <div style={{ fontSize: pfs(9), letterSpacing: 3, color: MUTED, marginBottom: 4 }}>MODULO TAGLIE CLIENTE</div>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: pfs(22), color: CREAM }}>{order.client}</div>
+            <div style={{ fontSize: pfs(11), color: MUTED }}>{order.id}</div>
           </div>
           {form && !fresh && (() => {
             const stage = formStage(form)
             const bg = { muted: MUTED, gold: '#8c7244', green: GREEN, blue: '#53769e', clay: CLAY }[stage.tone]
-            return <span title={stage.text} style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', padding: '4px 10px', borderRadius: 2, color: '#fff', background: bg, whiteSpace: 'nowrap' }}>{stage.badge}</span>
+            return <span title={stage.text} style={{ fontSize: pfs(9), letterSpacing: 1.5, textTransform: 'uppercase', padding: '4px 10px', borderRadius: 2, color: '#fff', background: bg, whiteSpace: 'nowrap' }}>{stage.badge}</span>
           })()}
         </div>
 
@@ -479,10 +480,10 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
                 rari stanno nella riga in fondo. */}
             {form.change_request && (
               <div style={{ background: 'rgba(196,98,58,0.12)', border: '1px solid rgba(196,98,58,0.4)', borderRadius: 6, padding: '12px 14px' }}>
-                <div style={{ fontSize: 10, letterSpacing: 1.5, color: CLAY, textTransform: 'uppercase', marginBottom: 6 }}>
+                <div style={{ fontSize: pfs(10), letterSpacing: 1.5, color: CLAY, textTransform: 'uppercase', marginBottom: 6 }}>
                   Richiesta del cliente · {fmtDateTime(form.change_requested_at)}
                 </div>
-                <div style={{ fontSize: 13, color: CREAM, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{form.change_request}</div>
+                <div style={{ fontSize: pfs(13), color: CREAM, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{form.change_request}</div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
                   <button style={btn(CLAY, false)} disabled={busy} onClick={requestDone}>Segna come gestita</button>
                 </div>
@@ -498,7 +499,7 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
               </>
             ) : (
               <div style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: '12px 14px' }}>
-                <div style={{ fontSize: 13, color: CREAM, lineHeight: 1.6 }}>
+                <div style={{ fontSize: pfs(13), color: CREAM, lineHeight: 1.6 }}>
                   {lastSendText(form) ? <>Inviato via {lastSendText(form)}</> : 'Link creato'}
                   <span style={{ color: MUTED }}>
                     {' · '}{form.applied_at ? 'il cliente sta correggendo le taglie già applicate' : 'il cliente non ha ancora inviato'}
@@ -507,12 +508,12 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
                 {(() => {
                   const act = formActivity(form)
                   return act && (
-                    <div style={{ fontSize: 12, color: { stale: CLAY, unopened: '#e8c96e', opened: GOLD, filling: GREEN }[act.kind] || MUTED, marginTop: 6 }}>
+                    <div style={{ fontSize: pfs(12), color: { stale: CLAY, unopened: '#e8c96e', opened: GOLD, filling: GREEN }[act.kind] || MUTED, marginTop: 6 }}>
                       {act.text}<span style={{ color: MUTED }}> · {act.when}</span>
                     </div>
                   )
                 })()}
-                {form.expires_at && <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>Scade il {new Date(form.expires_at).toLocaleDateString('it-IT')}</div>}
+                {form.expires_at && <div style={{ fontSize: pfs(11), color: MUTED, marginTop: 4 }}>Scade il {new Date(form.expires_at).toLocaleDateString('it-IT')}</div>}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                   <button style={btn(GOLD, false)} onClick={() => setSendOpen(true)}>Invia di nuovo</button>
                   <button style={btn(MUTED, false)} onClick={() => setPreview(true)}>Anteprima</button>
@@ -522,7 +523,7 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
 
             {(status === 'inviato' || status === 'applicato') && (
               <>
-                <div style={{ fontSize: 12, color: CREAM, lineHeight: 1.6 }}>
+                <div style={{ fontSize: pfs(12), color: CREAM, lineHeight: 1.6 }}>
                   {status === 'applicato' ? 'Applicate all\'ordine. ' : ''}Inviate {fmtDateTime(form.submitted_at)}{form.contact_name ? ` da ${form.contact_name}` : ''} · <b>{formPieces(form.lines, form.sizes)} pezzi</b>
                   {form.client_note && <div style={{ color: MUTED, marginTop: 6, whiteSpace: 'pre-wrap' }}>Nota: {form.client_note}</div>}
                 </div>
@@ -535,10 +536,10 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
                 )}
               </>
             )}
-            {msg && <div style={{ fontSize: 12, color: msg.startsWith('Taglie applicate') ? GREEN : CLAY }}>{msg}</div>}
+            {msg && <div style={{ fontSize: pfs(12), color: msg.startsWith('Taglie applicate') ? GREEN : CLAY }}>{msg}</div>}
 
             {/* Comandi rari */}
-            <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 11, color: MUTED }}>
+            <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: pfs(11), color: MUTED }}>
               <span style={{ flex: '1 1 220px' }}>
                 {locking
                   ? <>Modifiche del cliente <b style={{ color: CLAY }}>bloccate</b>: ordine {order.status.toLowerCase()}.</>
@@ -555,7 +556,7 @@ export default function OrderFormModal({ order, form: initialForm, onClose, onFo
           </>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 18px', fontSize: 11, letterSpacing: 1, background: 'transparent', border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 4, cursor: 'pointer' }}>Chiudi</button>
+          <button onClick={onClose} style={{ padding: '8px 18px', fontSize: pfs(11), letterSpacing: 1, background: 'transparent', border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 4, cursor: 'pointer' }}>Chiudi</button>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN } from '../tokens.js'
 import { btnGoldStyle } from '../tokens.js'
 import { fetchContactRequests, setContactRequestStatus } from '../lib/dataService.js'
 import { syncWebLeadToProspectFinder, webLeadSyncMessage } from '../lib/prospectFinder.js'
+import { pfs } from '../lib/viewport.js'
 
 // Richieste arrivate dal modulo contatti di doubleutennis.com.
 //
@@ -21,7 +22,7 @@ const fmtDate = (iso) => new Date(iso).toLocaleString('it-IT', {
 })
 
 const chip = (color, bg, border) => ({
-  display:'inline-block', padding:'2px 8px', borderRadius:2, fontSize:9, letterSpacing:1.2,
+  display:'inline-block', padding:'2px 8px', borderRadius:2, fontSize:pfs(9), letterSpacing:1.2,
   color, background:bg, border:`1px solid ${border}`, textTransform:'uppercase',
 })
 
@@ -46,14 +47,14 @@ function RequestCard({ r, prospects, busy, mobile, onConvert, onArchive, onResto
       <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'flex-start' }}>
         <div style={{ minWidth:0, flex:'1 1 240px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize: mobile ? 18 : 20, color:CREAM }}>
+            <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize: pfs(mobile ? 18 : 20), color:CREAM }}>
               {r.name}{r.club ? <span style={{ color:MUTED }}>{'  ·  '}{r.club}</span> : null}
             </span>
             {r.status === 'nuova'      && <span style={chip(GOLD, 'rgba(184,150,90,0.15)', 'rgba(184,150,90,0.35)')}>nuova</span>}
             {r.status === 'convertita' && <span style={chip(GREEN, 'rgba(74,158,110,0.15)', 'rgba(74,158,110,0.35)')}>in pipeline</span>}
             {r.status === 'archiviata' && <span style={chip(MUTED, 'rgba(138,154,181,0.12)', 'rgba(138,154,181,0.3)')}>archiviata</span>}
           </div>
-          <div style={{ fontSize:11, color:MUTED, marginTop:5, display:'flex', gap:10, flexWrap:'wrap' }}>
+          <div style={{ fontSize:pfs(11), color:MUTED, marginTop:5, display:'flex', gap:10, flexWrap:'wrap' }}>
             <span>{fmtDate(r.created_at)}</span>
             <span>{SOURCE_LABEL[r.source] || r.source}</span>
             {r.request_type && <span>{TYPE_LABEL[r.request_type] || r.request_type}</span>}
@@ -65,32 +66,32 @@ function RequestCard({ r, prospects, busy, mobile, onConvert, onArchive, onResto
         <div style={{ display:'flex', gap:6, flexShrink:0 }}>
           {r.status === 'nuova' && (
             <>
-              <button disabled={busy} style={{ ...btnGoldStyle, padding:'6px 14px', fontSize:9 }} onClick={() => onConvert(r)}>
+              <button disabled={busy} style={{ ...btnGoldStyle, padding:'6px 14px', fontSize:pfs(9) }} onClick={() => onConvert(r)}>
                 Converti in prospect
               </button>
               <button disabled={busy} onClick={() => onArchive(r)}
-                style={{ padding:'6px 14px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:`1px solid ${BORDER}`, color:MUTED, textTransform:'uppercase' }}>
+                style={{ padding:'6px 14px', fontSize:pfs(9), letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:`1px solid ${BORDER}`, color:MUTED, textTransform:'uppercase' }}>
                 Archivia
               </button>
             </>
           )}
           {r.status === 'convertita' && linked && (
-            <button style={{ ...btnGoldStyle, padding:'6px 14px', fontSize:9 }} onClick={() => onOpenProspect(linked.id)}>
+            <button style={{ ...btnGoldStyle, padding:'6px 14px', fontSize:pfs(9) }} onClick={() => onOpenProspect(linked.id)}>
               Apri prospect
             </button>
           )}
           {r.status === 'archiviata' && (
             <button disabled={busy} onClick={() => onRestore(r)}
-              style={{ padding:'6px 14px', fontSize:9, letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:`1px solid ${BORDER}`, color:MUTED, textTransform:'uppercase' }}>
+              style={{ padding:'6px 14px', fontSize:pfs(9), letterSpacing:1.5, cursor:'pointer', borderRadius:3, background:'transparent', border:`1px solid ${BORDER}`, color:MUTED, textTransform:'uppercase' }}>
               Rimetti tra le nuove
             </button>
           )}
         </div>
       </div>
 
-      <div style={{ fontSize:13, color:CREAM, lineHeight:1.6, marginTop:12, whiteSpace:'pre-line', opacity:0.92 }}>{text}</div>
+      <div style={{ fontSize:pfs(13), color:CREAM, lineHeight:1.6, marginTop:12, whiteSpace:'pre-line', opacity:0.92 }}>{text}</div>
       {long && (
-        <button onClick={() => setOpen(o => !o)} style={{ background:'none', border:'none', color:GOLD, fontSize:10, letterSpacing:1.5, cursor:'pointer', padding:'6px 0 0', textTransform:'uppercase' }}>
+        <button onClick={() => setOpen(o => !o)} style={{ background:'none', border:'none', color:GOLD, fontSize:pfs(10), letterSpacing:1.5, cursor:'pointer', padding:'6px 0 0', textTransform:'uppercase' }}>
           {open ? 'Riduci' : 'Leggi tutto'}
         </button>
       )}
@@ -172,17 +173,17 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginBottom: expanded ? 12 : 0, flexWrap:'wrap' }}>
         <button onClick={() => setExpanded(e => !e)}
           style={{ background:'none', border:'none', padding:0, cursor:'pointer', display:'flex', alignItems:'center', gap:10 }}>
-          <span style={{ fontSize:11, letterSpacing:2, color:GOLD, textTransform:'uppercase' }}>Richieste dal sito</span>
+          <span style={{ fontSize:pfs(11), letterSpacing:2, color:GOLD, textTransform:'uppercase' }}>Richieste dal sito</span>
           {nuove.length > 0 && (
-            <span style={{ minWidth:20, height:20, padding:'0 6px', borderRadius:10, background:CLAY, color:'#fff', fontSize:11, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
+            <span style={{ minWidth:20, height:20, padding:'0 6px', borderRadius:10, background:CLAY, color:'#fff', fontSize:pfs(11), fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
               {nuove.length}
             </span>
           )}
-          <span style={{ color:MUTED, fontSize:11 }}>{expanded ? '▾' : '▸'}</span>
+          <span style={{ color:MUTED, fontSize:pfs(11) }}>{expanded ? '▾' : '▸'}</span>
         </button>
         {expanded && (
           <button onClick={() => setShowAll(v => !v)}
-            style={{ background:'none', border:'none', color:MUTED, fontSize:10, letterSpacing:1.5, cursor:'pointer', textTransform:'uppercase' }}>
+            style={{ background:'none', border:'none', color:MUTED, fontSize:pfs(10), letterSpacing:1.5, cursor:'pointer', textTransform:'uppercase' }}>
             {showAll ? 'Solo nuove' : `Archivio (${requests.length})`}
           </button>
         )}
@@ -190,15 +191,15 @@ export default function WebRequests({ prospects, onUpsert, onAddActivity, onOpen
 
       {expanded && (
         <>
-          {error && <div style={{ fontSize:12, color:CLAY, marginBottom:10 }}>{error}</div>}
+          {error && <div style={{ fontSize:pfs(12), color:CLAY, marginBottom:10 }}>{error}</div>}
           {notice && (
-            <div style={{ fontSize:12, color: notice.warn ? CLAY : GREEN, marginBottom:10, lineHeight:1.5 }}>
+            <div style={{ fontSize:pfs(12), color: notice.warn ? CLAY : GREEN, marginBottom:10, lineHeight:1.5 }}>
               {notice.text}
-              <button onClick={() => setNotice(null)} style={{ background:'none', border:'none', color:MUTED, cursor:'pointer', marginLeft:8, fontSize:12 }}>×</button>
+              <button onClick={() => setNotice(null)} style={{ background:'none', border:'none', color:MUTED, cursor:'pointer', marginLeft:8, fontSize:pfs(12) }}>×</button>
             </div>
           )}
           {visible.length === 0 ? (
-            <div style={{ fontSize:12, color:MUTED, padding:'4px 0' }}>Nessuna richiesta da smistare.</div>
+            <div style={{ fontSize:pfs(12), color:MUTED, padding:'4px 0' }}>Nessuna richiesta da smistare.</div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {visible.map(r => (
