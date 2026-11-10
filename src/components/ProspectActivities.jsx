@@ -9,6 +9,7 @@ import {
   hasDirection, activityLabel, todayISO, fmtDay, actDay, isPlanned, isReplaced,
   doneActivities, plannedActivities, lastActivity, nextStep, suggestedStage, byRecent,
 } from '../lib/activities.js'
+import { pfs } from '../lib/viewport.js'
 
 // Registro attività di un prospect, condiviso da desktop e mobile.
 //
@@ -24,7 +25,7 @@ export function OutcomeBadge({ outcome, mobile }) {
   const cfg = OUTCOME_CFG[outcome]
   if (!cfg) return null
   return (
-    <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:2, fontSize: mobile ? 10 : 9, letterSpacing:1.2, textTransform:'uppercase', whiteSpace:'nowrap', color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}` }}>
+    <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:2, fontSize: pfs(mobile ? 10 : 9), letterSpacing:1.2, textTransform:'uppercase', whiteSpace:'nowrap', color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}` }}>
       {OUTCOME_LABELS[outcome]}
     </span>
   )
@@ -43,7 +44,7 @@ export function ActivitySummary({ prospect, mobile }) {
   const fs     = mobile ? 12 : 11
   const dueDay = next ? actDay(next) : legacy
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop: mobile ? 8 : 7, fontSize:fs, minWidth:0 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop: mobile ? 8 : 7, fontSize:pfs(fs), minWidth:0 }}>
       {last && (
         <div style={{ display:'flex', alignItems:'center', gap:7, color:MUTED, minWidth:0 }}>
           <span style={{ color:GOLD, display:'inline-flex' }}><ActIcon type={last.type} size={12}/></span>
@@ -73,26 +74,26 @@ function styles(mobile) {
       input: { ...s.input, boxSizing:'border-box' },
       triggerStyle: { boxSizing:'border-box' },
       box: { marginBottom:16, padding:14, background:'rgba(255,255,255,0.03)', borderRadius:8, border:`1px solid ${BORDER}` },
-      primary: { ...btnGoldStyle, padding:'6px 18px', fontSize:9 },
-      ghost:   { ...btnStyle(false), padding:'6px 14px', fontSize:9 },
-      small:   { ...btnGoldStyle, padding:'3px 10px', fontSize:9 },
+      primary: { ...btnGoldStyle, padding:'6px 18px', fontSize:pfs(9) },
+      ghost:   { ...btnStyle(false), padding:'6px 14px', fontSize:pfs(9) },
+      small:   { ...btnGoldStyle, padding:'3px 10px', fontSize:pfs(9) },
       text: 12, meta: 10, section: 9,
     }
   }
   const input = {
     width:'100%', boxSizing:'border-box', background:'rgba(255,255,255,0.04)', border:`1px solid ${BORDER}`,
-    borderRadius:6, padding:'12px 14px', color:CREAM, fontSize:14, letterSpacing:0.3,
+    borderRadius:6, padding:'12px 14px', color:CREAM, fontSize:pfs(14), letterSpacing:0.3,
     outline:'none', fontFamily:"'Josefin Sans', sans-serif", colorScheme:'dark',
   }
-  const btn = { flex:1, padding:'13px', borderRadius:6, fontSize:12, letterSpacing:2, textTransform:'uppercase', cursor:'pointer', fontFamily:"'Josefin Sans', sans-serif", WebkitTapHighlightColor:'transparent' }
+  const btn = { flex:1, padding:'13px', borderRadius:6, fontSize:pfs(12), letterSpacing:2, textTransform:'uppercase', cursor:'pointer', fontFamily:"'Josefin Sans', sans-serif", WebkitTapHighlightColor:'transparent' }
   return {
-    label: { fontSize:11, letterSpacing:2, color:MUTED, textTransform:'uppercase', marginBottom:6, display:'block' },
+    label: { fontSize:pfs(11), letterSpacing:2, color:MUTED, textTransform:'uppercase', marginBottom:6, display:'block' },
     input,
     triggerStyle: input,
     box: { background:'rgba(255,255,255,0.03)', border:`1px solid ${BORDER}`, borderRadius:10, padding:14, marginBottom:14 },
     primary: { ...btn, flex:2, background:GOLD, border:'none', color:NAVY, fontWeight:600 },
     ghost:   { ...btn, background:'transparent', border:`1px solid ${BORDER}`, color:MUTED },
-    small:   { background:'rgba(184,150,90,0.12)', border:`1px solid ${GOLD}`, borderRadius:5, color:GOLD, fontSize:11, letterSpacing:1.5, textTransform:'uppercase', padding:'6px 10px', cursor:'pointer', fontFamily:"'Josefin Sans', sans-serif", WebkitTapHighlightColor:'transparent' },
+    small:   { background:'rgba(184,150,90,0.12)', border:`1px solid ${GOLD}`, borderRadius:5, color:GOLD, fontSize:pfs(11), letterSpacing:1.5, textTransform:'uppercase', padding:'6px 10px', cursor:'pointer', fontFamily:"'Josefin Sans', sans-serif", WebkitTapHighlightColor:'transparent' },
     text: 13, meta: 12, section: 11,
   }
 }
@@ -138,9 +139,9 @@ function ActivityForm({ prospect, initial, showReward, mobile, onSave, onCancel 
 
   return (
     <div style={st.box}>
-      <div style={{ fontSize: st.section, color:GOLD, letterSpacing:2, textTransform:'uppercase', marginBottom:10 }}>{title}</div>
+      <div style={{ fontSize: pfs(st.section), color:GOLD, letterSpacing:2, textTransform:'uppercase', marginBottom:10 }}>{title}</div>
       {f.mode === 'complete' && (
-        <div style={{ fontSize: st.meta, color:MUTED, marginBottom:10 }}>
+        <div style={{ fontSize: pfs(st.meta), color:MUTED, marginBottom:10 }}>
           Previsto entro {fmtDay(f.plannedDate)} — il promemoria su Todoist si chiude.
         </div>
       )}
@@ -203,7 +204,7 @@ function ActivityForm({ prospect, initial, showReward, mobile, onSave, onCancel 
 
       {withStep && (
         <div style={{ ...row, paddingTop:10, borderTop:`1px solid ${BORDER}` }}>
-          <label style={{ display:'flex', alignItems:'center', gap:10, fontSize: st.text, color:CREAM, cursor:'pointer', marginBottom: f.step.enabled ? 10 : 0 }}>
+          <label style={{ display:'flex', alignItems:'center', gap:10, fontSize: pfs(st.text), color:CREAM, cursor:'pointer', marginBottom: f.step.enabled ? 10 : 0 }}>
             <input type="checkbox" checked={f.step.enabled} onChange={e => setStep('enabled', e.target.checked)}
               style={{ width:16, height:16, accentColor:GOLD, cursor:'pointer' }}/>
             Prossimo passo
@@ -229,7 +230,7 @@ function ActivityForm({ prospect, initial, showReward, mobile, onSave, onCancel 
       )}
 
       {offersReplace && (
-        <label style={{ display:'flex', alignItems:'flex-start', gap:10, fontSize: st.meta + 1, color:MUTED, cursor:'pointer', ...row }}>
+        <label style={{ display:'flex', alignItems:'flex-start', gap:10, fontSize: pfs(st.meta + 1), color:MUTED, cursor:'pointer', ...row }}>
           <input type="checkbox" checked={f.replace} onChange={e => set('replace', e.target.checked)}
             style={{ width:16, height:16, accentColor:GOLD, cursor:'pointer', marginTop:1, flexShrink:0 }}/>
           <span>
@@ -238,7 +239,7 @@ function ActivityForm({ prospect, initial, showReward, mobile, onSave, onCancel 
         </label>
       )}
 
-      {error && <div style={{ fontSize: st.meta + 1, color:'#ef4444', marginBottom:10 }}>{error}</div>}
+      {error && <div style={{ fontSize: pfs(st.meta + 1), color:'#ef4444', marginBottom:10 }}>{error}</div>}
       <div style={{ display:'flex', gap: mobile ? 10 : 8 }}>
         {mobile && <button style={st.ghost} onClick={onCancel}>Annulla</button>}
         <button style={st.primary} onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio…' : 'Salva'}</button>
@@ -320,12 +321,12 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
   }
 
   const iconBtn = { background:'none', border:'none', cursor:'pointer', lineHeight:1, padding: mobile ? '4px 5px' : '2px 4px', display:'inline-flex', WebkitTapHighlightColor:'transparent' }
-  const sectionLabel = { fontSize: st.section, color:MUTED, letterSpacing:2, textTransform:'uppercase', margin:'4px 0 8px' }
+  const sectionLabel = { fontSize: pfs(st.section), color:MUTED, letterSpacing:2, textTransform:'uppercase', margin:'4px 0 8px' }
 
   return (
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginBottom: mobile ? 12 : 16 }}>
-        <div style={mobile ? { fontSize:11, letterSpacing:3, color:GOLD, textTransform:'uppercase' } : { ...s.cardTitle, marginBottom:0 }}>Attività</div>
+        <div style={mobile ? { fontSize:pfs(11), letterSpacing:3, color:GOLD, textTransform:'uppercase' } : { ...s.cardTitle, marginBottom:0 }}>Attività</div>
         {!form && (
           <div style={{ display:'flex', gap:8 }}>
             <button style={{ ...st.small, borderColor:BORDER, color:MUTED, background:'transparent' }} onClick={openPlan}>+ Pianifica</button>
@@ -336,7 +337,7 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
 
       {suggest && (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap', padding:'10px 12px', marginBottom:12, borderRadius:6, background:'rgba(74,158,110,0.12)', border:'1px solid rgba(74,158,110,0.35)' }}>
-          <span style={{ fontSize: st.text, color:CREAM }}>
+          <span style={{ fontSize: pfs(st.text), color:CREAM }}>
             Esito positivo. Avanzare da <b>{prospect.stage}</b> a <b>{suggest}</b>?
           </span>
           <span style={{ display:'flex', gap:6 }}>
@@ -350,9 +351,9 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
       )}
 
       {warnings.length > 0 && (
-        <div style={{ fontSize: st.meta + 1, color:CLAY, marginBottom:12, lineHeight:1.5 }}>
+        <div style={{ fontSize: pfs(st.meta + 1), color:CLAY, marginBottom:12, lineHeight:1.5 }}>
           {warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
-          <button onClick={() => setWarnings([])} style={{ background:'none', border:'none', color:MUTED, cursor:'pointer', padding:0, fontSize: st.meta, textDecoration:'underline' }}>Chiudi avviso</button>
+          <button onClick={() => setWarnings([])} style={{ background:'none', border:'none', color:MUTED, cursor:'pointer', padding:0, fontSize: pfs(st.meta), textDecoration:'underline' }}>Chiudi avviso</button>
         </div>
       )}
 
@@ -371,17 +372,17 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
               return (
                 <div key={act.id} style={{ padding:12, borderRadius:6, background:'rgba(184,150,90,0.06)', borderLeft:`3px solid ${late ? CLAY : GOLD}` }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
-                    <span style={{ fontSize: st.text - 1, color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7 }}>
+                    <span style={{ fontSize: pfs(st.text - 1), color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7 }}>
                       <ActIcon type={act.type}/>{TYPE_LABELS[act.type] || act.type}
                     </span>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize: st.meta, color: late ? CLAY : MUTED, whiteSpace:'nowrap' }}>entro {fmtDay(due)}</span>
+                      <span style={{ fontSize: pfs(st.meta), color: late ? CLAY : MUTED, whiteSpace:'nowrap' }}>entro {fmtDay(due)}</span>
                       <button style={st.small} onClick={() => openComplete(act)}>Fatta</button>
                       <button title="Modifica" onClick={() => openEdit(act)} style={{ ...iconBtn, color:MUTED }}><ActIcon type="note" size={12}/></button>
-                      <button title="Elimina" onClick={() => handleDelete(act)} style={{ ...iconBtn, color:CLAY, fontSize: mobile ? 17 : 15 }}>×</button>
+                      <button title="Elimina" onClick={() => handleDelete(act)} style={{ ...iconBtn, color:CLAY, fontSize: pfs(mobile ? 17 : 15) }}>×</button>
                     </div>
                   </div>
-                  {act.content && <div style={{ fontSize: st.text, color:CREAM, lineHeight:1.6, marginTop:4 }}>{act.content}</div>}
+                  {act.content && <div style={{ fontSize: pfs(st.text), color:CREAM, lineHeight:1.6, marginTop:4 }}>{act.content}</div>}
                 </div>
               )
             })}
@@ -390,7 +391,7 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
       )}
 
       {history.length === 0 && planned.length === 0 && !form ? (
-        <div style={{ fontSize: st.text, color:MUTED, fontStyle:'italic', textAlign:'center', padding: mobile ? '14px 0' : '24px 0' }}>
+        <div style={{ fontSize: pfs(st.text), color:MUTED, fontStyle:'italic', textAlign:'center', padding: mobile ? '14px 0' : '24px 0' }}>
           Nessuna attività registrata
         </div>
       ) : history.length > 0 && (
@@ -402,22 +403,22 @@ export default function ProspectActivities({ prospect, mobile = false, showRewar
               return (
                 <div key={act.id} style={{ padding:12, background:'rgba(255,255,255,0.02)', borderRadius:6, borderLeft:`3px solid ${OUTCOME_CFG[act.outcome]?.border || 'rgba(138,154,181,0.3)'}`, opacity: replaced ? 0.5 : 1 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize: st.text - 1, color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
+                    <span style={{ fontSize: pfs(st.text - 1), color:GOLD, letterSpacing:1, display:'inline-flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
                       <ActIcon type={act.type}/>{replaced ? (TYPE_LABELS[act.type] || act.type) : activityLabel(act)}
                       {act.outcome && <OutcomeBadge outcome={act.outcome} mobile={mobile}/>}
-                      {replaced && <span style={{ fontSize: st.section, color:MUTED, letterSpacing:1.2, textTransform:'uppercase' }}>non fatta · sostituita</span>}
+                      {replaced && <span style={{ fontSize: pfs(st.section), color:MUTED, letterSpacing:1.2, textTransform:'uppercase' }}>non fatta · sostituita</span>}
                     </span>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize: st.meta, color:MUTED, whiteSpace:'nowrap' }}>{replaced ? `prevista ${fmtDay(actDay(act))}` : fmtDay(actDay(act))}</span>
+                      <span style={{ fontSize: pfs(st.meta), color:MUTED, whiteSpace:'nowrap' }}>{replaced ? `prevista ${fmtDay(actDay(act))}` : fmtDay(actDay(act))}</span>
                       {!replaced && (
                         <button title="Modifica attività" onClick={() => openEdit(act)} style={{ ...iconBtn, color:MUTED }}><ActIcon type="note" size={12}/></button>
                       )}
-                      <button title="Elimina attività" onClick={() => handleDelete(act)} style={{ ...iconBtn, color:CLAY, fontSize: mobile ? 17 : 15 }}>×</button>
+                      <button title="Elimina attività" onClick={() => handleDelete(act)} style={{ ...iconBtn, color:CLAY, fontSize: pfs(mobile ? 17 : 15) }}>×</button>
                     </div>
                   </div>
-                  {act.content && <div style={{ fontSize: st.text, color:CREAM, lineHeight:1.6 }}>{act.content}</div>}
+                  {act.content && <div style={{ fontSize: pfs(st.text), color:CREAM, lineHeight:1.6 }}>{act.content}</div>}
                   {act.reward_type && (
-                    <div style={{ marginTop:6, fontSize: st.meta, color:GREEN }}>
+                    <div style={{ marginTop:6, fontSize: pfs(st.meta), color:GREEN }}>
                       Riconoscimento: {act.reward_type}{act.reward_value != null ? ` · € ${parseFloat(act.reward_value).toLocaleString('it-IT',{maximumFractionDigits:0})}` : ''}
                     </div>
                   )}

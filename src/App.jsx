@@ -1,5 +1,6 @@
 import { askConfirm, showAlert } from './components/ConfirmDialog.jsx'
 import { useState, useEffect } from 'react'
+import { isPhoneViewport } from './lib/viewport.js'
 import MobileApp from './mobile/MobileApp.jsx'
 import { saveProspectActivity, removeProspectActivity, retireOpenSteps } from './lib/prospectActivities.js'
 import { GOLD, MUTED, BORDER, CLAY } from './tokens.js'
@@ -25,7 +26,6 @@ import { supabase, openedFromRecoveryLink } from './lib/supabase.js'
 import { openPasswordDialog } from './components/PasswordDialog.jsx'
 
 // Telefono: schermo stretto (portrait) oppure basso e non troppo largo (landscape)
-const isPhoneViewport = () => window.innerWidth <= 480 || (window.innerHeight <= 480 && window.innerWidth <= 960)
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(isPhoneViewport)

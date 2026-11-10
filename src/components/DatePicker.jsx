@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, BORDER } from '../tokens.js'
 import { s } from '../tokens.js'
+import { pfs } from '../lib/viewport.js'
 
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
 
@@ -58,11 +59,11 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
-      {label && <label style={s.label}>{label}</label>}
+      {label && <label style={{ ...s.label, fontSize: pfs(11) }}>{label}</label>}
       <div onClick={() => setOpen(o => !o)}
         style={{ ...s.input, ...triggerStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }}>
         <span style={{ color: displayValue ? CREAM : MUTED }}>{displayValue || placeholder}</span>
-        <span style={{ color: GOLD, fontSize: 14 }}>📅</span>
+        <span style={{ color: GOLD, fontSize: pfs(14) }}>📅</span>
       </div>
       {open && (
         <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1000, marginTop: 4, background: '#1e2d50',
@@ -70,21 +71,21 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <button onClick={() => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) } else setViewMonth(m => m - 1) }}
-              style={{ background: 'none', border: 'none', color: GOLD, fontSize: 18, cursor: 'pointer', padding: '0 8px' }}>‹</button>
-            <div style={{ fontSize: 12, color: CREAM, letterSpacing: 2, fontWeight: 600 }}>{MONTHS[viewMonth]} {viewYear}</div>
+              style={{ background: 'none', border: 'none', color: GOLD, fontSize: pfs(18), cursor: 'pointer', padding: '0 8px' }}>‹</button>
+            <div style={{ fontSize: pfs(12), color: CREAM, letterSpacing: 2, fontWeight: 600 }}>{MONTHS[viewMonth]} {viewYear}</div>
             <button onClick={() => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) } else setViewMonth(m => m + 1) }}
-              style={{ background: 'none', border: 'none', color: GOLD, fontSize: 18, cursor: 'pointer', padding: '0 8px' }}>›</button>
+              style={{ background: 'none', border: 'none', color: GOLD, fontSize: pfs(18), cursor: 'pointer', padding: '0 8px' }}>›</button>
           </div>
           <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
             {years.map(y => (
               <button key={y} onClick={() => setViewYear(y)}
                 style={{ padding: '3px 10px', borderRadius: 3, border: `1px solid ${y === viewYear ? GOLD : BORDER}`,
                   background: y === viewYear ? 'rgba(184,150,90,0.2)' : 'transparent',
-                  color: y === viewYear ? GOLD : MUTED, cursor: 'pointer', fontSize: 10 }}>{y}</button>
+                  color: y === viewYear ? GOLD : MUTED, cursor: 'pointer', fontSize: pfs(10) }}>{y}</button>
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
-            {['Lu','Ma','Me','Gi','Ve','Sa','Do'].map(d => <div key={d} style={{ textAlign: 'center', fontSize: 9, color: MUTED, padding: '2px 0' }}>{d}</div>)}
+            {['Lu','Ma','Me','Gi','Ve','Sa','Do'].map(d => <div key={d} style={{ textAlign: 'center', fontSize: pfs(9), color: MUTED, padding: '2px 0' }}>{d}</div>)}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
             {Array(startPad).fill(null).map((_, i) => <div key={`e${i}`}/>)}
@@ -94,7 +95,7 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
               const isTod = today.getDate() === day && today.getMonth() === viewMonth && today.getFullYear() === viewYear
               return (
                 <button key={day} onClick={() => selectDay(day)}
-                  style={{ padding: '6px 2px', borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'center', fontSize: 12,
+                  style={{ padding: '6px 2px', borderRadius: 4, border: 'none', cursor: 'pointer', textAlign: 'center', fontSize: pfs(12),
                     fontWeight: isSel ? 700 : 400, background: isSel ? GOLD : isTod ? 'rgba(184,150,90,0.15)' : 'transparent',
                     color: isSel ? '#1a2744' : isTod ? GOLD : CREAM }}>{day}</button>
               )
@@ -102,9 +103,9 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
           </div>
           <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
             <button onClick={() => { onChange(''); setOpen(false) }}
-              style={{ background: 'none', border: 'none', color: MUTED, fontSize: 10, cursor: 'pointer' }}>Cancella</button>
+              style={{ background: 'none', border: 'none', color: MUTED, fontSize: pfs(10), cursor: 'pointer' }}>Cancella</button>
             <button onClick={() => { const t = new Date(); setViewMonth(t.getMonth()); setViewYear(t.getFullYear()); selectDay(t.getDate()) }}
-              style={{ background: 'none', border: `1px solid ${GOLD}`, color: GOLD, fontSize: 10, cursor: 'pointer', padding: '4px 10px', borderRadius: 3 }}>Oggi</button>
+              style={{ background: 'none', border: `1px solid ${GOLD}`, color: GOLD, fontSize: pfs(10), cursor: 'pointer', padding: '4px 10px', borderRadius: 3 }}>Oggi</button>
           </div>
         </div>
       )}

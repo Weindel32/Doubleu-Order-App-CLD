@@ -61,3 +61,10 @@ button {
   background: rgba(255,255,255,0.06) !important;
   border-color: rgba(184,150,90,0.4) !important;
 }
+
+/* Telefono: campi almeno a 16px, sotto iPhone fa zoom sulla pagina quando li
+   tocchi. Vale anche per i componenti condivisi col desktop (trattativa,
+   modulo taglie…), che hanno dimensioni scritte per lo schermo grande. */
+@media (max-width: 480px), (max-height: 480px) and (max-width: 960px) {
+  input, select, textarea { font-size: max(16px, 1em) !important; }
+}
