@@ -1,15 +1,14 @@
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
+import { eur2 } from './format.js'
 import { orderTotal } from '../utils/helpers.js'
 
-function fmt(n) {
-  return '€ ' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-}
+const fmt = eur2
 
 export default function MobileQuotes({ quotes, onSelectQuote }) {
   return (
     <div style={{ padding: '20px 16px' }}>
 
-      <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 14 }}>
         {quotes.length} preventivi
       </div>
 
@@ -28,11 +27,11 @@ export default function MobileQuotes({ quotes, onSelectQuote }) {
             WebkitTapHighlightColor: 'transparent',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM, flex: 1, marginRight: 10, lineHeight: 1.2 }}>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM, flex: 1, marginRight: 10, lineHeight: 1.2 }}>
                 {q.client}
               </div>
               <span style={{
-                fontSize: 11, letterSpacing: 2, color: CLAY,
+                fontSize: 12, letterSpacing: 1.5, color: CLAY,
                 border: '1px solid rgba(196,98,58,0.35)',
                 background: 'rgba(196,98,58,0.08)',
                 padding: '3px 8px', borderRadius: 3,
@@ -40,15 +39,15 @@ export default function MobileQuotes({ quotes, onSelectQuote }) {
               }}>PREV.</span>
             </div>
 
-            <div style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>{q.id} · {q.date}</div>
+            <div style={{ fontSize: 13, color: MUTED, marginBottom: 10 }}>{q.id} · {q.date}</div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: MUTED, letterSpacing: 1 }}>
+              <span style={{ fontSize: 12, color: MUTED, letterSpacing: 1 }}>
                 {q.pricingMode === 'kit'
                   ? `${kitCount} kit · ${artCount} articoli`
                   : `${artCount} articoli`}
               </span>
-              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: GOLD }}>
+              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: GOLD }}>
                 {fmt(total)}
               </span>
             </div>
@@ -57,7 +56,7 @@ export default function MobileQuotes({ quotes, onSelectQuote }) {
       })}
 
       {quotes.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 13, color: MUTED }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: 15, color: MUTED }}>
           Nessun preventivo
         </div>
       )}

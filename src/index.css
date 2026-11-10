@@ -14,6 +14,9 @@ html, body, #root {
 body {
   background: #1a2744;
   font-family: 'Josefin Sans', sans-serif;
+  /* Cifre normali anche nel serif (Cormorant): con quelle "all'antica"
+     l'1 si legge come una I maiuscola. */
+  font-variant-numeric: lining-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;

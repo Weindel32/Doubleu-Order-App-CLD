@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { eur2 } from './format.js'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, GREEN, ADULT_SIZES, KIDS_SIZES } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
 import { getAllArticles, artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal, paymentSummary, daysUntilDelivery, artDiscountApplied } from '../utils/helpers.js'
@@ -49,12 +50,12 @@ function OrderFormCard({ order, onOrderUpdated }) {
         fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, letterSpacing: 2, color, textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 13, letterSpacing: 1.5, color, textTransform: 'uppercase' }}>
             Taglie cliente{form ? ` · ${stage.badge}` : ''}
           </div>
-          <div style={{ fontSize: 13, color: CREAM, marginTop: 4 }}>{text}</div>
+          <div style={{ fontSize: 15, color: CREAM, marginTop: 4 }}>{text}</div>
         </div>
-        <span style={{ color: GOLD, fontSize: 22, lineHeight: 1 }}>›</span>
+        <span style={{ color: GOLD, fontSize: 24, lineHeight: 1 }}>›</span>
       </button>
       {open && <OrderFormModal order={order} form={form} onClose={() => setOpen(false)}
         onFormChange={f => setForm(f.status === 'revocato' ? null : f)}
@@ -63,13 +64,11 @@ function OrderFormCard({ order, onOrderUpdated }) {
   )
 }
 
-function fmt(n) {
-  return '€' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-}
+const fmt = eur2
 
 function SectionTitle({ children }) {
   return (
-    <div style={{ fontSize: 12, letterSpacing: 2.5, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
+    <div style={{ fontSize: 13, letterSpacing: 1.5, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
       {children}
     </div>
   )
@@ -86,11 +85,11 @@ function InfoRow({ label, value, valueColor, href }) {
       borderBottom: '1px solid rgba(255,255,255,0.05)',
       marginBottom: 10,
     }}>
-      <span style={{ fontSize: 12, color: '#a8b8d0', letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
+      <span style={{ fontSize: 13, color: '#a8b8d0', letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
       {href ? (
-        <a href={href} style={{ fontSize: 14, color: valueColor || GOLD, textDecoration: 'none', textAlign: 'right' }}>{value}</a>
+        <a href={href} style={{ fontSize: 16, color: valueColor || GOLD, textDecoration: 'none', textAlign: 'right', padding: '11px 0', margin: '-11px 0' }}>{value}</a>
       ) : (
-        <span style={{ fontSize: 14, color: valueColor || CREAM, textAlign: 'right', maxWidth: '65%' }}>{value}</span>
+        <span style={{ fontSize: 16, color: valueColor || CREAM, textAlign: 'right', maxWidth: '65%' }}>{value}</span>
       )}
     </div>
   )
@@ -132,15 +131,16 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
           color: GOLD,
           fontSize: 28,
           cursor: 'pointer',
-          padding: '0 8px 0 0',
+          padding: 0, marginLeft: -10, minWidth: 44, minHeight: 44,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           lineHeight: 1,
           WebkitTapHighlightColor: 'transparent',
         }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.client}</div>
-          <div style={{ fontSize: 12, color: GOLD, letterSpacing: 2 }}>{order.id}</div>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: CREAM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.client}</div>
+          <div style={{ fontSize: 13, color: GOLD, letterSpacing: 1.5 }}>{order.id}</div>
         </div>
-        <span style={badgeStyle(order.status)}>{order.status}</span>
+        <span style={{ ...badgeStyle(order.status), fontSize: 12, letterSpacing: 1, padding: "4px 10px" }}>{order.status}</span>
       </div>
 
       {/* Content */}
@@ -154,7 +154,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
             borderRadius: 8,
             padding: '12px 16px',
             marginTop: 16,
-            fontSize: 12,
+            fontSize: 13,
             color: CLAY,
             lineHeight: 1.4,
           }}>
@@ -176,16 +176,16 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
           } catch (e) { console.error('Riepilogo taglie:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) }
         }} style={{
           width: '100%', marginTop: 10, background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10,
-          padding: '14px 16px', color: CREAM, fontSize: 14, textAlign: 'left', cursor: 'pointer',
+          padding: '14px 16px', color: CREAM, fontSize: 16, textAlign: 'left', cursor: 'pointer',
         }}>
-          Riepilogo taglie senza prezzi <span style={{ color: MUTED, fontSize: 12 }}>· da far confermare al club</span>
+          Riepilogo taglie senza prezzi <span style={{ color: MUTED, fontSize: 13 }}>· da far confermare al club</span>
         </button>
 
         {/* Nota ordine */}
         {order.orderNote && (
           <div style={{ background: 'rgba(184,150,90,0.1)', border: '1px solid rgba(184,150,90,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 8 }}>
-            <div style={{ fontSize: 11, letterSpacing: 2, color: GOLD, marginBottom: 4 }}>NOTA ORDINE</div>
-            <div style={{ fontSize: 14, color: CREAM }}>{order.orderNote}</div>
+            <div style={{ fontSize: 12, letterSpacing: 1.5, color: GOLD, marginBottom: 4 }}>NOTA ORDINE</div>
+            <div style={{ fontSize: 16, color: CREAM }}>{order.orderNote}</div>
           </div>
         )}
 
@@ -239,14 +239,14 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1, marginRight: 12 }}>
-                    <div style={{ fontSize: 14, color: CREAM }}>
+                    <div style={{ fontSize: 16, color: CREAM }}>
                       {art.category}{art.line ? ` · ${art.line}` : ''}
                     </div>
-                    {art.color && <div style={{ fontSize: 13, color: MUTED, marginTop: 3 }}>{art.color}</div>}
-                    {art.sp && <div style={{ fontSize: 12, color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
-                    {art.notes && <div style={{ fontSize: 13, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
+                    {art.color && <div style={{ fontSize: 15, color: MUTED, marginTop: 3 }}>{art.color}</div>}
+                    {art.sp && <div style={{ fontSize: 13, color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
+                    {art.notes && <div style={{ fontSize: 15, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
                     {artDiscountApplied(order, art) > 0 && (
-                      <div style={{ fontSize: 12, color: CLAY, marginTop: 4 }}>
+                      <div style={{ fontSize: 13, color: CLAY, marginTop: 4 }}>
                         sconto{art.discountType !== 'importo' ? ` ${parseFloat(art.discountValue) || 0}%` : ''} · − {fmt(artDiscountApplied(order, art))}
                       </div>
                     )}
@@ -259,21 +259,21 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
                         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                           {adultEntries.map(sz => (
                             <span key={sz} style={{
-                              fontSize: 11, background: 'rgba(184,150,90,0.12)',
+                              fontSize: 12, background: 'rgba(184,150,90,0.12)',
                               border: '1px solid rgba(184,150,90,0.28)',
                               borderRadius: 3, padding: '2px 6px', color: GOLD, letterSpacing: 0.5,
                             }}>{sz} · {art.sizes.adult[sz]}</span>
                           ))}
                           {kidsEntries.map(sz => (
                             <span key={`k${sz}`} style={{
-                              fontSize: 11, background: 'rgba(138,154,181,0.1)',
+                              fontSize: 12, background: 'rgba(138,154,181,0.1)',
                               border: '1px solid rgba(138,154,181,0.28)',
                               borderRadius: 3, padding: '2px 6px', color: MUTED, letterSpacing: 0.5,
                             }}>{sz} · {art.sizes.kids[sz]}</span>
                           ))}
                           {uni > 0 && (
                             <span style={{
-                              fontSize: 11, background: 'rgba(74,158,110,0.12)',
+                              fontSize: 12, background: 'rgba(74,158,110,0.12)',
                               border: '1px solid rgba(74,158,110,0.28)',
                               borderRadius: 3, padding: '2px 6px', color: GREEN, letterSpacing: 0.5,
                             }}>TU · {uni}</span>
@@ -283,12 +283,12 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
                     })()}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: GOLD, lineHeight: 1 }}>{artPieceCount(art)}</div>
-                    <div style={{ fontSize: 12, color: MUTED, letterSpacing: 1, marginTop: 2 }}>pezzi</div>
+                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD, lineHeight: 1 }}>{artPieceCount(art)}</div>
+                    <div style={{ fontSize: 13, color: MUTED, letterSpacing: 1, marginTop: 2 }}>pezzi</div>
                   </div>
                 </div>
                 {art.delivered && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: GREEN, letterSpacing: 2, textTransform: 'uppercase' }}>✓ Consegnato</div>
+                  <div style={{ marginTop: 8, fontSize: 13, color: GREEN, letterSpacing: 1.5, textTransform: 'uppercase' }}>✓ Consegnato</div>
                 )}
               </div>
             ))}
@@ -312,7 +312,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
             <InfoRow label="Spese di spedizione" value={fmt(shipping)} />
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(184,150,90,0.2)', marginTop: 4 }}>
-            <span style={{ fontSize: 13, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale</span>
+            <span style={{ fontSize: 15, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD }}>Totale</span>
             <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD }}>{fmt(total)}</span>
           </div>
           {orderInvoices(order).length > 0 && (
@@ -337,7 +337,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
                   borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
                 }}>
                   <div>
-                    <div style={{ fontSize: 13, color: p.paid ? GREEN : MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    <div style={{ fontSize: 15, color: p.paid ? GREEN : MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>
                       {p.paid ? '✓' : '○'} {p.type}
                     </div>
                     {(() => {
@@ -345,17 +345,17 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
                       const delay = paymentDelay(order, p)
                       const late  = !p.paid && delay !== null && delay > 0
                       return (<>
-                        {due.date && <div style={{ fontSize: 12, color: late ? '#ef4444' : MUTED, marginTop: 2 }}>
+                        {due.date && <div style={{ fontSize: 13, color: late ? '#ef4444' : MUTED, marginTop: 2 }}>
                           {formatItalian(due.date)}{late ? ` · scaduto da ${delay}gg` : ''}
                         </div>}
-                        {p.paid && p.paidDate && <div style={{ fontSize: 12, color: GREEN, marginTop: 2 }}>Incassato il {p.paidDate}</div>}
+                        {p.paid && p.paidDate && <div style={{ fontSize: 13, color: GREEN, marginTop: 2 }}>Incassato il {p.paidDate}</div>}
                       </>)
                     })()}
-                    {p.method && <div style={{ fontSize: 12, color: MUTED }}>{p.method}</div>}
-                    {p.invoiceNumber && <div style={{ fontSize: 12, color: GOLD }}>Fatt. {p.invoiceNumber}</div>}
+                    {p.method && <div style={{ fontSize: 13, color: MUTED }}>{p.method}</div>}
+                    {p.invoiceNumber && <div style={{ fontSize: 13, color: GOLD }}>Fatt. {p.invoiceNumber}</div>}
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 14, color: p.paid ? GREEN : CREAM, fontFamily: "'Cormorant Garamond', serif" }}>
+                    <div style={{ fontSize: 16, color: p.paid ? GREEN : CREAM, fontFamily: "'Cormorant Garamond', serif" }}>
                       {fmt(parseFloat(p.amount) || 0)}
                     </div>
                   </div>
@@ -363,9 +363,9 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
               )
             })}
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(184,150,90,0.15)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <span style={{ fontSize: 13, color: GREEN }}>Pagato: {fmt(paid)}</span>
-              {pending > 0 && <span style={{ fontSize: 13, color: GOLD }}>Atteso: {fmt(pending)}</span>}
-              {residual > 0 && <span style={{ fontSize: 13, color: CLAY }}>Residuo: {fmt(residual)}</span>}
+              <span style={{ fontSize: 15, color: GREEN }}>Pagato: {fmt(paid)}</span>
+              {pending > 0 && <span style={{ fontSize: 15, color: GOLD }}>Atteso: {fmt(pending)}</span>}
+              {residual > 0 && <span style={{ fontSize: 15, color: CLAY }}>Residuo: {fmt(residual)}</span>}
             </div>
           </div>
         )}
@@ -374,7 +374,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
         {order.notes && (
           <>
             <SectionTitle>Note</SectionTitle>
-            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', fontSize: 13, color: CREAM, lineHeight: 1.65 }}>
+            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', fontSize: 15, color: CREAM, lineHeight: 1.65 }}>
               {order.notes}
             </div>
           </>
@@ -383,7 +383,7 @@ export default function MobileOrderDetail({ order, onBack, onOrderUpdated }) {
         {order.productionNotes && (
           <>
             <SectionTitle>Note Produzione</SectionTitle>
-            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', fontSize: 13, color: CREAM, lineHeight: 1.65 }}>
+            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', fontSize: 15, color: CREAM, lineHeight: 1.65 }}>
               {order.productionNotes}
             </div>
           </>
