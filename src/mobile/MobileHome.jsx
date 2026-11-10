@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, STATUS_COLORS, GREEN, WHITE } from '../tokens.js'
+import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE, STATUS_COLORS, GREEN } from '../tokens.js'
 import { badgeStyle } from '../tokens.js'
-import { needsAlert, daysUntilDelivery, paymentSummary, orderTotal, isConfirmed } from '../utils/helpers.js'
+import { daysUntilDelivery, paymentSummary, orderTotal, isConfirmed } from '../utils/helpers.js'
+import { buildTodo } from '../lib/todo.js'
 
 function fmt(n) {
   return '€' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -15,10 +16,46 @@ function SectionTitle({ children, color }) {
   )
 }
 
-export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
-  const [showPaymentDetail, setShowPaymentDetail] = useState(false)
+const TODO_VISIBLE = 6
 
-  const alerts = orders.filter(o => needsAlert(o))
+// Una voce della lista "Da fare": tipo e scadenza in alto, club al centro,
+// dettaglio sotto. Stessa lista della Dashboard desktop (lib/todo.js).
+function TodoItem({ t, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      display: 'flex', gap: 12, background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10,
+      padding: '12px 14px 12px 12px', marginBottom: 8, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+    }}>
+      <div style={{ width: 3, borderRadius: 2, background: t.color, flexShrink: 0 }}/>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+          <span style={{ fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: t.color, fontWeight: 600 }}>{t.kind}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: t.color, textAlign: 'right' }}>{t.right}</span>
+        </div>
+        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: CREAM, lineHeight: 1.2, marginTop: 4 }}>{t.title}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 3 }}>
+          <span style={{ fontSize: 14, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{t.sub}</span>
+          <span style={{ fontSize: 13, color: MUTED, flexShrink: 0 }}>{t.rightSub}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function MobileHome({ orders, allOrders = orders, forms = {}, shipments = [], clients = [], prospects = [], onSelectOrder, onSelectQuote, onGoToOrders, onGoToTab }) {
+  const [showPaymentDetail, setShowPaymentDetail] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+
+  // Cosa fare oggi: crediti scaduti, consegne, taglie, preventivi fermi,
+  // campionature. Un tocco apre l'ordine, il preventivo o le campionature.
+  const open = {
+    order:  (id) => { const o = allOrders.find(x => x.id === id); if (o) onSelectOrder(o) },
+    form:   (id) => { const o = allOrders.find(x => x.id === id); if (o) onSelectOrder(o) },
+    quote:  (id) => { const q = allOrders.find(x => x.id === id); if (q) onSelectQuote(q) },
+    sample: ()   => onGoToTab('samples'),
+  }
+  const todo = buildTodo({ orders: allOrders, forms, shipments, clients, prospects })
+  const visibleTodo = showAll ? todo : todo.slice(0, TODO_VISIBLE)
 
   const statusCounts = {
     'PREVENTIVO':        orders.filter(o => o.status === 'PREVENTIVO' && !o.lost).length,
@@ -69,59 +106,48 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
   return (
     <div style={{ padding: '20px 16px' }}>
 
-      {/* Alert scadenze */}
-      {alerts.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <SectionTitle color={CLAY}>⚠ {alerts.length} {alerts.length > 1 ? 'Ordini' : 'Ordine'} in Scadenza</SectionTitle>
-          {alerts.map(o => {
-            const days = daysUntilDelivery(o)
-            return (
-              <div key={o.id} onClick={() => onSelectOrder(o)} style={{
-                background: 'rgba(196,98,58,0.08)',
-                border: '1px solid rgba(196,98,58,0.3)',
-                borderRadius: 10,
-                padding: '14px 16px',
-                marginBottom: 10,
-                cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: CREAM }}>{o.client}</div>
-                  <div style={{ fontSize: 16, color: CLAY, fontWeight: 700 }}>
-                    {days === null ? '' : days < 0 ? `${Math.abs(days)}g scaduto` : days === 0 ? 'Oggi' : `${days}g`}
-                  </div>
-                </div>
-                <div style={{ fontSize: 15, color: MUTED, marginTop: 4 }}>{o.id} · Consegna {o.deliveryDate}</div>
-              </div>
-            )
-          })}
+      {/* Da fare oggi */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <SectionTitle>Da fare oggi</SectionTitle>
+          {todo.length > 0 && <span style={{ fontSize: 13, color: MUTED }}>{todo.length === 1 ? '1 cosa' : `${todo.length} cose`}</span>}
         </div>
-      )}
+        {todo.length === 0 ? (
+          <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', fontSize: 16, color: GREEN }}>
+            ✓ Niente in sospeso
+          </div>
+        ) : (
+          <>
+            {visibleTodo.map(t => <TodoItem key={t.key} t={t} onClick={() => open[t.target.type](t.target.id)}/>)}
+            {todo.length > TODO_VISIBLE && (
+              <button onClick={() => setShowAll(v => !v)} style={{
+                width: '100%', minHeight: 44, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 10,
+                color: GOLD, fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase', cursor: 'pointer',
+                fontFamily: "'Josefin Sans', sans-serif", WebkitTapHighlightColor: 'transparent',
+              }}>{showAll ? 'Mostra meno' : `Mostra tutte (${todo.length})`}</button>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Stato ordini — card cliccabili */}
       <div style={{ marginBottom: 28 }}>
         <SectionTitle>Stato Ordini</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
           {Object.entries(statusCounts)
             .filter(([, v]) => v > 0)
-            .map(([status, count]) => {
-              const sc = STATUS_COLORS[status]
-              return (
-                <div key={status} onClick={() => onGoToOrders(status)} style={{
-                  background: sc.solid,
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '16px',
-                  cursor: 'pointer',
-                  WebkitTapHighlightColor: 'transparent',
-                  position: 'relative',
-                }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: WHITE, lineHeight: 1 }}>{count}</div>
-                  <div style={{ fontSize: 13, letterSpacing: 1.5, color: WHITE, textTransform: 'uppercase', marginTop: 6, opacity: 0.85 }}>{status}</div>
-                  <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 15, color: WHITE, opacity: 0.6 }}>›</div>
-                </div>
-              )
-            })}
+            .map(([status, count], i) => (
+              <div key={status} onClick={() => onGoToOrders(status)} style={{
+                display: 'flex', alignItems: 'center', gap: 12, minHeight: 52, padding: '0 16px',
+                borderTop: i ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              }}>
+                <span style={{ width: 10, height: 10, borderRadius: 5, background: STATUS_COLORS[status].solid, flexShrink: 0 }}/>
+                <span style={{ flex: 1, fontSize: 15, letterSpacing: 1, color: CREAM, textTransform: 'uppercase' }}>{status}</span>
+                <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, color: CREAM, lineHeight: 1 }}>{count}</span>
+                <span style={{ fontSize: 20, color: MUTED }}>›</span>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -267,6 +293,10 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
           })}
         </div>
       )}
+
+      <div style={{ textAlign: 'center', fontSize: 12, letterSpacing: 1, color: MUTED, padding: '24px 0 4px' }}>
+        Order App · v{__APP_VERSION__}
+      </div>
     </div>
   )
 }

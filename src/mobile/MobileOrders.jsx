@@ -9,9 +9,17 @@ function fmt(n) {
 
 const FILTERS = ['Attivi', 'Tutti', ...ORDER_STATUSES]
 
-export default function MobileOrders({ orders, onSelectOrder, filter, onFilterChange }) {
+// Ricerca senza accenti e maiuscole: "citta" trova "Città".
+const norm = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
+export default function MobileOrders({ orders, onSelectOrder, filter, onFilterChange }) {
+  const [query, setQuery] = useState('')
+  const q = norm(query.trim())
+
+  // Con una ricerca si cerca in tutti gli ordini, a prescindere dal filtro:
+  // un ordine consegnato non deve sparire solo perche' il filtro e' "Attivi".
   const filtered = orders.filter(o => {
+    if (q) return [o.client, o.id, o.clientContact, o.clientCity, o.invoiceNumber].some(v => norm(v).includes(q))
     if (filter === 'Tutti') return true
     if (filter === 'Attivi') return o.status !== 'CONSEGNATO'
     return o.status === filter
@@ -19,6 +27,24 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
 
   return (
     <div style={{ padding: '20px 16px' }}>
+
+      {/* Ricerca */}
+      <div style={{ position: 'relative', marginBottom: 14 }}>
+        <input type="text" inputMode="search" value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Cerca club, n. ordine, referente…" autoCapitalize="none" autoCorrect="off" enterKeyHint="search"
+          style={{
+            width: '100%', minHeight: 46, boxSizing: 'border-box', padding: '12px 40px 12px 14px',
+            background: 'rgba(255,255,255,0.04)', border: `1px solid ${query ? GOLD : BORDER}`, borderRadius: 10,
+            color: CREAM, fontSize: 16, outline: 'none', fontFamily: "'Josefin Sans', sans-serif",
+            WebkitAppearance: 'none', appearance: 'none',
+          }}/>
+        {query && (
+          <button onClick={() => setQuery('')} aria-label="Cancella ricerca" style={{
+            position: 'absolute', right: 0, top: 0, width: 44, height: 46, background: 'none', border: 'none',
+            color: MUTED, fontSize: 22, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}>×</button>
+        )}
+      </div>
 
       {/* Filter chips */}
       <div style={{
@@ -31,9 +57,9 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
         WebkitOverflowScrolling: 'touch',
       }}>
         {FILTERS.map(f => {
-          const active = filter === f
+          const active = !q && filter === f
           return (
-            <button key={f} onClick={() => onFilterChange(f)} style={{
+            <button key={f} onClick={() => { setQuery(''); onFilterChange(f) }} style={{
               flexShrink: 0,
               padding: '7px 14px', minHeight: 44,
               borderRadius: 22,
@@ -53,7 +79,7 @@ export default function MobileOrders({ orders, onSelectOrder, filter, onFilterCh
       </div>
 
       <div style={{ fontSize: 13, color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 14 }}>
-        {filtered.length} ordini
+        {q ? `${filtered.length} ${filtered.length === 1 ? 'risultato' : 'risultati'} in tutti gli ordini` : `${filtered.length} ordini`}
       </div>
 
       {filtered.map(o => {
