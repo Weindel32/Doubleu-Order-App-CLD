@@ -1,4 +1,5 @@
 import { showAlert } from '../components/ConfirmDialog.jsx'
+import { eur2 } from './format.js'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, SURFACE } from '../tokens.js'
 import { orderSubtotal, orderIVA, orderDiscount, orderTotal, artDiscountApplied, kitDiscountApplied, grossUnitPrice } from '../utils/helpers.js'
 import { useState } from 'react'
@@ -7,13 +8,11 @@ import { shareOrDownload } from '../lib/sizesPdf.js'
 import NegotiationModal from '../components/NegotiationModal.jsx'
 import { stageOf, normalizeNegotiation } from '../utils/negotiation.js'
 
-function fmt(n) {
-  return '€ ' + (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-}
+const fmt = eur2
 
 function SectionTitle({ children }) {
   return (
-    <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
+    <div style={{ fontSize: 12, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 12, marginTop: 24 }}>
       {children}
     </div>
   )
@@ -26,10 +25,10 @@ function InfoRow({ label, value, valueColor, href }) {
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 10,
     }}>
-      <span style={{ fontSize: 12, color: MUTED, letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
+      <span style={{ fontSize: 13, color: MUTED, letterSpacing: 1, flexShrink: 0, marginRight: 12 }}>{label}</span>
       {href
-        ? <a href={href} style={{ fontSize: 13, color: valueColor || GOLD, textDecoration: 'none', textAlign: 'right' }}>{value}</a>
-        : <span style={{ fontSize: 13, color: valueColor || CREAM, textAlign: 'right', maxWidth: '65%' }}>{value}</span>
+        ? <a href={href} style={{ fontSize: 15, color: valueColor || GOLD, textDecoration: 'none', textAlign: 'right' }}>{value}</a>
+        : <span style={{ fontSize: 15, color: valueColor || CREAM, textAlign: 'right', maxWidth: '65%' }}>{value}</span>
       }
     </div>
   )
@@ -61,17 +60,18 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
       }}>
         <button onClick={onBack} style={{
           background: 'none', border: 'none', color: GOLD, fontSize: 28,
-          cursor: 'pointer', padding: '0 8px 0 0', lineHeight: 1,
+          cursor: 'pointer', padding: 0, marginLeft: -10, minWidth: 44, minHeight: 44,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
           WebkitTapHighlightColor: 'transparent',
         }}>‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {quote.client}
           </div>
-          <div style={{ fontSize: 11, color: GOLD, letterSpacing: 2 }}>{quote.id}</div>
+          <div style={{ fontSize: 12, color: GOLD, letterSpacing: 1.5 }}>{quote.id}</div>
         </div>
         <span style={{
-          fontSize: 11, letterSpacing: 2, color: CLAY,
+          fontSize: 12, letterSpacing: 1.5, color: CLAY,
           border: '1px solid rgba(196,98,58,0.4)',
           background: 'rgba(196,98,58,0.1)',
           padding: '4px 8px', borderRadius: 3, flexShrink: 0,
@@ -84,8 +84,8 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
         {/* Dati */}
         {quote.orderNote && (
           <div style={{ background: 'rgba(196,98,58,0.1)', border: '1px solid rgba(196,98,58,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 8 }}>
-            <div style={{ fontSize: 11, letterSpacing: 2, color: CLAY, marginBottom: 4 }}>NOTA PREVENTIVO</div>
-            <div style={{ fontSize: 14, color: CREAM }}>{quote.orderNote}</div>
+            <div style={{ fontSize: 12, letterSpacing: 1.5, color: CLAY, marginBottom: 4 }}>NOTA PREVENTIVO</div>
+            <div style={{ fontSize: 16, color: CREAM }}>{quote.orderNote}</div>
           </div>
         )}
         <SectionTitle>Dati Preventivo</SectionTitle>
@@ -103,9 +103,9 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
           {neg.gifts.map((g, i) => <InfoRow key={i} label={i ? '' : 'Omaggi'} value={`${g.qty || 0} × ${g.label}${g.note ? ` · ${g.note}` : ''}`} />)}
           {neg.depositPct !== null && neg.depositPct !== undefined && <InfoRow label="Acconto" value={`${neg.depositPct}%`} />}
           {neg.installments.length > 0 && <InfoRow label="Rate" value={neg.installments.map(r => `${r.pct}% a ${r.days} gg`).join(' · ')} />}
-          {neg.note && <div style={{ fontSize: 13, color: CREAM, lineHeight: 1.5, marginBottom: 10 }}>{neg.note}</div>}
+          {neg.note && <div style={{ fontSize: 15, color: CREAM, lineHeight: 1.5, marginBottom: 10 }}>{neg.note}</div>}
           {onSaveNegotiation && (
-            <button onClick={() => setNegOpen(true)} style={{ width: '100%', padding: '12px', marginTop: 4, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', border: `1px solid rgba(184,150,90,0.4)`, background: 'rgba(184,150,90,0.08)', color: GOLD, borderRadius: 6, cursor: 'pointer' }}>Modifica trattativa</button>
+            <button onClick={() => setNegOpen(true)} style={{ width: '100%', padding: '12px', marginTop: 4, fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase', border: `1px solid rgba(184,150,90,0.4)`, background: 'rgba(184,150,90,0.08)', color: GOLD, borderRadius: 6, cursor: 'pointer' }}>Modifica trattativa</button>
           )}
         </div>
         {negOpen && <NegotiationModal quote={quote} onClose={() => setNegOpen(false)} onSave={(n) => onSaveNegotiation(quote.id, n)} />}
@@ -138,19 +138,19 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
                   borderRadius: 10, padding: '14px 16px', marginBottom: 8,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, color: CREAM }}>
+                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 17, color: CREAM }}>
                       {kit.name || `Kit ${ki + 1}`}
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(kitTotal)}</div>
-                      {qty > 0 && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {(parseFloat(kit.price)||0).toFixed(2).replace('.', ',')} × {qty}</div>}
-                      {parseFloat(kit.omaggio) > 0 && <div style={{ fontSize: 11, color: CLAY, marginTop: 2 }}>+ {parseFloat(kit.omaggio)} kit in omaggio</div>}
-                      {quote.ivaEnabled && parseFloat(kit.price) > 0 && <div style={{ fontSize: 11, color: CREAM, marginTop: 2 }}>€ {grossUnitPrice(quote, kit.price).toFixed(2).replace('.', ',')} IVA incl. a kit</div>}
+                      <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: GOLD }}>{fmt(kitTotal)}</div>
+                      {qty > 0 && <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{eur2(kit.price)} × {qty}</div>}
+                      {parseFloat(kit.omaggio) > 0 && <div style={{ fontSize: 12, color: CLAY, marginTop: 2 }}>+ {parseFloat(kit.omaggio)} kit in omaggio</div>}
+                      {quote.ivaEnabled && parseFloat(kit.price) > 0 && <div style={{ fontSize: 12, color: CREAM, marginTop: 2 }}>{eur2(grossUnitPrice(quote, kit.price))} IVA incl. a kit</div>}
                     </div>
                   </div>
                   {(kit.articles || []).map((art, ai) => (
                     <div key={ai} style={{
-                      fontSize: 12, color: MUTED,
+                      fontSize: 13, color: MUTED,
                       paddingTop: 6, marginTop: 4,
                       borderTop: '1px solid rgba(255,255,255,0.04)',
                     }}>
@@ -177,12 +177,12 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1, marginRight: 12 }}>
-                      <div style={{ fontSize: 14, color: CREAM }}>{art.description}</div>
-                      {art.color && <div style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>{art.color}</div>}
-                      {art.sp    && <div style={{ fontSize: 11,  color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
-                      {art.notes && <div style={{ fontSize: 12, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
+                      <div style={{ fontSize: 16, color: CREAM }}>{art.description}</div>
+                      {art.color && <div style={{ fontSize: 13, color: MUTED, marginTop: 3 }}>{art.color}</div>}
+                      {art.sp    && <div style={{ fontSize: 12,  color: MUTED, marginTop: 2, letterSpacing: 1 }}>{art.sp}</div>}
+                      {art.notes && <div style={{ fontSize: 13, color: MUTED, marginTop: 4, fontStyle: 'italic' }}>{art.notes}</div>}
                       {artDiscountApplied(quote, art) > 0 && (
-                        <div style={{ fontSize: 12, color: CLAY, marginTop: 4 }}>
+                        <div style={{ fontSize: 13, color: CLAY, marginTop: 4 }}>
                           sconto{art.discountType !== 'importo' ? ` ${parseFloat(art.discountValue) || 0}%` : ''} · − {fmt(artDiscountApplied(quote, art))}
                         </div>
                       )}
@@ -190,11 +190,11 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {artTotal > 0
                         ? <>
-                            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GOLD }}>{fmt(artTotal)}</div>
-                            <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>€ {(parseFloat(art.price)||0).toFixed(2).replace('.', ',')} × {qty} pz</div>
+                            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: GOLD }}>{fmt(artTotal)}</div>
+                            <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{eur2(art.price)} × {qty} pz</div>
                           </>
                         : art.price
-                          ? <div style={{ fontSize: 14, color: GOLD }}>€ {(parseFloat(art.price)||0).toFixed(2).replace('.', ',')} / pz</div>
+                          ? <div style={{ fontSize: 16, color: GOLD }}>{eur2(art.price)} / pz</div>
                           : null
                       }
                     </div>
@@ -217,13 +217,13 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
                 paddingBottom: 8, marginBottom: 8,
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
               }}>
-                <span style={{ fontSize: 12, color: MUTED }}>
+                <span style={{ fontSize: 13, color: MUTED }}>
                   {kit.name || `Kit ${ki + 1}`}
                   {kitDiscountApplied(quote, kit) > 0 && (
                     <span style={{ color: CLAY }}> · sconto − {fmt(kitDiscountApplied(quote, kit))}</span>
                   )}
                 </span>
-                <span style={{ fontSize: 13, color: CREAM }}>{fmt(kitTotal)}</span>
+                <span style={{ fontSize: 15, color: CREAM }}>{fmt(kitTotal)}</span>
               </div>
             )
           })}
@@ -236,7 +236,7 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
           )}
           {quote.ivaEnabled && <InfoRow label={`IVA ${quote.ivaRate || 22}%`} value={fmt(iva)} />}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(184,150,90,0.2)', marginTop: 4 }}>
-            <span style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: GOLD }}>Totale Preventivo</span>
+            <span style={{ fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase', color: GOLD }}>Totale Preventivo</span>
             <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD }}>{fmt(total)}</span>
           </div>
         </div>
@@ -245,7 +245,7 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
         {quote.notes && (
           <>
             <SectionTitle>Note</SectionTitle>
-            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', fontSize: 13, color: CREAM, lineHeight: 1.65 }}>
+            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', fontSize: 15, color: CREAM, lineHeight: 1.65 }}>
               {quote.notes}
             </div>
           </>
@@ -266,7 +266,7 @@ export default function MobileQuoteDetail({ quote, onBack, onSaveNegotiation }) 
           background: 'rgba(196,98,58,0.12)',
           border: '1px solid rgba(196,98,58,0.4)',
           borderRadius: 8, color: CLAY,
-          fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
+          fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase',
           cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif",
           WebkitTapHighlightColor: 'transparent',
         }}>

@@ -28,7 +28,7 @@ function CategoryBadge({ category }) {
   return (
     <span style={{
       display: 'inline-block', padding: '3px 10px', borderRadius: 2,
-      fontSize: 11, letterSpacing: 2, fontWeight: 700, textTransform: 'uppercase',
+      fontSize: 12, letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase',
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
     }}>{category}</span>
   )
@@ -40,7 +40,7 @@ function inputStyle(focused) {
     background: focused ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
     border: `1px solid ${focused ? GOLD : BORDER}`,
     borderRadius: 6, padding: '12px 14px',
-    color: CREAM, fontSize: 14, letterSpacing: 0.3,
+    color: CREAM, fontSize: 16, letterSpacing: 0.3,
     outline: 'none', fontFamily: "'Josefin Sans', sans-serif",
     transition: 'border-color 0.2s, background 0.2s',
   }
@@ -69,11 +69,11 @@ function NewClientForm({ onSave, onCancel }) {
     if (ok !== false) onCancel()
   }
 
-  const labelStyle = { fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
+  const labelStyle = { fontSize: 12, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 6, display: 'block' }
 
   return (
     <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 16px', marginBottom: 20 }}>
-      <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 18 }}>Nuovo Cliente</div>
+      <div style={{ fontSize: 12, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 18 }}>Nuovo Cliente</div>
 
       <div style={{ marginBottom: 14 }}>
         <label style={labelStyle}>Nome Club *</label>
@@ -86,7 +86,7 @@ function NewClientForm({ onSave, onCancel }) {
           style={inputStyle(focused === 'name')}
           autoCapitalize="words"
         />
-        {error ? <div style={{ fontSize: 12, color: CLAY, marginTop: 5 }}>{error}</div> : null}
+        {error ? <div style={{ fontSize: 13, color: CLAY, marginTop: 5 }}>{error}</div> : null}
       </div>
 
       <div style={{ marginBottom: 14 }}>
@@ -161,7 +161,7 @@ function NewClientForm({ onSave, onCancel }) {
         <button onClick={onCancel} style={{
           flex: 1, padding: '13px', borderRadius: 6,
           background: 'transparent', border: `1px solid ${BORDER}`,
-          color: MUTED, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
+          color: MUTED, fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase',
           cursor: 'pointer', fontFamily: "'Josefin Sans', sans-serif",
           WebkitTapHighlightColor: 'transparent',
         }}>Annulla</button>
@@ -169,7 +169,7 @@ function NewClientForm({ onSave, onCancel }) {
           flex: 2, padding: '13px', borderRadius: 6,
           background: saving ? 'rgba(184,150,90,0.3)' : GOLD,
           border: 'none', color: NAVY,
-          fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
+          fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase',
           cursor: saving ? 'default' : 'pointer',
           fontFamily: "'Josefin Sans', sans-serif", fontWeight: 600,
           WebkitTapHighlightColor: 'transparent',
@@ -195,7 +195,7 @@ function ClientDetail({ client, orders, onBack, onSelectOrder }) {
           cursor: 'pointer', padding: '20px 0 10px',
           display: 'flex', alignItems: 'center', gap: 6,
           fontFamily: "'Josefin Sans', sans-serif",
-          fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
+          fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase',
           WebkitTapHighlightColor: 'transparent',
         }}>‹ Clienti</button>
 
@@ -207,41 +207,41 @@ function ClientDetail({ client, orders, onBack, onSelectOrder }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 20, marginBottom: 20 }}>
           <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, color: GOLD, lineHeight: 1 }}>{activeOrders.length}</div>
-            <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginTop: 6 }}>Ordini Attivi</div>
+            <div style={{ fontSize: 12, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginTop: 6 }}>Ordini Attivi</div>
           </div>
           <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: GOLD, lineHeight: 1 }}>{fmt(revenue)}</div>
-            <div style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginTop: 6 }}>Revenue</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: GOLD, lineHeight: 1 }}>{fmt(revenue)}</div>
+            <div style={{ fontSize: 12, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginTop: 6 }}>Revenue</div>
           </div>
         </div>
 
         {(client.phone || client.email || client.contact || client.city || client.vat_number || client.fiscal_code) && (
           <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', marginBottom: 20 }}>
-            <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 14 }}>Contatti</div>
-            {client.contact && <div style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>Referente: {client.contact}</div>}
+            <div style={{ fontSize: 12, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 14 }}>Contatti</div>
+            {client.contact && <div style={{ fontSize: 13, color: MUTED, marginBottom: 10 }}>Referente: {client.contact}</div>}
             {client.phone && (
-              <a href={`tel:${client.phone}`} style={{ display: 'block', fontSize: 16, color: GOLD, textDecoration: 'none', marginBottom: 8, fontFamily: "'Cormorant Garamond', serif" }}>
+              <a href={`tel:${client.phone}`} style={{ display: 'block', fontSize: 17, color: GOLD, textDecoration: 'none', marginBottom: 8, fontFamily: "'Cormorant Garamond', serif" }}>
                 {client.phone}
               </a>
             )}
             {client.email && (
-              <a href={`mailto:${client.email}`} style={{ display: 'block', fontSize: 13, color: GOLD, textDecoration: 'none', marginBottom: 8 }}>
+              <a href={`mailto:${client.email}`} style={{ display: 'block', fontSize: 15, color: GOLD, textDecoration: 'none', marginBottom: 8 }}>
                 {client.email}
               </a>
             )}
             {client.city && (
-              <div style={{ fontSize: 12, color: MUTED, marginBottom: 8 }}>
+              <div style={{ fontSize: 13, color: MUTED, marginBottom: 8 }}>
                 {client.city}{client.country && client.country !== 'Italia' ? `, ${client.country}` : ''}
               </div>
             )}
-            {client.vat_number && <div style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>P.IVA: {client.vat_number}</div>}
-            {client.fiscal_code && <div style={{ fontSize: 12, color: MUTED }}>Cod. Fiscale: {client.fiscal_code}</div>}
+            {client.vat_number && <div style={{ fontSize: 13, color: MUTED, marginBottom: 4 }}>P.IVA: {client.vat_number}</div>}
+            {client.fiscal_code && <div style={{ fontSize: 13, color: MUTED }}>Cod. Fiscale: {client.fiscal_code}</div>}
           </div>
         )}
 
         {clientOrders.length > 0 && (
           <>
-            <div style={{ fontSize: 11, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Storico Ordini</div>
+            <div style={{ fontSize: 12, letterSpacing: 2, color: GOLD, textTransform: 'uppercase', marginBottom: 12 }}>Storico Ordini</div>
             {clientOrders.map(o => (
               <div key={o.id} onClick={() => onSelectOrder(o)} style={{
                 background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10,
@@ -249,10 +249,10 @@ function ClientDetail({ client, orders, onBack, onSelectOrder }) {
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: MUTED }}>{o.id} · {o.date}</span>
-                  <span style={badgeStyle(o.status)}>{o.status}</span>
+                  <span style={{ fontSize: 13, color: MUTED }}>{o.id} · {o.date}</span>
+                  <span style={{ ...badgeStyle(o.status), fontSize: 12, letterSpacing: 1, padding: "4px 10px" }}>{o.status}</span>
                 </div>
-                {o.deliveryDate && <div style={{ fontSize: 12, color: MUTED }}>Consegna: {o.deliveryDate}</div>}
+                {o.deliveryDate && <div style={{ fontSize: 13, color: MUTED }}>Consegna: {o.deliveryDate}</div>}
               </div>
             ))}
           </>
@@ -266,7 +266,7 @@ const SORT_LABELS = { total: 'Fatturato', name: 'Nome', last: 'Ultimo ordine', o
 
 function mChip(active, tc) {
   return {
-    padding: '7px 12px', borderRadius: 6, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase',
+    padding: '7px 12px', minHeight: 44, borderRadius: 6, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase',
     fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Josefin Sans', sans-serif",
     WebkitTapHighlightColor: 'transparent',
     background: active ? (tc?.bg || 'rgba(184,150,90,0.14)') : 'rgba(255,255,255,0.04)',
@@ -341,7 +341,7 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
 
       {/* Header con bottone nuovo cliente */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: 'uppercase' }}>
+        <div style={{ fontSize: 12, color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase' }}>
           {sorted.length} {sorted.length === 1 ? 'cliente' : 'clienti'}{sorted.length !== enriched.length ? ` di ${enriched.length}` : ''}
         </div>
         {!showForm && (
@@ -350,10 +350,10 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
             border: `1px solid ${GOLD}`,
             borderRadius: 6,
             color: GOLD,
-            fontSize: 11,
-            letterSpacing: 2,
+            fontSize: 12,
+            letterSpacing: 1.5,
             textTransform: 'uppercase',
-            padding: '8px 14px',
+            padding: '8px 14px', minHeight: 44,
             cursor: 'pointer',
             fontFamily: "'Josefin Sans', sans-serif",
             WebkitTapHighlightColor: 'transparent',
@@ -373,7 +373,7 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
       {!showForm && (
         <>
           <div style={{ position: 'relative', marginBottom: 12 }}>
-            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: MUTED, fontSize: 15, pointerEvents: 'none' }}>⌕</span>
+            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: MUTED, fontSize: 16, pointerEvents: 'none' }}>⌕</span>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -384,7 +384,7 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
               style={{ ...inputStyle(searchFocus), paddingLeft: 36, paddingRight: 34 }}
             />
             {search && (
-              <span onClick={() => setSearch('')} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: MUTED, fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</span>
+              <span onClick={() => setSearch('')} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: MUTED, fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</span>
             )}
           </div>
 
@@ -402,13 +402,13 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
 
           {/* Ordinamento */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <span style={{ fontSize: 11, letterSpacing: 2, color: MUTED, textTransform: 'uppercase' }}>Ordina</span>
+            <span style={{ fontSize: 12, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase' }}>Ordina</span>
             <select value={sortKey} onChange={e => setSortKey(e.target.value)}
-              style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: '9px 12px', color: CREAM, fontSize: 13, outline: 'none', fontFamily: "'Josefin Sans', sans-serif" }}>
+              style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 6, padding: '9px 12px', minHeight: 44, color: CREAM, fontSize: 16, outline: 'none', fontFamily: "'Josefin Sans', sans-serif" }}>
               {Object.entries(SORT_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
             <button onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
-              style={{ padding: '9px 13px', fontSize: 14, color: GOLD, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(184,150,90,0.35)', borderRadius: 6, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+              style={{ padding: '9px 13px', minWidth: 44, minHeight: 44, fontSize: 16, color: GOLD, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(184,150,90,0.35)', borderRadius: 6, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
               {sortDir === 'asc' ? '▲' : '▼'}
             </button>
           </div>
@@ -417,7 +417,7 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
 
       {/* Lista clienti */}
       {sorted.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: MUTED, fontSize: 13, fontStyle: 'italic' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: MUTED, fontSize: 15, fontStyle: 'italic' }}>
           Nessun cliente trovato
         </div>
       ) : sorted.map(c => {
@@ -432,28 +432,28 @@ export default function MobileClients({ clients, orders, onSelectOrder, onUpsert
           }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM }}>{c.name}</span>
+                <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM }}>{c.name}</span>
                 <span style={{
                   display: 'inline-block', padding: '2px 8px', borderRadius: 2,
-                  fontSize: 11, letterSpacing: 2, fontWeight: 700, textTransform: 'uppercase',
+                  fontSize: 12, letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase',
                   background: cat.bg, color: cat.color, border: `1px solid ${cat.border}`,
                 }}>{c.tier}</span>
                 {c.shop_attivo && (
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: GREEN, flexShrink: 0 }} title="Shop attivo"/>
                 )}
               </div>
-              {sub && <div style={{ fontSize: 12, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>}
+              {sub && <div style={{ fontSize: 13, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>}
               {c.active > 0 && (
-                <div style={{ fontSize: 12, color: GOLD, marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: GOLD, marginTop: 2 }}>
                   {c.active} attiv{c.active > 1 ? 'i' : 'o'}
                 </div>
               )}
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: c.revenue > 0 ? GOLD : MUTED, lineHeight: 1 }}>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: c.revenue > 0 ? GOLD : MUTED, lineHeight: 1 }}>
                 {c.revenue > 0 ? fmt(c.revenue) : '—'}
               </div>
-              <div style={{ fontSize: 11, color: MUTED, letterSpacing: 1, marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: MUTED, letterSpacing: 1, marginTop: 4 }}>
                 {c.lastOrder ? `Ult. ${c.lastOrder}` : 'Nessun ordine'}
               </div>
             </div>

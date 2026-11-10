@@ -9,7 +9,7 @@ function fmt(n) {
 
 function SectionTitle({ children, color }) {
   return (
-    <div style={{ fontSize: 12, letterSpacing: 2.5, color: color || GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
+    <div style={{ fontSize: 13, letterSpacing: 1.5, color: color || GOLD, textTransform: 'uppercase', marginBottom: 12 }}>
       {children}
     </div>
   )
@@ -72,7 +72,7 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
       {/* Alert scadenze */}
       {alerts.length > 0 && (
         <div style={{ marginBottom: 28 }}>
-          <SectionTitle color={CLAY}>⚠ {alerts.length} Ordine{alerts.length > 1 ? 'i' : ''} in Scadenza</SectionTitle>
+          <SectionTitle color={CLAY}>⚠ {alerts.length} {alerts.length > 1 ? 'Ordini' : 'Ordine'} in Scadenza</SectionTitle>
           {alerts.map(o => {
             const days = daysUntilDelivery(o)
             return (
@@ -86,12 +86,12 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM }}>{o.client}</div>
-                  <div style={{ fontSize: 14, color: CLAY, fontWeight: 700 }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: CREAM }}>{o.client}</div>
+                  <div style={{ fontSize: 16, color: CLAY, fontWeight: 700 }}>
                     {days === null ? '' : days < 0 ? `${Math.abs(days)}g scaduto` : days === 0 ? 'Oggi' : `${days}g`}
                   </div>
                 </div>
-                <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{o.id} · Consegna {o.deliveryDate}</div>
+                <div style={{ fontSize: 15, color: MUTED, marginTop: 4 }}>{o.id} · Consegna {o.deliveryDate}</div>
               </div>
             )
           })}
@@ -117,8 +117,8 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
                   position: 'relative',
                 }}>
                   <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: WHITE, lineHeight: 1 }}>{count}</div>
-                  <div style={{ fontSize: 12, letterSpacing: 1.5, color: WHITE, textTransform: 'uppercase', marginTop: 6, opacity: 0.85 }}>{status}</div>
-                  <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 13, color: WHITE, opacity: 0.6 }}>›</div>
+                  <div style={{ fontSize: 13, letterSpacing: 1.5, color: WHITE, textTransform: 'uppercase', marginTop: 6, opacity: 0.85 }}>{status}</div>
+                  <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 15, color: WHITE, opacity: 0.6 }}>›</div>
                 </div>
               )
             })}
@@ -141,11 +141,11 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ fontSize: 12, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Da incassare (attesi)</div>
+                <div style={{ fontSize: 13, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Da incassare (attesi)</div>
                 <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, color: GOLD }}>{fmt(totalPending)}</div>
               </div>
               {totalPending > 0 && (
-                <div style={{ fontSize: 18, color: GOLD, opacity: 0.6, marginTop: 4, transition: 'transform 0.2s', transform: showPaymentDetail ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</div>
+                <div style={{ fontSize: 20, color: GOLD, opacity: 0.6, marginTop: 4, transition: 'transform 0.2s', transform: showPaymentDetail ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</div>
               )}
             </div>
           </div>
@@ -168,14 +168,14 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
                   }}
                 >
                   <div>
-                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: CREAM }}>{clientName}</div>
-                    <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM }}>{clientName}</div>
+                    <div style={{ fontSize: 13, color: MUTED, marginTop: 2 }}>
                       {data.items.map(i => i.type).join(' · ')}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: GOLD }}>{fmt(data.total)}</div>
-                    <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>›</div>
+                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: GOLD }}>{fmt(data.total)}</div>
+                    <div style={{ fontSize: 13, color: MUTED, marginTop: 2 }}>›</div>
                   </div>
                 </div>
               ))}
@@ -187,7 +187,7 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
             <>
               <div style={{ height: 1, background: `rgba(184,150,90,0.12)` }} />
               <div style={{ padding: '16px' }}>
-                <div style={{ fontSize: 12, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Residuo non pianificato</div>
+                <div style={{ fontSize: 13, letterSpacing: 1.5, color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>Residuo non pianificato</div>
                 <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, color: CLAY }}>{fmt(totalResidual)}</div>
               </div>
             </>
@@ -212,14 +212,14 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM }}>{o.client}</div>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, color: GREEN }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: CREAM }}>{o.client}</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: GREEN }}>
                     ✓ {fmt(tot)}
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 13, color: MUTED }}>{o.id}</span>
-                  <span style={{ fontSize: 12, color: MUTED }}>{o.date || '—'}</span>
+                  <span style={{ fontSize: 15, color: MUTED }}>{o.id}</span>
+                  <span style={{ fontSize: 13, color: MUTED }}>{o.date || '—'}</span>
                 </div>
               </div>
             )
@@ -245,21 +245,21 @@ export default function MobileHome({ orders, onSelectOrder, onGoToOrders }) {
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: CREAM, flex: 1, marginRight: 10 }}>{o.client}</div>
-                  <span style={badgeStyle(o.status)}>{o.status}</span>
+                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: CREAM, flex: 1, marginRight: 10 }}>{o.client}</div>
+                  <span style={{ ...badgeStyle(o.status), fontSize: 12, letterSpacing: 1, padding: "4px 10px" }}>{o.status}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: MUTED }}>{o.id}</span>
+                  <span style={{ fontSize: 15, color: MUTED }}>{o.id}</span>
                   {days !== null && (
-                    <span style={{ fontSize: 13, color: days <= 3 ? CLAY : MUTED }}>
+                    <span style={{ fontSize: 15, color: days <= 3 ? CLAY : MUTED }}>
                       {days < 0 ? `Scaduto ${Math.abs(days)}g` : days === 0 ? 'Consegna oggi' : `Consegna tra ${days}g`}
                     </span>
                   )}
                 </div>
                 {(pending > 0 || residual > 0) && (
                   <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                    {pending > 0 && <span style={{ fontSize: 13, color: GOLD }}>Atteso: {fmt(pending)}</span>}
-                    {residual > 0 && <span style={{ fontSize: 13, color: CLAY }}>Residuo: {fmt(residual)}</span>}
+                    {pending > 0 && <span style={{ fontSize: 15, color: GOLD }}>Atteso: {fmt(pending)}</span>}
+                    {residual > 0 && <span style={{ fontSize: 15, color: CLAY }}>Residuo: {fmt(residual)}</span>}
                   </div>
                 )}
               </div>
