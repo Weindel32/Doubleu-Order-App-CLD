@@ -13,7 +13,11 @@ import { formStage } from './formStatus.js'
 export const QUOTE_STALE_DAYS = 7   // preventivo senza movimento da almeno 7 giorni
 
 const RED = '#ef4444', BLUE = '#7aaee8', YELLOW = '#e8c96e'
-const eur2 = (n) => `€ ${n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+// Punto delle migliaia a mano: toLocaleString('it-IT') non lo mette sotto 10.000 (1800,00).
+const eur2 = (n) => {
+  const [int, dec] = Math.abs(n).toFixed(2).split('.')
+  return `€ ${n < 0 ? '−' : ''}${int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${dec}`
+}
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
 
 // Ultimo movimento di un preventivo: la data, o l'ultima modifica della

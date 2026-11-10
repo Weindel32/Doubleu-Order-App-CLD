@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { fetchOrderForms } from '../lib/orderForms.js'
 import { GOLD, MUTED, CREAM, CLAY, BORDER } from '../tokens.js'
 import MobileHome        from './MobileHome.jsx'
 import MobileOrders      from './MobileOrders.jsx'
@@ -30,6 +31,16 @@ export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, c
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [selectedQuote, setSelectedQuote] = useState(null)
   const [moreOpen, setMoreOpen]         = useState(false)
+  // Moduli taglie per ordine (il piu' recente), per la lista "Da fare" in Home.
+  const [forms, setForms]               = useState({})
+  useEffect(() => {
+    fetchOrderForms().then(rows => {
+      if (!rows) return
+      const map = {}
+      for (const f of rows) if (!map[f.order_id]) map[f.order_id] = f
+      setForms(map)
+    })
+  }, [])
 
   const isMoreTab = MORE_TABS.some(t => t.key === tab)
   const selectTab = (key) => { setTab(key); setMoreOpen(false) }
@@ -77,7 +88,9 @@ export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, c
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(64px + env(safe-area-inset-bottom))' }}>
-        {tab === 'home'      && <MobileHome      orders={activeOrders} onSelectOrder={setSelectedOrder} onGoToOrders={goToOrders} />}
+        {tab === 'home'      && <MobileHome      orders={activeOrders} allOrders={orders} forms={forms} shipments={shipments}
+                                  clients={clients} prospects={prospects} onSelectOrder={setSelectedOrder}
+                                  onSelectQuote={setSelectedQuote} onGoToOrders={goToOrders} onGoToTab={selectTab} />}
         {tab === 'orders'    && <MobileOrders    orders={activeOrders} onSelectOrder={setSelectedOrder} filter={ordersFilter} onFilterChange={setOrdersFilter} />}
         {tab === 'quotes'    && <MobileQuotes    quotes={quotes} onSelectQuote={setSelectedQuote} />}
         {tab === 'clients'   && <MobileClients   clients={clients} orders={orders} onSelectOrder={setSelectedOrder} onUpsertClient={onUpsertClient} />}
@@ -117,6 +130,9 @@ export default function MobileApp({ orders, onSaveNegotiation, onOrderUpdated, c
                 <span style={{ fontSize: 16, letterSpacing: 1 }}>{t.label}</span>
               </button>
             ))}
+            <div style={{ textAlign: 'center', fontSize: 12, letterSpacing: 1, color: MUTED, padding: '10px 0 2px' }}>
+              Order App · v{__APP_VERSION__}
+            </div>
           </div>
         </>
       )}
