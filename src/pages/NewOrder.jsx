@@ -892,6 +892,24 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
                 <div><div style={{fontSize:9,color:MUTED}}>Pz consegnate</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:GREEN}}>{deliveredPieces}</div></div>
                 <div><div style={{fontSize:9,color:MUTED}}>Pz rimanenti</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:pendingPieces>0?GOLD:MUTED}}>{pendingPieces}</div></div>
               </div>
+              {deliveries.length > 0 && (
+                <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+                  <div style={{fontSize:9,letterSpacing:2,color:'#7aaee8',marginBottom:6}}>SPEDIZIONI REGISTRATE</div>
+                  {[...deliveries].sort((a,b)=>(fromItalianDate(b.date)||'').localeCompare(fromItalianDate(a.date)||'')).map(d=>{
+                    const arts = allArticles.filter(a=>(d.articles||[]).includes(a.id))
+                    return (
+                      <div key={d.id} style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                        <div style={{flex:1,fontSize:13,color:CREAM}}>
+                          {d.date} <span style={{fontSize:11,color:MUTED}}>· {arts.length} articol{arts.length===1?'o':'i'} · {arts.reduce((s,a)=>s+artPieceCount(a),0)} pz</span>
+                        </div>
+                        {/* La bolla di quella spedizione, con la sua data: identica a quella consegnata */}
+                        <button disabled={!arts.length} onClick={()=>buildDeliveryPdf(currentOrder, arts, d.date).then(b=>shareOrDownload(b, deliveryPdfName(currentOrder))).catch(e => { console.error('Bolla:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })}
+                          style={{padding:'4px 10px',fontSize:10,background:'transparent',border:'1px solid rgba(122,174,232,0.4)',color:'#7aaee8',borderRadius:4,cursor:arts.length?'pointer':'default'}}>↓ Bolla</button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
           {saveError && <div style={{marginTop:12,padding:'10px 16px',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:6,color:'#ef4444',fontSize:12}}>{saveError}</div>}
