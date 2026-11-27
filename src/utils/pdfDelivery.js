@@ -17,7 +17,7 @@ export async function buildDeliveryPdf(order, selectedArticles = null) {
 
   k.header('BOLLA DI CONSEGNA', order.id)
 
-  // ── Destinatario, data, colli ──
+  // ── Destinatario e data ──
   const city = order.clientCity ? order.clientCity + (order.clientCountry ? ', ' + order.clientCountry : '') : ''
   const bandH = city ? 26 : 22
   doc.setFillColor(C.BEIGE); doc.rect(0, 30, W, bandH, 'F')
@@ -25,7 +25,6 @@ export async function buildDeliveryPdf(order, selectedArticles = null) {
   k.fields([
     { label: 'DESTINATARIO', value: order.client || '', style: 'serif', min: 56 },
     { label: 'DATA CONSEGNA', value: order.deliveryDate || new Date().toLocaleDateString('it-IT') },
-    { label: 'TOTALE COLLI', value: `${totalPieces} pz`, style: 'big', min: 34 },
     { label: 'ARTICOLI', value: String(articles.length) },
   ], 38)
   if (city) k.sans().size(8).color('#666666').text(city, M, 49.5)
