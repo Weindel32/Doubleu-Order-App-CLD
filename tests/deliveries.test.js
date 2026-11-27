@@ -35,3 +35,11 @@ test('spedizione: il registro arriva dal database, vuoto se assente', () => {
   const [p] = assembleOrders([{ id: 'DU-1', date: '01/01/2026', deliveries: [{ id: 'd1', date: '26/11/2026', articles: [] }] }], [], [], [])
   assert.equal(p.deliveries[0].date, '26/11/2026')
 })
+
+test('spedizione: aggiornare solo il registro (data di arrivo) non tocca articoli e stato', () => {
+  const done = { ...order, kits: [{ articles: [{ id: 'a1', delivered: true }] }] }
+  const out = applyDeliveryUpdate(done, { id: 'DU-1', deliveries: [{ id: 'd1', date: '26/11/2026', arrived: '30/11/2026', articles: ['a1'] }] })
+  assert.equal(out.status, 'CONSEGNA PARZIALE')
+  assert.equal(out.kits[0].articles[0].delivered, true)
+  assert.equal(out.deliveries[0].arrived, '30/11/2026')
+})

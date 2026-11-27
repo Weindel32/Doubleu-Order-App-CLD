@@ -269,6 +269,13 @@ export async function removeDelivery(orderId, deliveryId) {
   return data || []
 }
 
+// Data di arrivo al cliente di una spedizione ('gg/mm/aaaa', '' = non ancora arrivata)
+export async function setDeliveryArrival(orderId, deliveryId, date) {
+  const { data, error } = await supabase.rpc('set_delivery_arrival', { p_order_id: orderId, p_delivery_id: deliveryId, p_date: date || '' })
+  if (error) { console.error('setDeliveryArrival:', error); return null }
+  return data || []
+}
+
 export async function markQuoteStandby(orderId, reason) {
   const { error } = await supabase.from('orders')
     .update({ standby: true, standby_reason: reason || null })

@@ -131,6 +131,7 @@ export default function BollaModal({ order: initialOrder, onClose, onOrderUpdate
               <div key={d.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ flex:1, fontSize:12, color:CREAM }}>
                   {d.date} <span style={{ color:MUTED }}>· {(d.articles || []).length} articol{(d.articles || []).length === 1 ? 'o' : 'i'} · {piecesOf(d)} pz</span>
+                  <div style={{ fontSize:10, color: d.arrived ? GREEN : MUTED, marginTop:2 }}>{d.arrived ? `✓ Arrivata il ${short(d.arrived)}` : 'In viaggio'}</div>
                 </div>
                 <button onClick={() => redownload(d)} disabled={busy} style={{ padding:'4px 10px', fontSize:10, background:'transparent', border:'1px solid rgba(122,174,232,0.4)', color:'#7aaee8', borderRadius:4, cursor:'pointer' }}>↓ Bolla</button>
                 <button onClick={() => cancel(d)} disabled={busy} title="Annulla spedizione" style={{ padding:'4px 8px', fontSize:10, background:'transparent', border:`1px solid ${BORDER}`, color:MUTED, borderRadius:4, cursor:'pointer' }}>✕</button>
