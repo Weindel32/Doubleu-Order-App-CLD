@@ -43,6 +43,7 @@ export function assembleOrders(orders, allKits, allPayments, allArticles) {
       standby: order.standby || false, standbyReason: order.standby_reason || '',
       installmentsGranted: order.installments_granted || false,
       negotiation: order.negotiation || null,
+      deliveries: Array.isArray(order.deliveries) ? order.deliveries : [],
       productionDays: order.production_days || null, productionStart: order.production_start || null,
       cancelReason: order.cancel_reason || '', cancelDate: order.cancel_date || null,
       convertedFromQuote: order.converted_from_quote || false,

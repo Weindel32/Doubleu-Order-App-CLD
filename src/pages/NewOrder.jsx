@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, BORDER, GREEN, ADULT_SIZES, KIDS_SIZES, CATEGORIES, LINES, ORDER_STATUSES, withCurrent } from '../tokens.js'
 import { s, btnStyle, btnGoldStyle, badgeStyle } from '../tokens.js'
 import { artPieceCount, orderSubtotal, orderIVA, orderShipping, orderDiscount, orderTotal as calcOrderTotal,
-         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitProductionQty, grossUnitPrice } from '../utils/helpers.js'
+         artLineBase, artLineDiscount, kitLineBase, kitLineDiscount, kitProductionQty, grossUnitPrice, applyDeliveryUpdate } from '../utils/helpers.js'
 import { buildProductionPdf, productionPdfName } from '../utils/pdfProduction.js'
 import { buildClientPdf, clientPdfName } from '../utils/pdfClient.js'
 import { buildRecapPdf, recapPdfName } from '../utils/pdfRecap.js'
@@ -66,7 +66,7 @@ function ClientSearch({ clients, onSelect, inputStyle }) {
   )
 }
 
-export default function NewOrder({ editOrder, setView, onSaved, prefillClient, reorderFrom, clients = [], onResolveClientId }) {
+export default function NewOrder({ editOrder, setView, onSaved, prefillClient, reorderFrom, clients = [], onResolveClientId, onDeliveryUpdate }) {
   // Un riordino non è una modifica: è un ordine nuovo che riparte dai dati
   // di uno passato (articoli, colori, prezzi da riconfermare), ma con
   // quantità/taglie/date/pagamenti azzerati (già così in buildReorderSeed).
@@ -111,6 +111,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const [orderNote,setOrderNote]         = useState(src?.orderNote || '')
   const [invoiceNumber,setInvoiceNumber] = useState(editOrder?.invoiceNumber || '')
   const [kits,setKits]             = useState(src?.kits || [emptyKit()])
+  // Spedizioni registrate dalle bolle parziali (si scrivono a parte, non con il salvataggio)
+  const [deliveries,setDeliveries] = useState(editOrder?.deliveries || [])
   const [orderType,setOrderType]   = useState(src?.orderType || 'istituzionale')
   const [payments,setPayments]     = useState(editOrder?.payments || [])
   const [installmentsGranted,setInstallmentsGranted] = useState(editOrder?.installmentsGranted || false)
@@ -180,6 +182,8 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const deliveredPieces  = deliveryArtList.filter(({art})=>art.delivered).reduce((s,{art})=>s+artPieceCount(art),0)
   const pendingPieces    = deliveryArtList.filter(({art})=>!art.delivered).reduce((s,{art})=>s+artPieceCount(art),0)
   const showDelivery     = status==='CONSEGNA PARZIALE'||status==='CONSEGNATO'
+  // Data della bolla con cui e' partito ciascun articolo (registro spedizioni)
+  const shippedOn        = Object.fromEntries(deliveries.flatMap(d => (d.articles||[]).map(id => [id, d.date])))
 
   const orderObj = () => ({
     id: editOrder?.id||'DU-NEW',
@@ -200,6 +204,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
     discountMode, discountType, discountValue: parseFloat(discountValue) || 0,
     orderNote,
     showTotalInClientPDF: showTotal,
+    deliveries,
   })
 
   // Condizioni di pagamento del cliente selezionato, per proporre le rate
@@ -876,7 +881,7 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
                     </div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,color:art.delivered?GREEN:CREAM}}>{art.description||'—'}</div>
-                      <div style={{fontSize:10,color:MUTED}}>{art.sp}{art.color?` · ${art.color}`:''}</div>
+                      <div style={{fontSize:10,color:MUTED}}>{art.sp}{art.color?` · ${art.color}`:''}{art.delivered&&shippedOn[art.id]?` · spedito il ${shippedOn[art.id].slice(0,5)}`:''}</div>
                     </div>
                     <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:art.delivered?GREEN:GOLD}}>{artPieceCount(art)} pz</div>
                   </div>
@@ -905,6 +910,13 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
         </div>
       </div>}
     </div>
-    {showBollaModal && <BollaModal order={currentOrder} onClose={() => setShowBollaModal(false)} />}
+    {showBollaModal && <BollaModal order={currentOrder} onClose={() => setShowBollaModal(false)} onOrderUpdate={next => {
+      // Solo l'esito della spedizione: le modifiche non salvate del modulo restano
+      setKits(prev => applyDeliveryUpdate({ id: next.id, kits: prev }, next).kits)
+      setDeliveries(next.deliveries || [])
+      setStatus(next.status)
+      if (!shippedDate && next.shippedDate) setShippedDate(fromItalianDate(next.shippedDate))
+      onDeliveryUpdate?.(next)
+    }} />}
   </>)
 }

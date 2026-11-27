@@ -254,6 +254,21 @@ export async function saveProductionPlan(orderId, days, start) {
   return true
 }
 
+// Spedizioni (bolle parziali): si scrivono a parte con due funzioni del database, che
+// tengono allineato articles.delivered. save_order_atomic non tocca orders.deliveries.
+// Restituiscono il registro aggiornato, o null se il salvataggio non e' riuscito.
+export async function recordDelivery(orderId, date, articleIds) {
+  const { data, error } = await supabase.rpc('record_delivery', { p_order_id: orderId, p_date: date, p_article_ids: articleIds })
+  if (error) { console.error('recordDelivery:', error); return null }
+  return data || []
+}
+
+export async function removeDelivery(orderId, deliveryId) {
+  const { data, error } = await supabase.rpc('remove_delivery', { p_order_id: orderId, p_delivery_id: deliveryId })
+  if (error) { console.error('removeDelivery:', error); return null }
+  return data || []
+}
+
 export async function markQuoteStandby(orderId, reason) {
   const { error } = await supabase.from('orders')
     .update({ standby: true, standby_reason: reason || null })
