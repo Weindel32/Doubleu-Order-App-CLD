@@ -9,7 +9,7 @@ import { buildRecapPdf, recapPdfName } from '../utils/pdfRecap.js'
 import { shareOrDownload } from '../lib/sizesPdf.js'
 import { buildDeliveryPdf, deliveryPdfName } from '../utils/pdfDelivery.js'
 import { exportSizesCSV }        from '../utils/exportCSV.js'
-import { createOrder, updateOrder, generateOrderId, saveProductionPlan } from '../lib/dataService.js'
+import { createOrder, updateOrder, generateOrderId, saveProductionPlan, setDeliveryArrival } from '../lib/dataService.js'
 import { pendingFormWarning, syncFormLabels, fetchOrderFormFor } from '../lib/orderForms.js'
 import { productionPlan, shortDay, DEFAULT_PRODUCTION_DAYS } from '../lib/production.js'
 import { askConfirm, showAlert } from '../components/ConfirmDialog.jsx'
@@ -229,6 +229,15 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
   const updateArt  =(ki,ai,f,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,[f]:v})}))
   const updateSz        =(ki,ai,type,sz,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,[type]:{...a.sizes[type],[sz]:parseInt(v)||0}}})}))
   const updateUni       =(ki,ai,v)=> setKits(kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,sizes:{...a.sizes,uni:parseInt(v)||0}})}))
+  // Arrivo al cliente di una spedizione registrata: si salva subito, a parte dall'ordine
+  const saveArrival = async (d, iso) => {
+    const date = iso ? toItalianDate(iso) : ''
+    if (iso && iso < (fromItalianDate(d.date)||'')) { showAlert({ title:'Data non valida', body:[`La spedizione è partita il ${d.date}: non può essere arrivata prima.`] }); return }
+    const list = await setDeliveryArrival(editOrder.id, d.id, date)
+    if (!list) { showAlert({ title:'Data non salvata', body:['Riprova tra poco.'] }); return }
+    setDeliveries(list)
+    onDeliveryUpdate?.({ id: editOrder.id, deliveries: list })
+  }
   const toggleDelivered = async (ki, ai) => {
     const newKits = kits.map((k,i)=>i!==ki?k:{...k,articles:k.articles.map((a,j)=>j!==ai?a:{...a,delivered:!a.delivered})})
     setKits(newKits)
@@ -898,9 +907,14 @@ export default function NewOrder({ editOrder, setView, onSaved, prefillClient, r
                   {[...deliveries].sort((a,b)=>(fromItalianDate(b.date)||'').localeCompare(fromItalianDate(a.date)||'')).map(d=>{
                     const arts = allArticles.filter(a=>(d.articles||[]).includes(a.id))
                     return (
-                      <div key={d.id} style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                        <div style={{flex:1,fontSize:13,color:CREAM}}>
-                          {d.date} <span style={{fontSize:11,color:MUTED}}>· {arts.length} articol{arts.length===1?'o':'i'} · {arts.reduce((s,a)=>s+artPieceCount(a),0)} pz</span>
+                      <div key={d.id} style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                        <div style={{flex:1,minWidth:180,fontSize:13,color:CREAM}}>
+                          Spedita il {d.date} <span style={{fontSize:11,color:MUTED}}>· {arts.length} articol{arts.length===1?'o':'i'} · {arts.reduce((s,a)=>s+artPieceCount(a),0)} pz</span>
+                        </div>
+                        <div style={{width:190}}>
+                          <DatePicker value={fromItalianDate(d.arrived)||''} placeholder="In viaggio · segna arrivo"
+                            onChange={v=>saveArrival(d, v)}
+                            triggerStyle={{padding:'5px 10px',fontSize:12,borderColor:d.arrived?GREEN:undefined,color:d.arrived?GREEN:undefined}}/>
                         </div>
                         {/* La bolla di quella spedizione, con la sua data: identica a quella consegnata */}
                         <button disabled={!arts.length} onClick={()=>buildDeliveryPdf(currentOrder, arts, d.date).then(b=>shareOrDownload(b, deliveryPdfName(currentOrder))).catch(e => { console.error('Bolla:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })}

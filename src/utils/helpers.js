@@ -10,10 +10,12 @@ export function getAllArticles(order) {
 // dell'ordine, comprese le modifiche non ancora salvate, resta com'e'.
 export function applyDeliveryUpdate(order, next) {
   if (!order || order.id !== next.id) return order
+  // Campi assenti in next (es. solo il registro, dopo una data di arrivo) restano com'erano
   const flags = Object.fromEntries(getAllArticles(next).filter(a => a.id).map(a => [a.id, a.delivered]))
   return {
     ...order,
-    deliveries: next.deliveries || [], status: next.status, shippedDate: next.shippedDate || order.shippedDate || null,
+    deliveries: next.deliveries || order.deliveries || [], status: next.status || order.status,
+    shippedDate: next.shippedDate || order.shippedDate || null,
     kits: (order.kits || []).map(k => ({ ...k, articles: (k.articles || []).map(a => a.id in flags ? { ...a, delivered: flags[a.id] } : a) })),
   }
 }

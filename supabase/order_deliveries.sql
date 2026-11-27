@@ -1,5 +1,5 @@
 -- Registro delle spedizioni di un ordine (bolle parziali), a livello di articolo.
--- orders.deliveries: [{ id, date: 'gg/mm/aaaa', articles: [uuid articolo], created_at }]
+-- orders.deliveries: [{ id, date: 'gg/mm/aaaa', articles: [uuid articolo], created_at, arrived?: 'gg/mm/aaaa' }]
 -- save_order_atomic non tocca questa colonna (aggiorna solo le sue): salvare l'ordine non la cancella.
 -- articles.delivered resta il segno "spedito" usato da tutta l'app: le due funzioni lo tengono allineato.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS deliveries jsonb NOT NULL DEFAULT '[]'::jsonb;
@@ -56,6 +56,30 @@ begin
   where k.id = a.kit_id and k.order_id = p_order_id
     and a.id::text in (select jsonb_array_elements_text(v_removed->'articles'))
     and a.id::text not in (select jsonb_array_elements_text(d->'articles') from jsonb_array_elements(v_list) d);
+  return v_list;
+end;
+$function$;
+
+-- Data di arrivo al cliente di una spedizione ('gg/mm/aaaa', null = non ancora arrivata).
+-- È della singola spedizione: la consegna dell'ordine intero resta actual_delivery_date.
+CREATE OR REPLACE FUNCTION public.set_delivery_arrival(p_order_id text, p_delivery_id text, p_date text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
+declare
+  v_list jsonb;
+begin
+  if not exists (select 1 from orders o, jsonb_array_elements(o.deliveries) d
+                 where o.id = p_order_id and d->>'id' = p_delivery_id) then
+    raise exception 'Spedizione non trovata';
+  end if;
+  update orders set deliveries = (
+    select jsonb_agg(case when d->>'id' = p_delivery_id
+                          then d || jsonb_build_object('arrived', nullif(p_date, ''))
+                          else d end order by n)
+    from jsonb_array_elements(deliveries) with ordinality as t(d, n))
+  where id = p_order_id
+  returning deliveries into v_list;
   return v_list;
 end;
 $function$;
