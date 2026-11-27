@@ -18,7 +18,7 @@ import NewQuote  from './pages/NewQuote.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Login     from './pages/Login.jsx'
 import { fetchOrders, deleteOrder, fetchClients, upsertClient, resolveClientId, renameClient, updateClient, createClient, linkOrderToClient, fetchProspects, upsertProspect, addProspectActivity, deleteProspect, setProspectHibernated, markQuoteLost, restoreQuote, markQuoteStandby, restoreFromStandby, saveNegotiation, fetchSampleShipments, upsertSampleShipment, deleteSampleShipment, updateSampleItemOutcome, markSampleReturned } from './lib/dataService.js'
-import { needsAlert, isConfirmed } from './utils/helpers.js'
+import { needsAlert, isConfirmed, applyDeliveryUpdate } from './utils/helpers.js'
 import { buildReorderSeed } from './utils/reorder.js'
 import { needsFollowUp, returnOverdue, recipientLabel } from './utils/samples.js'
 import { syncFollowUpToTodoist } from './lib/todoist.js'
@@ -436,6 +436,7 @@ export default function App() {
     navigate('quotes')
   }
   const handleOrdersChange = (newOrders) => setOrders(newOrders)
+  const handleDeliveryUpdate = (next) => setOrders(prev => prev.map(o => applyDeliveryUpdate(o, next)))
 
   if (authLoading) {
     return (
@@ -490,7 +491,7 @@ export default function App() {
         {view === 'prospects'  && <Prospects prospects={prospects} orders={orders} onOpenOrder={openOrderOrQuote} onUpsert={handleUpsertProspect} onAddActivity={handleAddActivity} onSaveActivity={handleSaveActivity} onDeleteActivity={handleDeleteActivity} onDelete={handleDeleteProspect} onSetHibernated={handleSetHibernated} onNewQuote={handleNewQuoteFromProspect} shipments={shipments} onNewSample={handleNewSample} selectedId={selectedProspectId} setSelectedId={setSelectedProspectId}/>}
         {view === 'samples'    && <Samples   shipments={shipments} clients={clients} prospects={prospects} orders={orders} onUpsert={handleUpsertShipment} onDelete={handleDeleteShipment} onMarkReturned={handleMarkSampleReturned} initialDraft={sampleDraft} onDraftConsumed={() => setSampleDraft(null)}/>}
         {view === 'analytics'  && <Analytics orders={orders} shipments={shipments} prospects={prospects}/>}
-        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onResolveClientId={handleResolveClientId}/>}
+        {view === 'new'        && <NewOrder  editOrder={editOrder} prefillClient={prefillClient} reorderFrom={reorderFrom} clients={clients} setView={navigate} onSaved={handleSavedOrder} onResolveClientId={handleResolveClientId} onDeliveryUpdate={handleDeliveryUpdate}/>}
         {view === 'newQuote'   && <NewQuote  editOrder={editOrder} prefillClient={prefillClient} clients={clients} setView={navigate} onSaved={handleSavedQuote} onResolveClientId={handleResolveClientId} onSaveNegotiation={handleSaveNegotiation}/>}
       </main>
     </div>

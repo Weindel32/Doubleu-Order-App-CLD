@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { GOLD, MUTED, CREAM, CLAY, NAVY, GREEN } from '../tokens.js'
 import { s, badgeStyle, btnStyle, btnGoldStyle } from '../tokens.js'
-import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert } from '../utils/helpers.js'
+import { orderTotal, paymentSummary, daysUntilDelivery, needsAlert, applyDeliveryUpdate } from '../utils/helpers.js'
 import { buildProductionPdf, productionPdfName } from '../utils/pdfProduction.js'
 import { buildClientPdf, clientPdfName } from '../utils/pdfClient.js'
 import { buildDeliveryPdf, deliveryPdfName } from '../utils/pdfDelivery.js'
@@ -420,7 +420,7 @@ export default function Orders({ orders, setView, setEditOrder, onReorder, onDel
         </table>
       )}
     </div>
-    {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} />}
+    {bollaOrder && <BollaModal order={bollaOrder} onClose={() => setBollaOrder(null)} onOrderUpdate={next => onOrdersChange(orders.map(o => applyDeliveryUpdate(o, next)))} />}
     {formOrder && <OrderFormModal order={formOrder} form={formsByOrder[formOrder.id]} onClose={() => setFormOrderId(null)}
       onFormChange={f => setFormsByOrder(m => ({ ...m, [f.order_id]: f.status === 'revocato' ? undefined : f }))}
       onOrderUpdated={next => onOrdersChange(orders.map(o => o.id === next.id ? next : o))}/>}

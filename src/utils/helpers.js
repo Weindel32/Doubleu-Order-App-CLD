@@ -5,6 +5,19 @@ export function getAllArticles(order) {
   return (order.kits || []).flatMap(k => k.articles || [])
 }
 
+// Riporta su un ordine l'esito di una spedizione registrata (BollaModal): registro,
+// stato, data di spedizione e segno "spedito" degli articoli (per id). Il resto
+// dell'ordine, comprese le modifiche non ancora salvate, resta com'e'.
+export function applyDeliveryUpdate(order, next) {
+  if (!order || order.id !== next.id) return order
+  const flags = Object.fromEntries(getAllArticles(next).filter(a => a.id).map(a => [a.id, a.delivered]))
+  return {
+    ...order,
+    deliveries: next.deliveries || [], status: next.status, shippedDate: next.shippedDate || order.shippedDate || null,
+    kits: (order.kits || []).map(k => ({ ...k, articles: (k.articles || []).map(a => a.id in flags ? { ...a, delivered: flags[a.id] } : a) })),
+  }
+}
+
 // ── Order status predicates ───────────────────────────────────────
 // Un ordine annullato resta in archivio ma è escluso da fatturato,
 // pezzi prodotti e alert pagamenti (tracciato a parte nelle statistiche).
