@@ -4,10 +4,14 @@ import { getAllArticles, artPieceCount } from '../utils/helpers.js'
 import { buildDeliveryPdf, deliveryPdfName } from '../utils/pdfDelivery.js'
 import { shareOrDownload } from '../lib/sizesPdf.js'
 import { showAlert } from './ConfirmDialog.jsx'
+import DatePicker, { toItalianDate } from './DatePicker.jsx'
+import { todayISO } from '../utils/samples.js'
 
 export default function BollaModal({ order, onClose }) {
   const allArticles = getAllArticles(order)
   const [selected, setSelected] = useState(new Set())
+  // Ogni spedizione parziale ha la sua data: si parte da oggi, modificabile
+  const [shipISO, setShipISO] = useState(todayISO())
 
   const toggle = (idx) => setSelected(prev => {
     const next = new Set(prev)
@@ -21,7 +25,7 @@ export default function BollaModal({ order, onClose }) {
   const generate = () => {
     const articles = allArticles.filter((_, i) => selected.has(i))
     // PDF vero (niente link del browser): condivisione su telefono, download sul computer
-    buildDeliveryPdf(order, articles).then(b => shareOrDownload(b, deliveryPdfName(order))).catch(e => { console.error('Bolla:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
+    buildDeliveryPdf(order, articles, toItalianDate(shipISO)).then(b => shareOrDownload(b, deliveryPdfName(order))).catch(e => { console.error('Bolla:', e); showAlert({ title: 'PDF non creato', body: ['Riprova tra poco.'] }) })
     onClose()
   }
 
@@ -34,6 +38,8 @@ export default function BollaModal({ order, onClose }) {
           <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, color:CREAM }}>{order.client}</div>
           <div style={{ fontSize:11, color:MUTED, marginTop:2 }}>Seleziona gli articoli da includere in questa spedizione</div>
         </div>
+
+        <DatePicker label="Data spedizione" value={shipISO} onChange={v => setShipISO(v || todayISO())} />
 
         <div style={{ borderTop:`1px solid ${BORDER}`, borderBottom:`1px solid ${BORDER}`, overflowY:'auto', maxHeight:340, paddingTop:8, paddingBottom:8 }}>
           <label style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', cursor:'pointer', borderBottom:`1px solid rgba(255,255,255,0.06)`, marginBottom:4 }}>
