@@ -4,12 +4,12 @@ import { newPdf, C, pdfName, sizeGrids, sizeGridsCount } from '../lib/pdfKit.js'
 // Bolla di consegna (anche parziale: solo gli articoli scelti) come PDF vero:
 // niente link e data aggiunti dalla stampa del browser.
 //
-//   const blob = await buildDeliveryPdf(order, articoliSpediti)
+//   const blob = await buildDeliveryPdf(order, articoliSpediti, '26/11/2026')
 //   await shareOrDownload(blob, deliveryPdfName(order))
 
 export const deliveryPdfName = (order) => pdfName('Bolla di consegna', order?.id, order?.client)
 
-export async function buildDeliveryPdf(order, selectedArticles = null) {
+export async function buildDeliveryPdf(order, selectedArticles = null, shipDate = null) {
   const k = await newPdf(deliveryPdfName(order).replace(/\.pdf$/, ''))
   const { doc, M, R, W } = k
   const articles = selectedArticles ?? getAllArticles(order)
@@ -24,7 +24,9 @@ export async function buildDeliveryPdf(order, selectedArticles = null) {
   k.rule(30 + bandH, C.BORDER, 0.5, 0, W)
   k.fields([
     { label: 'DESTINATARIO', value: order.client || '', style: 'serif', min: 56 },
-    { label: 'DATA CONSEGNA', value: order.deliveryDate || new Date().toLocaleDateString('it-IT') },
+    // La bolla accompagna la merce: data di questa spedizione (scelta per le parziali),
+    // altrimenti la spedizione registrata sull'ordine, mai la consegna prevista
+    { label: 'DATA SPEDIZIONE', value: shipDate || order.shippedDate || new Date().toLocaleDateString('it-IT') },
     { label: 'ARTICOLI', value: String(articles.length) },
   ], 38)
   if (city) k.sans().size(8).color('#666666').text(city, M, 49.5)
